@@ -1,0 +1,35 @@
+@import "tailwindcss/preflight";
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
+
+/* Base theme tokens */
+:root {
+  color-scheme: light;
+}
+.dark :root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+/* Typography and layout defaults */
+body {
+  @reference font-sans;
+}
+
+/* Simple container utility */
+.container-page {
+  @reference p-6 md:p-8;
+}
+
+/* Card surface */
+.card {
+  @reference bg-white dark:bg-slate-900 shadow-card rounded-xl border border-slate-200 dark:border-slate-800;
+}
+
+/* Header chip */
+.status-chip {
+  @reference text-xs px-2 py-1 rounded-full border;
+}

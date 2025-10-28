@@ -1,0 +1,35 @@
+﻿# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# Node/React (Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.cache/
+frontend/.vite/
+frontend/.eslintcache
+
+# Logs
+**/*.log
+logs/
+npm-debug.log*
+
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/*.pyc
+**/__pycache__/
+**/*.pyc
+
+# Env files
+backend/.env
+frontend/.env
+
+# Coverage
+coverage/
