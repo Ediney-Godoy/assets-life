@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Plus, X } from 'lucide-react';
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +44,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       '/ugs': 'Unidades Gerenciais',
       '/assets': t('nav_assets') || 'Ativos',
       '/reviews': t('nav_reviews') || 'Revisões',
+      '/reviews/vidas-uteis': 'Revisão de Vidas Úteis',
       '/cost-centers': t('cost_centers_title') || 'Centros de Custos',
       '/reports': t('nav_reports') || 'Relatórios',
       '/permissions': t('nav_permissions') || 'Permissões',

@@ -16,20 +16,25 @@ html, body, #root {
 
 /* Typography and layout defaults */
 body {
-  @reference font-sans;
+  @apply font-sans;
 }
 
 /* Simple container utility */
 .container-page {
-  @reference p-6 md:p-8;
+  @apply p-6 md:p-8;
 }
 
 /* Card surface */
 .card {
-  @reference bg-white dark:bg-slate-900 shadow-card rounded-xl border border-slate-200 dark:border-slate-800;
+  @apply bg-white dark:bg-slate-900 shadow rounded-xl border border-slate-200 dark:border-slate-800;
 }
 
 /* Header chip */
 .status-chip {
-  @reference text-xs px-2 py-1 rounded-full border;
+  @apply text-xs px-2 py-1 rounded-full border;
+}
+
+/* Garante espaço estável para a barra de rolagem, evitando saltos no layout */
+.scrollbar-stable {
+  scrollbar-gutter: stable both-edges;
 }

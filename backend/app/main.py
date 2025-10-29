@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from sqlalchemy.orm import Session
 import sqlalchemy as sa
 from datetime import date
+import os
 
 from .database import SessionLocal, engine
 from .models import Base as SA_Base, Company as CompanyModel
@@ -16,8 +17,20 @@ from .models import RevisaoPeriodo as RevisaoPeriodoModel
 from .models import RevisaoItem as RevisaoItemModel
 from .models import RevisaoDelegacao as RevisaoDelegacaoModel
 from .models import CentroCusto as CentroCustoModel
+from .models import (
+    GrupoPermissao as GrupoPermissaoModel,
+    Transacao as TransacaoModel,
+    GrupoEmpresa as GrupoEmpresaModel,
+    GrupoTransacao as GrupoTransacaoModel,
+    GrupoUsuario as GrupoUsuarioModel,
+    AuditoriaLog as AuditoriaLogModel,
+)
+from .models import TokenRedefinicao as TokenRedefinicaoModel
 from fastapi import UploadFile, File
-from datetime import datetime
+from datetime import datetime, timedelta
+from jose import jwt, JWTError
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import secrets
 
 app = FastAPI(title="Asset Life API", version="0.2.0")
 
@@ -35,6 +48,34 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+# -----------------------------
+# Auth (JWT) e Segurança
+# -----------------------------
+SECRET_KEY = "dev-secret-key-change-in-prod"
+ALGORITHM = "HS256"
+security = HTTPBearer()
+JWT_EXPIRE_MINUTES = 60 * 8  # 8 horas
+RESET_TOKEN_EXPIRE_MINUTES = 30  # 30 minutos
+
+# Tentativas de login in-memory (substituir por campos na tabela usuarios posteriormente)
+login_attempts: dict[str, dict] = {}
+
+class LoginPayload(BaseModel):
+    email: Optional[EmailStr] = None
+    identificador: Optional[str] = None  # email ou nome de usuário
+    senha: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    # first_access: bool = False
+
+def create_access_token(data: dict, expires_minutes: int = 60):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+ 
 # DB session dependency
 def get_db():
     db = SessionLocal()
@@ -42,6 +83,196 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except (JWTError, ValueError):
+        raise HTTPException(status_code=401, detail="Token inválido")
+    user = db.query(UsuarioModel).filter(UsuarioModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+    return user
+
+@app.post("/auth/login", response_model=TokenResponse)
+def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)):
+    identifier = (payload.identificador or (payload.email or "")).strip()
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Informe email ou usuário")
+
+    key = identifier.lower()
+    la = login_attempts.get(key)
+    now = datetime.utcnow()
+    if la and la.get("blocked_until") and la["blocked_until"] > now:
+        raise HTTPException(status_code=403, detail="Usuário temporariamente bloqueado. Tente novamente mais tarde.")
+
+    # Identificar por email ou nome de usuário
+    if "@" in identifier:
+        user = db.query(UsuarioModel).filter(UsuarioModel.email == identifier).first()
+    else:
+        user = db.query(UsuarioModel).filter(UsuarioModel.nome_usuario == identifier).first()
+
+    client_ip = request.client.host if request.client else None
+
+    if not user or not bcrypt.checkpw(payload.senha.encode("utf-8"), (user.senha_hash or "").encode("utf-8")):
+        # Atualizar tentativas
+        if not la:
+            la = {"count": 0, "blocked_until": None}
+        la["count"] = la.get("count", 0) + 1
+        if la["count"] >= 3:
+            la["blocked_until"] = now + timedelta(minutes=15)
+        login_attempts[key] = la
+
+        # Auditoria (falha)
+        try:
+            audit(db, usuario_id=user.id if user else None, acao="LOGIN_FALHA", entidade="Usuario", entidade_id=user.id if user else None, detalhes=f"ip={client_ip}")
+        except Exception:
+            pass
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+
+    # Sucesso -> reset tentativas
+    login_attempts.pop(key, None)
+
+    token = create_access_token({"sub": str(user.id)}, expires_minutes=JWT_EXPIRE_MINUTES)
+
+    # Auditoria (sucesso)
+    try:
+        audit(db, usuario_id=user.id, acao="LOGIN_SUCESSO", entidade="Usuario", entidade_id=user.id, detalhes=f"ip={client_ip}")
+    except Exception:
+        pass
+    return TokenResponse(access_token=token)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    nova_senha: str
+    confirmar_senha: str
+
+
+class ChangePasswordRequest(BaseModel):
+    senha_atual: str
+    nova_senha: str
+    confirmar_senha: str
+
+
+def validate_password_strength(p: str):
+    if len(p) < 8:
+        raise HTTPException(status_code=400, detail="Senha deve ter pelo menos 8 caracteres")
+    # políticas mínimas: número, maiúscula e símbolo
+    if not any(c.isupper() for c in p):
+        raise HTTPException(status_code=400, detail="Senha deve conter pelo menos uma letra maiúscula")
+    if not any(c.isdigit() for c in p):
+        raise HTTPException(status_code=400, detail="Senha deve conter pelo menos um número")
+    if not any(not c.isalnum() for c in p):
+        raise HTTPException(status_code=400, detail="Senha deve conter pelo menos um símbolo")
+
+
+def _send_email_stub(to: str, subject: str, body: str):
+    # Substituir por FastAPI-Mail/SMTP real em produção
+    print("=== EMAIL STUB ===")
+    print("To:", to)
+    print("Subject:", subject)
+    print("Body:\n", body)
+    print("===================")
+
+
+@app.post("/auth/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(UsuarioModel).filter(UsuarioModel.email == payload.email).first()
+    # Não revelar existência do email
+    if user:
+        # invalidar tokens antigos não usados?
+        token = secrets.token_urlsafe(48)
+        expires = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+        db.add(TokenRedefinicaoModel(usuario_id=user.id, token=token, expiracao=expires, usado=False))
+        db.commit()
+        try:
+            base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
+            link = f"{base_url}/reset-password?token={token}"
+            _send_email_stub(
+                to=user.email,
+                subject="Redefinição de Senha - Asset Life",
+                body=f"Olá {user.nome_completo},\n\nRecebemos uma solicitação para redefinir sua senha. Use o link abaixo (válido por 30 minutos):\n{link}\n\nSe você não solicitou, ignore este email.",
+            )
+            audit(db, usuario_id=user.id, acao="RESET_SOLICITADO", entidade="Usuario", entidade_id=user.id)
+        except Exception:
+            pass
+    return {"ok": True}
+
+
+@app.post("/auth/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    if payload.nova_senha != payload.confirmar_senha:
+        raise HTTPException(status_code=400, detail="Confirmação de senha não confere")
+    validate_password_strength(payload.nova_senha)
+    t = db.query(TokenRedefinicaoModel).filter(TokenRedefinicaoModel.token == payload.token).first()
+    if not t or t.usado:
+        raise HTTPException(status_code=400, detail="Token inválido")
+    if t.expiracao < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token expirado")
+    user = db.query(UsuarioModel).filter(UsuarioModel.id == t.usuario_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    # atualizar senha
+    new_hash = bcrypt.hashpw(payload.nova_senha.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    user.senha_hash = new_hash
+    t.usado = True
+    db.commit()
+    try:
+        audit(db, usuario_id=user.id, acao="RESET_CONCLUIDO", entidade="Usuario", entidade_id=user.id)
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+@app.post("/auth/change-password")
+def change_password(payload: ChangePasswordRequest, current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    if payload.nova_senha != payload.confirmar_senha:
+        raise HTTPException(status_code=400, detail="Confirmação de senha não confere")
+    if not bcrypt.checkpw(payload.senha_atual.encode("utf-8"), (current_user.senha_hash or "").encode("utf-8")):
+        raise HTTPException(status_code=400, detail="Senha atual incorreta")
+    validate_password_strength(payload.nova_senha)
+    new_hash = bcrypt.hashpw(payload.nova_senha.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    current_user.senha_hash = new_hash
+    db.commit()
+    try:
+        audit(db, usuario_id=current_user.id, acao="ALTERACAO_SENHA", entidade="Usuario", entidade_id=current_user.id)
+    except Exception:
+        pass
+    return {"ok": True}
+
+@app.get("/auth/me", response_model=dict)
+def auth_me(current_user: UsuarioModel = Depends(get_current_user)):
+    return {"id": current_user.id, "nome": current_user.nome_completo, "email": current_user.email}
+
+@app.get("/auth/me/permissoes", response_model=dict)
+def auth_me_permissions(current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    # grupos do usuário
+    links = db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.usuario_id == current_user.id).all()
+    grupo_ids = [l.grupo_id for l in links]
+    grupos = db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id.in_(grupo_ids)).all()
+    # transações liberadas
+    trans_links = db.query(GrupoTransacaoModel).filter(GrupoTransacaoModel.grupo_id.in_(grupo_ids)).all()
+    trans_ids = [t.transacao_id for t in trans_links]
+    transacoes = db.query(TransacaoModel).filter(TransacaoModel.id.in_(trans_ids)).all()
+    rotas = sorted({t.rota for t in transacoes})
+    # empresas liberadas
+    emp_links = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id.in_(grupo_ids)).all()
+    empresas_ids = sorted({e.empresa_id for e in emp_links})
+    return {
+        "usuario_id": current_user.id,
+        "grupos": [{"id": g.id, "nome": g.nome} for g in grupos],
+        "empresas_ids": empresas_ids,
+        "rotas": rotas,
+    }
+
+ # (get_db moved above to avoid NameError during Depends evaluation)
 
 @app.on_event("startup")
 def on_startup():
@@ -51,6 +282,39 @@ def on_startup():
     except Exception as e:
         print("DB init error:", e)
 
+    # Seed default transactions if none exist or missing
+    try:
+        db = SessionLocal()
+        defaults = [
+            {"nome_tela": "Dashboard", "rota": "/dashboard", "descricao": "Página inicial"},
+            {"nome_tela": "Cadastros", "rota": "/cadastros", "descricao": "Área de cadastros"},
+            {"nome_tela": "Empresas", "rota": "/companies", "descricao": "Gestão de empresas"},
+            {"nome_tela": "Usuários", "rota": "/users", "descricao": "Gestão de usuários"},
+            {"nome_tela": "Funcionários", "rota": "/employees", "descricao": "Gestão de funcionários"},
+            {"nome_tela": "Unidades Gestoras", "rota": "/ugs", "descricao": "Gestão de UG"},
+            {"nome_tela": "Centros de Custo", "rota": "/cost-centers", "descricao": "Gestão de centros de custo"},
+            {"nome_tela": "Permissões", "rota": "/permissions", "descricao": "Controle de acessos"},
+            {"nome_tela": "Revisões", "rota": "/reviews", "descricao": "Menu de revisões"},
+            {"nome_tela": "Revisões - Períodos", "rota": "/reviews/periodos", "descricao": "Revisões por período"},
+            {"nome_tela": "Revisões - Delegação", "rota": "/reviews/delegacao", "descricao": "Delegação de revisões"},
+            {"nome_tela": "Revisões - Vidas Úteis", "rota": "/reviews/vidas-uteis", "descricao": "Revisão de vidas úteis"},
+            {"nome_tela": "Relatórios", "rota": "/reports", "descricao": "Relatórios"},
+            {"nome_tela": "Ativos", "rota": "/assets", "descricao": "Gestão de ativos"},
+        ]
+        for item in defaults:
+            exists = db.query(TransacaoModel).filter(TransacaoModel.rota == item["rota"]).first()
+            if not exists:
+                db.add(TransacaoModel(**item))
+        db.commit()
+    except Exception as e:
+        # Seed errors shouldn't break startup; just log
+        print("Seed transacoes error:", e)
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -58,6 +322,23 @@ def health():
 @app.get("/")
 def root():
     return {"message": "Asset Life API"}
+
+# -----------------------------
+# Util: Auditoria
+# -----------------------------
+def audit(db: Session, *, usuario_id: int | None, acao: str, entidade: str, entidade_id: int | None, detalhes: str | None = None):
+    try:
+        log = AuditoriaLogModel(
+            usuario_id=usuario_id,
+            acao=acao,
+            entidade=entidade,
+            entidade_id=entidade_id,
+            detalhes=detalhes,
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        db.rollback()
 
 # Schemas
 class Company(BaseModel):
@@ -678,6 +959,7 @@ class RevisaoPeriodo(BaseModel):
     data_abertura: date
     data_fechamento_prevista: date
     data_fechamento: Optional[date] = None
+    data_inicio_nova_vida_util: Optional[date] = None
     empresa_id: int
     ug_id: Optional[int] = None
     responsavel_id: int
@@ -691,6 +973,7 @@ class RevisaoPeriodoCreate(BaseModel):
     descricao: str
     data_abertura: date
     data_fechamento_prevista: date
+    data_inicio_nova_vida_util: Optional[date] = None
     empresa_id: int
     ug_id: Optional[int] = None
     responsavel_id: int
@@ -702,6 +985,7 @@ class RevisaoPeriodoUpdate(BaseModel):
     data_abertura: Optional[date] = None
     data_fechamento_prevista: Optional[date] = None
     data_fechamento: Optional[date] = None
+    data_inicio_nova_vida_util: Optional[date] = None
     empresa_id: Optional[int] = None
     ug_id: Optional[int] = None
     responsavel_id: Optional[int] = None
@@ -716,6 +1000,7 @@ class RevisaoItemOut(BaseModel):
     descricao: str
     data_inicio_depreciacao: date
     data_fim_depreciacao: Optional[date] = None
+    data_fim_revisada: Optional[date] = None
     valor_aquisicao: float
     depreciacao_acumulada: float
     valor_contabil: float
@@ -725,6 +1010,10 @@ class RevisaoItemOut(BaseModel):
     descricao_conta_contabil: str
     vida_util_anos: int
     vida_util_periodos: int
+    vida_util_revisada: Optional[int] = None
+    condicao_fisica: Optional[str] = None
+    justificativa: Optional[str] = None
+    alterado: Optional[bool] = None
     auxiliar2: Optional[str] = None
     auxiliar3: Optional[str] = None
     status: str
@@ -769,6 +1058,7 @@ def create_revisao(payload: RevisaoPeriodoCreate, db: Session = Depends(get_db))
         descricao=payload.descricao,
         data_abertura=payload.data_abertura,
         data_fechamento_prevista=payload.data_fechamento_prevista,
+        data_inicio_nova_vida_util=payload.data_inicio_nova_vida_util,
         empresa_id=payload.empresa_id,
         ug_id=payload.ug_id,
         responsavel_id=payload.responsavel_id,
@@ -811,6 +1101,325 @@ def delete_revisao(rev_id: int, db: Session = Depends(get_db)):
     db.delete(r)
     db.commit()
     return {"deleted": True}
+
+# ========================================
+# Controle de Acessos - Permissões por Grupo
+# ========================================
+
+class Transacao(BaseModel):
+    id: int
+    nome_tela: str
+    rota: str
+    descricao: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class TransacaoCreate(BaseModel):
+    nome_tela: str
+    rota: str
+    descricao: Optional[str] = None
+
+class TransacaoUpdate(BaseModel):
+    nome_tela: Optional[str] = None
+    rota: Optional[str] = None
+    descricao: Optional[str] = None
+
+@app.get("/permissoes/transacoes", response_model=List[Transacao])
+def list_transacoes(q: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(TransacaoModel)
+    if q:
+        query = query.filter(sa.func.lower(TransacaoModel.nome_tela).like(f"%{q.lower()}%"))
+    return query.order_by(TransacaoModel.nome_tela).all()
+
+@app.post("/permissoes/transacoes", response_model=Transacao)
+def create_transacao(payload: TransacaoCreate, db: Session = Depends(get_db)):
+    # rota única
+    if db.query(TransacaoModel).filter(TransacaoModel.rota == payload.rota).first():
+        raise HTTPException(status_code=400, detail="Rota já cadastrada")
+    t = TransacaoModel(**payload.dict())
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+    audit(db, usuario_id=None, acao="create", entidade="transacao", entidade_id=t.id, detalhes=f"rota={t.rota}")
+    return t
+
+@app.put("/permissoes/transacoes/{transacao_id}", response_model=Transacao)
+def update_transacao(transacao_id: int, payload: TransacaoUpdate, db: Session = Depends(get_db)):
+    t = db.query(TransacaoModel).filter(TransacaoModel.id == transacao_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Transação não encontrada")
+    data = payload.dict(exclude_unset=True)
+    if "rota" in data:
+        exists = db.query(TransacaoModel).filter(TransacaoModel.rota == data["rota"], TransacaoModel.id != transacao_id).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="Rota já cadastrada")
+    for k, v in data.items():
+        setattr(t, k, v)
+    db.commit()
+    db.refresh(t)
+    audit(db, usuario_id=None, acao="update", entidade="transacao", entidade_id=t.id)
+    return t
+
+@app.delete("/permissoes/transacoes/{transacao_id}")
+def delete_transacao(transacao_id: int, db: Session = Depends(get_db)):
+    t = db.query(TransacaoModel).filter(TransacaoModel.id == transacao_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Transação não encontrada")
+    db.delete(t)
+    db.commit()
+    audit(db, usuario_id=None, acao="delete", entidade="transacao", entidade_id=transacao_id)
+    return {"deleted": True}
+
+
+class GrupoPermissao(BaseModel):
+    id: int
+    nome: str
+    descricao: Optional[str] = None
+    criado_em: datetime
+    atualizado_em: datetime
+    class Config:
+        from_attributes = True
+
+class GrupoPermissaoCreate(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+
+class GrupoPermissaoUpdate(BaseModel):
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+
+class GrupoResumo(BaseModel):
+    id: int
+    nome: str
+    descricao: Optional[str] = None
+    usuarios: int
+    empresas: int
+    transacoes: int
+
+@app.get("/permissoes/grupos", response_model=List[GrupoResumo])
+def list_grupos(q: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(GrupoPermissaoModel)
+    if q:
+        query = query.filter(sa.func.lower(GrupoPermissaoModel.nome).like(f"%{q.lower()}%"))
+    grupos = query.order_by(GrupoPermissaoModel.nome).all()
+    result: List[GrupoResumo] = []
+    for g in grupos:
+        result.append(GrupoResumo(
+            id=g.id,
+            nome=g.nome,
+            descricao=g.descricao,
+            usuarios=db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.grupo_id == g.id).count(),
+            empresas=db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id == g.id).count(),
+            transacoes=db.query(GrupoTransacaoModel).filter(GrupoTransacaoModel.grupo_id == g.id).count(),
+        ))
+    return result
+
+@app.get("/permissoes/grupos/{grupo_id}", response_model=GrupoPermissao)
+def get_grupo(grupo_id: int, db: Session = Depends(get_db)):
+    g = db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id == grupo_id).first()
+    if not g:
+        raise HTTPException(status_code=404, detail="Grupo não encontrado")
+    return g
+
+@app.post("/permissoes/grupos", response_model=GrupoPermissao)
+def create_grupo(payload: GrupoPermissaoCreate, db: Session = Depends(get_db)):
+    if db.query(GrupoPermissaoModel).filter(sa.func.lower(GrupoPermissaoModel.nome) == payload.nome.lower()).first():
+        raise HTTPException(status_code=400, detail="Nome do grupo já existe")
+    g = GrupoPermissaoModel(**payload.dict())
+    db.add(g)
+    db.commit()
+    db.refresh(g)
+    audit(db, usuario_id=None, acao="create", entidade="grupo", entidade_id=g.id, detalhes=f"nome={g.nome}")
+    return g
+
+@app.put("/permissoes/grupos/{grupo_id}", response_model=GrupoPermissao)
+def update_grupo(grupo_id: int, payload: GrupoPermissaoUpdate, db: Session = Depends(get_db)):
+    g = db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id == grupo_id).first()
+    if not g:
+        raise HTTPException(status_code=404, detail="Grupo não encontrado")
+    data = payload.dict(exclude_unset=True)
+    if "nome" in data:
+        exists = db.query(GrupoPermissaoModel).filter(sa.func.lower(GrupoPermissaoModel.nome) == data["nome"].lower(), GrupoPermissaoModel.id != grupo_id).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="Nome do grupo já existe")
+    for k, v in data.items():
+        setattr(g, k, v)
+    db.commit()
+    db.refresh(g)
+    audit(db, usuario_id=None, acao="update", entidade="grupo", entidade_id=g.id)
+    return g
+
+@app.delete("/permissoes/grupos/{grupo_id}")
+def delete_grupo(grupo_id: int, db: Session = Depends(get_db)):
+    g = db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id == grupo_id).first()
+    if not g:
+        raise HTTPException(status_code=404, detail="Grupo não encontrado")
+    # remove associações explícitas (garantido por cascade, mas fazemos por segurança)
+    db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id == grupo_id).delete()
+    db.query(GrupoTransacaoModel).filter(GrupoTransacaoModel.grupo_id == grupo_id).delete()
+    db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.grupo_id == grupo_id).delete()
+    db.delete(g)
+    db.commit()
+    audit(db, usuario_id=None, acao="delete", entidade="grupo", entidade_id=grupo_id)
+    return {"deleted": True}
+
+# --- Associações ---
+class IdRef(BaseModel):
+    id: int
+
+@app.get("/permissoes/grupos/{grupo_id}/empresas", response_model=List[Company])
+def list_grupo_empresas(grupo_id: int, db: Session = Depends(get_db)):
+    links = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id == grupo_id).all()
+    ids = [l.empresa_id for l in links]
+    return db.query(CompanyModel).filter(CompanyModel.id.in_(ids)).order_by(CompanyModel.name).all()
+
+@app.post("/permissoes/grupos/{grupo_id}/empresas")
+def add_grupo_empresa(grupo_id: int, payload: IdRef, db: Session = Depends(get_db)):
+    if not db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id == grupo_id).first():
+        raise HTTPException(status_code=404, detail="Grupo não encontrado")
+    if not db.query(CompanyModel).filter(CompanyModel.id == payload.id).first():
+        raise HTTPException(status_code=400, detail="Empresa inválida")
+    link = GrupoEmpresaModel(grupo_id=grupo_id, empresa_id=payload.id)
+    try:
+        db.add(link)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Associação já existe")
+    audit(db, usuario_id=None, acao="link", entidade="grupo_empresa", entidade_id=link.id)
+    return {"linked": True}
+
+@app.delete("/permissoes/grupos/{grupo_id}/empresas/{empresa_id}")
+def remove_grupo_empresa(grupo_id: int, empresa_id: int, db: Session = Depends(get_db)):
+    deleted = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id == grupo_id, GrupoEmpresaModel.empresa_id == empresa_id).delete()
+    db.commit()
+    return {"deleted": bool(deleted)}
+
+@app.get("/permissoes/grupos/{grupo_id}/transacoes", response_model=List[Transacao])
+def list_grupo_transacoes(grupo_id: int, db: Session = Depends(get_db)):
+    links = db.query(GrupoTransacaoModel).filter(GrupoTransacaoModel.grupo_id == grupo_id).all()
+    ids = [l.transacao_id for l in links]
+    return db.query(TransacaoModel).filter(TransacaoModel.id.in_(ids)).order_by(TransacaoModel.nome_tela).all()
+
+@app.post("/permissoes/grupos/{grupo_id}/transacoes")
+def add_grupo_transacao(grupo_id: int, payload: IdRef, db: Session = Depends(get_db)):
+    if not db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id == grupo_id).first():
+        raise HTTPException(status_code=404, detail="Grupo não encontrado")
+    if not db.query(TransacaoModel).filter(TransacaoModel.id == payload.id).first():
+        raise HTTPException(status_code=400, detail="Transação inválida")
+    link = GrupoTransacaoModel(grupo_id=grupo_id, transacao_id=payload.id)
+    try:
+        db.add(link)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Associação já existe")
+    audit(db, usuario_id=None, acao="link", entidade="grupo_transacao", entidade_id=link.id)
+    return {"linked": True}
+
+@app.delete("/permissoes/grupos/{grupo_id}/transacoes/{transacao_id}")
+def remove_grupo_transacao(grupo_id: int, transacao_id: int, db: Session = Depends(get_db)):
+    deleted = db.query(GrupoTransacaoModel).filter(GrupoTransacaoModel.grupo_id == grupo_id, GrupoTransacaoModel.transacao_id == transacao_id).delete()
+    db.commit()
+    return {"deleted": bool(deleted)}
+
+class Usuario(BaseModel):
+    id: int
+    codigo: str
+    nome_completo: str
+    email: EmailStr
+    cpf: str
+    nome_usuario: str
+    data_nascimento: Optional[date] = None
+    empresa_id: Optional[int] = None
+    ug_id: Optional[int] = None
+    centro_custo_id: Optional[int] = None
+    status: str
+    class Config:
+        from_attributes = True
+
+@app.get("/permissoes/grupos/{grupo_id}/usuarios", response_model=List[Usuario])
+def list_grupo_usuarios(grupo_id: int, db: Session = Depends(get_db)):
+    links = db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.grupo_id == grupo_id).all()
+    ids = [l.usuario_id for l in links]
+    return db.query(UsuarioModel).filter(UsuarioModel.id.in_(ids)).order_by(UsuarioModel.nome_completo).all()
+
+@app.post("/permissoes/grupos/{grupo_id}/usuarios")
+def add_grupo_usuario(grupo_id: int, payload: IdRef, db: Session = Depends(get_db)):
+    if not db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id == grupo_id).first():
+        raise HTTPException(status_code=404, detail="Grupo não encontrado")
+    if not db.query(UsuarioModel).filter(UsuarioModel.id == payload.id).first():
+        raise HTTPException(status_code=400, detail="Usuário inválido")
+    link = GrupoUsuarioModel(grupo_id=grupo_id, usuario_id=payload.id)
+    try:
+        db.add(link)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Associação já existe")
+    audit(db, usuario_id=None, acao="link", entidade="grupo_usuario", entidade_id=link.id)
+    return {"linked": True}
+
+@app.delete("/permissoes/grupos/{grupo_id}/usuarios/{usuario_id}")
+def remove_grupo_usuario(grupo_id: int, usuario_id: int, db: Session = Depends(get_db)):
+    deleted = db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.grupo_id == grupo_id, GrupoUsuarioModel.usuario_id == usuario_id).delete()
+    db.commit()
+    return {"deleted": bool(deleted)}
+
+
+# --- Clonagem de Grupo ---
+class ClonePayload(BaseModel):
+    novo_nome: str
+    descricao: Optional[str] = None
+
+@app.post("/permissoes/grupos/{grupo_id}/clonar", response_model=GrupoPermissao)
+def clonar_grupo(grupo_id: int, payload: ClonePayload, db: Session = Depends(get_db)):
+    orig = db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id == grupo_id).first()
+    if not orig:
+        raise HTTPException(status_code=404, detail="Grupo de origem não encontrado")
+    if db.query(GrupoPermissaoModel).filter(sa.func.lower(GrupoPermissaoModel.nome) == payload.novo_nome.lower()).first():
+        raise HTTPException(status_code=400, detail="Nome do grupo já existe")
+    novo = GrupoPermissaoModel(nome=payload.novo_nome, descricao=payload.descricao or orig.descricao)
+    db.add(novo)
+    db.flush()
+    # copiar vínculos
+    for ge in db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id == grupo_id).all():
+        db.add(GrupoEmpresaModel(grupo_id=novo.id, empresa_id=ge.empresa_id))
+    for gt in db.query(GrupoTransacaoModel).filter(GrupoTransacaoModel.grupo_id == grupo_id).all():
+        db.add(GrupoTransacaoModel(grupo_id=novo.id, transacao_id=gt.transacao_id))
+    for gu in db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.grupo_id == grupo_id).all():
+        db.add(GrupoUsuarioModel(grupo_id=novo.id, usuario_id=gu.usuario_id))
+    db.commit()
+    db.refresh(novo)
+    audit(db, usuario_id=None, acao="clone", entidade="grupo", entidade_id=novo.id, detalhes=f"from={grupo_id}")
+    return novo
+
+# --- Consulta permissões de usuário ---
+class UsuarioPermissoes(BaseModel):
+    usuario_id: int
+    grupos: List[str]
+    empresas_ids: List[int]
+    rotas: List[str]
+
+@app.get("/permissoes/usuario/{usuario_id}", response_model=UsuarioPermissoes)
+def permissoes_usuario(usuario_id: int, db: Session = Depends(get_db)):
+    if not db.query(UsuarioModel).filter(UsuarioModel.id == usuario_id).first():
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    links = db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.usuario_id == usuario_id).all()
+    grupo_ids = [l.grupo_id for l in links]
+    grupos = db.query(GrupoPermissaoModel).filter(GrupoPermissaoModel.id.in_(grupo_ids)).all()
+    empresas = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id.in_(grupo_ids)).all()
+    transacoes = db.query(GrupoTransacaoModel).filter(GrupoTransacaoModel.grupo_id.in_(grupo_ids)).all()
+    rotas = []
+    if transacoes:
+        t_ids = [t.transacao_id for t in transacoes]
+        rotas = [t.rota for t in db.query(TransacaoModel).filter(TransacaoModel.id.in_(t_ids)).all()]
+    return UsuarioPermissoes(
+        usuario_id=usuario_id,
+        grupos=[g.nome for g in grupos],
+        empresas_ids=[e.empresa_id for e in empresas],
+        rotas=rotas,
+    )
 
 @app.post("/revisoes/fechar/{rev_id}", response_model=RevisaoPeriodo)
 def fechar_revisao(rev_id: int, db: Session = Depends(get_db)):
@@ -1049,6 +1658,7 @@ def list_revisao_itens(rev_id: int, db: Session = Depends(get_db)):
                 descricao=i.descricao,
                 data_inicio_depreciacao=i.data_inicio_depreciacao,
                 data_fim_depreciacao=i.data_fim_depreciacao,
+                data_fim_revisada=i.data_fim_revisada,
                 valor_aquisicao=float(i.valor_aquisicao) if i.valor_aquisicao is not None else 0.0,
                 depreciacao_acumulada=float(i.depreciacao_acumulada) if i.depreciacao_acumulada is not None else 0.0,
                 valor_contabil=float(i.valor_contabil) if i.valor_contabil is not None else 0.0,
@@ -1058,6 +1668,10 @@ def list_revisao_itens(rev_id: int, db: Session = Depends(get_db)):
                 descricao_conta_contabil=i.descricao_conta_contabil,
                 vida_util_anos=i.vida_util_anos,
                 vida_util_periodos=i.vida_util_periodos,
+                vida_util_revisada=i.vida_util_revisada,
+                condicao_fisica=i.condicao_fisica,
+                justificativa=i.justificativa,
+                alterado=i.alterado,
                 auxiliar2=i.auxiliar2,
                 auxiliar3=i.auxiliar3,
                 status=i.status,
@@ -1065,6 +1679,125 @@ def list_revisao_itens(rev_id: int, db: Session = Depends(get_db)):
             )
         )
     return result
+
+# Atualização de item da revisão (vida útil revisada, condição física, justificativa)
+class RevisaoItemUpdate(BaseModel):
+    vida_util_revisada: Optional[int] = None
+    condicao_fisica: Optional[str] = None  # Bom | Regular | Ruim
+    justificativa: Optional[str] = None
+    revisor_id: Optional[int] = None
+
+def _add_months(d: date, months: int) -> date:
+    import calendar
+    y = d.year + (d.month - 1 + months) // 12
+    m = (d.month - 1 + months) % 12 + 1
+    last_day = calendar.monthrange(y, m)[1]
+    day = min(d.day, last_day)
+    return date(y, m, day)
+
+@app.put("/revisoes/{rev_id}/itens/{item_id}", response_model=RevisaoItemOut)
+def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, db: Session = Depends(get_db)):
+    periodo = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == rev_id).first()
+    if not periodo:
+        raise HTTPException(status_code=404, detail="Período de revisão não encontrado")
+
+    item = db.query(RevisaoItemModel).filter(RevisaoItemModel.id == item_id).first()
+    if not item or item.periodo_id != rev_id:
+        raise HTTPException(status_code=404, detail="Item de revisão não encontrado para o período")
+
+    # Se revisor_id informado, validar delegação ativa
+    if payload.revisor_id is not None:
+        deleg = db.query(RevisaoDelegacaoModel).filter(
+            RevisaoDelegacaoModel.periodo_id == rev_id,
+            RevisaoDelegacaoModel.ativo_id == item_id,
+            RevisaoDelegacaoModel.revisor_id == payload.revisor_id,
+            RevisaoDelegacaoModel.status == 'Ativo'
+        ).first()
+        if not deleg:
+            raise HTTPException(status_code=403, detail="Revisor não autorizado para este item")
+
+    data = payload.dict(exclude_unset=True)
+
+    # Validações de negócio
+    vida_revisada = data.get("vida_util_revisada")
+    if vida_revisada is not None:
+        if vida_revisada <= 0:
+            raise HTTPException(status_code=400, detail="Vida útil revisada deve ser maior que zero")
+        # calcular data fim revisada com base na data de início prospectiva
+        if not periodo.data_inicio_nova_vida_util:
+            raise HTTPException(status_code=400, detail="Defina a Data de Início da Nova Vida Útil no cabeçalho do período")
+        data_fim_rev = _add_months(periodo.data_inicio_nova_vida_util, vida_revisada)
+        item.data_fim_revisada = data_fim_rev
+        item.vida_util_revisada = vida_revisada
+
+    if "condicao_fisica" in data:
+        cf = data.get("condicao_fisica")
+        if cf is not None and cf not in {"Bom", "Regular", "Ruim"}:
+            raise HTTPException(status_code=400, detail="Condição física inválida")
+        item.condicao_fisica = cf
+
+    # Regras de justificativa
+    justificativa = data.get("justificativa")
+    now18m = _add_months(date.today(), 18)
+    # se redução de vida útil, exigir justificativa
+    if vida_revisada is not None and vida_revisada < (item.vida_util_periodos or 0):
+        if not justificativa:
+            raise HTTPException(status_code=400, detail="Justificativa obrigatória para redução de vida útil")
+    # se nova data fim < 18 meses, justificativa obrigatória
+    if item.data_fim_revisada and item.data_fim_revisada < now18m:
+        if not justificativa:
+            raise HTTPException(status_code=400, detail="Justificativa obrigatória para vida útil com vencimento < 18 meses")
+    # alerta original <18 meses exige justificativa detalhada em caso de redução
+    if item.data_fim_depreciacao and item.data_fim_depreciacao < now18m and vida_revisada is not None and vida_revisada < (item.vida_util_periodos or 0):
+        if not justificativa:
+            raise HTTPException(status_code=400, detail="Justificativa obrigatória devido a risco (<18 meses)")
+    # justificativa automática para itens não alterados
+    if vida_revisada is None and not justificativa:
+        item.justificativa = item.justificativa or "Ativo revisado, sem alteração de vida útil."
+    elif justificativa is not None:
+        item.justificativa = justificativa
+
+    # Alterado se vida revisada difere da original
+    if vida_revisada is not None:
+        original_periodos = item.vida_util_periodos or 0
+        # Se original é 0 (desconhecido), considerar como alteração
+        item.alterado = (original_periodos == 0) or (vida_revisada != original_periodos)
+        item.status = "Revisado" if item.alterado else (item.status or "Pendente")
+
+    # Registrar autor se fornecido
+    if payload.revisor_id is not None:
+        item.criado_por = payload.revisor_id
+
+    db.commit()
+    db.refresh(item)
+
+    return RevisaoItemOut(
+        id=item.id,
+        periodo_id=item.periodo_id,
+        numero_imobilizado=item.numero_imobilizado,
+        sub_numero=item.sub_numero,
+        descricao=item.descricao,
+        data_inicio_depreciacao=item.data_inicio_depreciacao,
+        data_fim_depreciacao=item.data_fim_depreciacao,
+        data_fim_revisada=item.data_fim_revisada,
+        valor_aquisicao=float(item.valor_aquisicao) if item.valor_aquisicao is not None else 0.0,
+        depreciacao_acumulada=float(item.depreciacao_acumulada) if item.depreciacao_acumulada is not None else 0.0,
+        valor_contabil=float(item.valor_contabil) if item.valor_contabil is not None else 0.0,
+        centro_custo=item.centro_custo,
+        classe=item.classe,
+        conta_contabil=item.conta_contabil,
+        descricao_conta_contabil=item.descricao_conta_contabil,
+        vida_util_anos=item.vida_util_anos,
+        vida_util_periodos=item.vida_util_periodos,
+        vida_util_revisada=item.vida_util_revisada,
+        condicao_fisica=item.condicao_fisica,
+        justificativa=item.justificativa,
+        alterado=item.alterado,
+        auxiliar2=item.auxiliar2,
+        auxiliar3=item.auxiliar3,
+        status=item.status,
+        criado_em=item.criado_em,
+    )
 
 # -----------------------------
 # Delegações de Revisão
@@ -1208,6 +1941,37 @@ def delete_revisao_delegacao(delegacao_id: int, db: Session = Depends(get_db)):
     d = db.query(RevisaoDelegacaoModel).filter(RevisaoDelegacaoModel.id == delegacao_id).first()
     if not d:
         raise HTTPException(status_code=404, detail="Delegação não encontrada")
-    db.delete(d)
+
+    # Regra: não separar ativo principal (Sub nº 0) das incorporações (Sub nº > 0)
+    # Ao remover uma delegação, remover todo o grupo do mesmo imobilizado neste período.
+    item = db.query(RevisaoItemModel).filter(RevisaoItemModel.id == d.ativo_id).first()
+    if not item:
+        # fallback: se não localizar o item, remove somente o registro atual
+        db.delete(d)
+        db.commit()
+        return {"deleted": True, "group": 0}
+
+    group_items = (
+        db.query(RevisaoItemModel)
+        .filter(
+            RevisaoItemModel.periodo_id == d.periodo_id,
+            RevisaoItemModel.numero_imobilizado == item.numero_imobilizado,
+        )
+        .all()
+    )
+    group_ids = [gi.id for gi in group_items]
+
+    # Remover todas as delegações ativas do grupo nesse período
+    group_delegs = (
+        db.query(RevisaoDelegacaoModel)
+        .filter(
+            RevisaoDelegacaoModel.periodo_id == d.periodo_id,
+            RevisaoDelegacaoModel.ativo_id.in_(group_ids),
+        )
+        .all()
+    )
+    for gd in group_delegs:
+        db.delete(gd)
+
     db.commit()
-    return {"deleted": True}
+    return {"deleted": True, "group": len(group_delegs)}

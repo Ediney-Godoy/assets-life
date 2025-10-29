@@ -7,7 +7,6 @@ import { getCompanies, createCompany, updateCompany, deleteCompany } from '../ap
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
-import Table from '../components/ui/Table';
 import { Tabs, TabPanel } from '../components/ui/Tabs';
 
 export default function CompaniesPage() {
@@ -18,9 +17,7 @@ export default function CompaniesPage() {
   const [query, setQuery] = React.useState('');
   const [editingId, setEditingId] = React.useState(null);
   const [activeTab, setActiveTab] = React.useState('company');
-  const [page, setPage] = React.useState(1);
   const [errors, setErrors] = React.useState({});
-  const pageSize = 10;
 
   const [form, setForm] = React.useState({
     name: '',
@@ -120,25 +117,7 @@ export default function CompaniesPage() {
     (c.cnpj && c.cnpj.replace(/\D/g, '').includes(query.replace(/\D/g, '')))
   ));
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-  const columns = [
-    { key: 'name', header: t('company_name') },
-    { key: 'cnpj', header: 'CNPJ' },
-    { key: 'state', header: t('state') },
-    { key: 'status', header: t('status') },
-    { key: 'actions', header: t('actions'), render: (_, row) => (
-      <div className="flex items-center gap-2">
-        <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title={t('edit')} onClick={() => onEdit(row)}>
-          <Pencil size={16} className="text-slate-600 dark:text-slate-300" />
-        </button>
-        <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title={t('delete')} onClick={() => onDelete(row.id)}>
-          <Trash2 size={16} className="text-red-600" />
-        </button>
-      </div>
-    ) },
-  ];
+  // Lista sem paginação: layout em cards, semelhante a Colaboradores
 
   return (
     <section>
@@ -214,19 +193,37 @@ export default function CompaniesPage() {
             filtered.length === 0 ? (
               <p className="text-slate-500">{t('companies_empty')}</p>
             ) : (
-              <>
-                <Table columns={columns} data={pageData} />
-                <div className="flex items-center justify-between mt-3">
-                  <div className="text-sm text-slate-600 dark:text-slate-300">
-                    {t('showing')} {pageData.length} {t('of')} {filtered.length}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-                    <span className="text-sm text-slate-700 dark:text-slate-200">{page} / {totalPages}</span>
-                    <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
-                  </div>
-                </div>
-              </>
+              <div className="flex flex-col gap-2 max-h-[65vh] overflow-y-auto pr-1">
+                {filtered.map((c) => (
+                  <motion.div
+                    key={c.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl bg-gray-50 dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">{c.name}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-300">
+                          {c.cnpj ? `CNPJ: ${c.cnpj}` : '—'}{c.state ? ` • ${c.state}` : ''}{c.city ? ` • ${c.city}` : ''}
+                        </div>
+                        {c.division && (
+                          <div className="text-sm text-slate-600 dark:text-slate-300">{c.division}</div>
+                        )}
+                      </div>
+                      <div className={`px-2 py-1 rounded text-xs ${String(c.status || '').toLowerCase() === 'ativo' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}>{c.status || '—'}</div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button className="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title={t('edit')} onClick={() => onEdit(c)}>
+                        <Pencil size={16} className="text-slate-600 dark:text-slate-300" />
+                      </button>
+                      <button className="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title={t('delete')} onClick={() => onDelete(c.id)}>
+                        <Trash2 size={16} className="text-red-600" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             )
           )}
         </div>

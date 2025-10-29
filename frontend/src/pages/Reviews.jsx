@@ -52,6 +52,7 @@ export default function ReviewsPage() {
   const [form, setForm] = React.useState({
     descricao: '',
     data_abertura: '',
+    data_inicio_nova_vida_util: '',
     data_fechamento_prevista: '',
     data_fechamento: '',
     empresa_id: '',
@@ -85,6 +86,7 @@ export default function ReviewsPage() {
     setForm({
       descricao: '',
       data_abertura: '',
+      data_inicio_nova_vida_util: '',
       data_fechamento_prevista: '',
       data_fechamento: '',
       empresa_id: '',
@@ -108,6 +110,7 @@ export default function ReviewsPage() {
     const errs = {};
     if (!form.descricao) errs.descricao = 'Descrição é obrigatória';
     if (!form.data_abertura) errs.data_abertura = 'Data de abertura é obrigatória';
+    if (!form.data_inicio_nova_vida_util) errs.data_inicio_nova_vida_util = 'Início da nova vida útil é obrigatório';
     if (!form.data_fechamento_prevista) errs.data_fechamento_prevista = 'Data de fechamento prevista é obrigatória';
     if (!form.empresa_id) errs.empresa_id = 'Empresa é obrigatória';
     if (!form.ug_id) errs.ug_id = 'UG é obrigatória';
@@ -124,6 +127,7 @@ export default function ReviewsPage() {
         const payload = {
           descricao: form.descricao,
           data_abertura: form.data_abertura,
+          data_inicio_nova_vida_util: form.data_inicio_nova_vida_util,
           data_fechamento_prevista: form.data_fechamento_prevista,
           empresa_id: Number(form.empresa_id),
           responsavel_id: Number(form.responsavel_id),
@@ -138,6 +142,7 @@ export default function ReviewsPage() {
         const payload = {
           descricao: form.descricao,
           data_abertura: form.data_abertura || undefined,
+          data_inicio_nova_vida_util: form.data_inicio_nova_vida_util || undefined,
           data_fechamento_prevista: form.data_fechamento_prevista || undefined,
           data_fechamento: form.data_fechamento || undefined,
           empresa_id: form.empresa_id ? Number(form.empresa_id) : undefined,
@@ -160,6 +165,7 @@ export default function ReviewsPage() {
     setForm({
       descricao: p.descricao || '',
       data_abertura: p.data_abertura || '',
+      data_inicio_nova_vida_util: p.data_inicio_nova_vida_util || '',
       data_fechamento_prevista: p.data_fechamento_prevista || '',
       data_fechamento: p.data_fechamento || '',
       empresa_id: String(p.empresa_id || ''),
@@ -347,6 +353,7 @@ export default function ReviewsPage() {
               <Button variant="secondary" onClick={() => setRespModalOpen(true)} disabled={disabled} title="Buscar Colaborador" aria-label="Buscar Colaborador" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
             <Input type="date" label="Data de Abertura" name="data_abertura" value={form.data_abertura} onChange={onChange} error={errors.data_abertura} disabled={disabled} />
+            <Input type="date" label="Início Nova Vida Útil" name="data_inicio_nova_vida_util" value={form.data_inicio_nova_vida_util} onChange={onChange} error={errors.data_inicio_nova_vida_util} disabled={disabled} />
             <Input type="date" label="Data de Fechamento Prevista" name="data_fechamento_prevista" value={form.data_fechamento_prevista} onChange={onChange} error={errors.data_fechamento_prevista} disabled={disabled} />
             <Input type="date" label="Data de Fechamento" name="data_fechamento" value={form.data_fechamento} onChange={onChange} disabled />
              <div className="md:col-span-2">

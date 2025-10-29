@@ -1,15 +1,25 @@
 const BASE_URL = 'http://localhost:8000';
 
+function getToken() {
+  try {
+    return localStorage.getItem('assetlife_token');
+  } catch {
+    return null;
+  }
+}
+
 async function request(path, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 5000);
   try {
+    const token = getToken();
     const res = await fetch(`${BASE_URL}${path}`, {
       ...options,
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         ...(options.headers || {}),
+        ...(token && !(options.headers || {}).Authorization ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
     clearTimeout(timeoutId);
@@ -66,7 +76,8 @@ export async function deleteEmployee(id) {
 
 // Unidades Gerenciais (UG)
 export async function getManagementUnits() {
-  return request('/unidades_gerenciais');
+  // Pode ser volumoso em bases grandes; aumentar timeout para evitar abort precoce
+  return request('/unidades_gerenciais', { timeout: 12000 });
 }
 
 export async function getManagementUnit(id) {
@@ -86,7 +97,8 @@ export async function deleteManagementUnit(id) {
 }
 
 export async function getUsers() {
-  return request('/usuarios');
+  // Lista de usuários pode ter volume considerável; dar mais margem
+  return request('/usuarios', { timeout: 8000 });
 }
 
 export async function createUser(payload) {
@@ -161,12 +173,19 @@ export async function uploadReviewBase(periodoId, file) {
 
 // Listar itens importados de um período específico
 export async function getReviewItems(periodoId) {
-  return request(`/revisoes/itens/${periodoId}`);
+  // Carregamento pode ser pesado; aumentar timeout para evitar abort precoce
+  return request(`/revisoes/itens/${periodoId}`, { timeout: 20000 });
+}
+
+// Atualizar item de revisão (útil para ajustar vida útil, data fim e metadados)
+export async function updateReviewItem(periodoId, itemId, payload) {
+  return request(`/revisoes/${periodoId}/itens/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 // Delegações de Revisão
 export async function getReviewDelegations(periodoId) {
-  return request(`/revisoes/delegacoes/${periodoId}`);
+  // Pode haver volume razoável; aumentar timeout
+  return request(`/revisoes/delegacoes/${periodoId}`, { timeout: 15000 });
 }
 
 export async function createReviewDelegation(payload) {
@@ -185,7 +204,8 @@ export async function getCostCenters(filters = {}) {
   if (filters.nome) qs.set('nome', filters.nome);
   if (filters.status) qs.set('status', filters.status);
   const path = qs.toString() ? `/centros_custos?${qs.toString()}` : '/centros_custos';
-  return request(path);
+  // Em bases com muitos CCs, 5s pode não bastar
+  return request(path, { timeout: 12000 });
 }
 
 export async function getCostCenter(id) {
@@ -194,4 +214,125 @@ export async function getCostCenter(id) {
 
 export async function createCostCenter(payload) {
   return request('/centros_custos', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+// -----------------------------
+// Permissões - Transações e Grupos
+// -----------------------------
+export async function getTransactions() {
+  return request('/permissoes/transacoes');
+}
+
+export async function createTransaction(payload) {
+  return request('/permissoes/transacoes', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateTransaction(id, payload) {
+  return request(`/permissoes/transacoes/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteTransaction(id) {
+  return request(`/permissoes/transacoes/${id}`, { method: 'DELETE' });
+}
+
+export async function getPermissionGroups(q = '') {
+  const qs = q ? `?q=${encodeURIComponent(q)}` : '';
+  return request(`/permissoes/grupos${qs}`);
+}
+
+export async function getPermissionGroup(id) {
+  return request(`/permissoes/grupos/${id}`);
+}
+
+export async function createPermissionGroup(payload) {
+  return request('/permissoes/grupos', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updatePermissionGroup(id, payload) {
+  return request(`/permissoes/grupos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deletePermissionGroup(id) {
+  return request(`/permissoes/grupos/${id}`, { method: 'DELETE' });
+}
+
+// Vínculos: Empresas
+export async function listGroupCompanies(grupoId) {
+  return request(`/permissoes/grupos/${grupoId}/empresas`);
+}
+
+export async function addGroupCompany(grupoId, empresaId) {
+  return request(`/permissoes/grupos/${grupoId}/empresas`, { method: 'POST', body: JSON.stringify({ id: Number(empresaId) }) });
+}
+
+export async function removeGroupCompany(grupoId, empresaId) {
+  return request(`/permissoes/grupos/${grupoId}/empresas/${empresaId}`, { method: 'DELETE' });
+}
+
+// Vínculos: Transações
+export async function listGroupTransactions(grupoId) {
+  return request(`/permissoes/grupos/${grupoId}/transacoes`);
+}
+
+export async function addGroupTransaction(grupoId, transacaoId) {
+  return request(`/permissoes/grupos/${grupoId}/transacoes`, { method: 'POST', body: JSON.stringify({ id: Number(transacaoId) }) });
+}
+
+export async function removeGroupTransaction(grupoId, transacaoId) {
+  return request(`/permissoes/grupos/${grupoId}/transacoes/${transacaoId}`, { method: 'DELETE' });
+}
+
+// Vínculos: Usuários
+export async function listGroupUsers(grupoId) {
+  return request(`/permissoes/grupos/${grupoId}/usuarios`);
+}
+
+export async function addGroupUser(grupoId, usuarioId) {
+  return request(`/permissoes/grupos/${grupoId}/usuarios`, { method: 'POST', body: JSON.stringify({ id: Number(usuarioId) }) });
+}
+
+export async function removeGroupUser(grupoId, usuarioId) {
+  return request(`/permissoes/grupos/${grupoId}/usuarios/${usuarioId}`, { method: 'DELETE' });
+}
+
+// Clonagem de grupo
+export async function clonePermissionGroup(grupoId, payload) {
+  return request(`/permissoes/grupos/${grupoId}/clonar`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+// Auth (opcional)
+export async function login(payload) {
+  return request('/auth/login', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function authMe(token) {
+  return request('/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function saveToken(token) {
+  try { localStorage.setItem('assetlife_token', token); } catch {}
+}
+
+export function clearToken() {
+  try {
+    localStorage.removeItem('assetlife_token');
+    localStorage.removeItem('assetlife_permissoes');
+    localStorage.removeItem('assetlife_user');
+  } catch {}
+}
+
+export async function authMePermissions() {
+  return request('/auth/me/permissoes');
+}
+
+export async function forgotPassword(email) {
+  return request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+}
+
+export async function resetPassword(token, novaSenha, confirmarSenha) {
+  return request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, nova_senha: novaSenha, confirmar_senha: confirmarSenha }) });
+}
+
+export async function changePassword(senhaAtual, novaSenha, confirmarSenha) {
+  return request('/auth/change-password', { method: 'POST', body: JSON.stringify({ senha_atual: senhaAtual, nova_senha: novaSenha, confirmar_senha: confirmarSenha }) });
 }

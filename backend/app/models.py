@@ -21,8 +21,9 @@ class Company(Base):
     state_registration = Column(String(64), nullable=True)
     status = Column(String(32), nullable=False)  # Ativo | Inativo
 
-from sqlalchemy import Date, Text, ForeignKey, Enum as SAEnum, DateTime, func, Numeric
+from sqlalchemy import Date, Text, ForeignKey, Enum as SAEnum, DateTime, func, Numeric, Boolean
 from sqlalchemy.orm import relationship
+from sqlalchemy import UniqueConstraint
 import enum
 
 class Vinculo(str, enum.Enum):
@@ -125,6 +126,8 @@ class RevisaoPeriodo(Base):
     data_abertura = Column(Date, nullable=False)
     data_fechamento_prevista = Column(Date, nullable=False)
     data_fechamento = Column(Date, nullable=True)
+    # Nova vida útil prospectiva: data base a partir da qual nova vida útil passa a valer
+    data_inicio_nova_vida_util = Column(Date, nullable=True)
 
     # Novo: vínculo com Empresa
     empresa_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
@@ -175,6 +178,13 @@ class RevisaoItem(Base):
 
     status = Column(String(20), nullable=False, default="Pendente")
     criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+    # Campos para revisão de vidas úteis
+    vida_util_revisada = Column(Integer, nullable=True)
+    data_fim_revisada = Column(Date, nullable=True)
+    condicao_fisica = Column(String(20), nullable=True)  # Bom, Regular, Ruim
+    justificativa = Column(Text, nullable=True)
+    alterado = Column(Boolean, nullable=False, default=False)
+    criado_por = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
 
 
 class RevisaoDelegacao(Base):
@@ -220,3 +230,100 @@ class CentroCusto(Base):
     criado_por_usuario = relationship("Usuario", backref="centros_custos_criados", foreign_keys=[criado_por])
 
     status = Column(String(20), nullable=False, default="Ativo")
+
+# -----------------------------
+# Controle de Acessos (Grupos de Permissão)
+# -----------------------------
+class GrupoPermissao(Base):
+    __tablename__ = "grupos_permissao"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(150), nullable=False, unique=True, index=True)
+    descricao = Column(Text, nullable=True)
+    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+    atualizado_em = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # relationships
+    empresas = relationship("GrupoEmpresa", backref="grupo", cascade="all, delete-orphan")
+    transacoes = relationship("GrupoTransacao", backref="grupo", cascade="all, delete-orphan")
+    usuarios = relationship("GrupoUsuario", backref="grupo", cascade="all, delete-orphan")
+
+
+class Transacao(Base):
+    __tablename__ = "transacoes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome_tela = Column(String(150), nullable=False)
+    rota = Column(String(255), nullable=False, unique=True, index=True)
+    descricao = Column(Text, nullable=True)
+
+
+class GrupoEmpresa(Base):
+    __tablename__ = "grupo_empresa"
+
+    id = Column(Integer, primary_key=True, index=True)
+    grupo_id = Column(Integer, ForeignKey("grupos_permissao.id"), nullable=False, index=True)
+    empresa_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("grupo_id", "empresa_id", name="uq_grupo_empresa"),
+    )
+
+    empresa = relationship("Company", backref="grupos_associados")
+
+
+class GrupoTransacao(Base):
+    __tablename__ = "grupo_transacao"
+
+    id = Column(Integer, primary_key=True, index=True)
+    grupo_id = Column(Integer, ForeignKey("grupos_permissao.id"), nullable=False, index=True)
+    transacao_id = Column(Integer, ForeignKey("transacoes.id"), nullable=False, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("grupo_id", "transacao_id", name="uq_grupo_transacao"),
+    )
+
+    transacao = relationship("Transacao", backref="grupos")
+
+
+class GrupoUsuario(Base):
+    __tablename__ = "grupo_usuario"
+
+    id = Column(Integer, primary_key=True, index=True)
+    grupo_id = Column(Integer, ForeignKey("grupos_permissao.id"), nullable=False, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("grupo_id", "usuario_id", name="uq_grupo_usuario"),
+    )
+
+    usuario = relationship("Usuario", backref="grupos")
+
+
+# -----------------------------
+# Logs de Auditoria (ações críticas)
+# -----------------------------
+class AuditoriaLog(Base):
+    __tablename__ = "auditoria_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
+    acao = Column(String(100), nullable=False)
+    entidade = Column(String(100), nullable=False)
+    entidade_id = Column(Integer, nullable=True)
+    detalhes = Column(Text, nullable=True)
+    data_evento = Column(DateTime, server_default=func.now(), nullable=False)
+
+# -----------------------------
+# Tokens de Redefinição de Senha
+# -----------------------------
+class TokenRedefinicao(Base):
+    __tablename__ = "tokens_redefinicao"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    token = Column(String(255), nullable=False, unique=True, index=True)
+    expiracao = Column(DateTime, nullable=False)
+    usado = Column(Boolean, nullable=False, default=False)
+
+    usuario = relationship("Usuario", backref="tokens_redefinicao")

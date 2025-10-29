@@ -14,6 +14,8 @@ import {
   getReviewDelegations,
   createReviewDelegation,
   deleteReviewDelegation,
+  getManagementUnits,
+  getCostCenters,
 } from '../apiClient';
 
 export default function DelegacaoPage() {
@@ -38,6 +40,9 @@ export default function DelegacaoPage() {
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
   const [selectedDelegacaoIds, setSelectedDelegacaoIds] = useState([]);
+  // NEW: dados auxiliares para mapear CC -> UG
+  const [ugs, setUgs] = useState([]);
+  const [costCenters, setCostCenters] = useState([]);
 
   const refreshLists = async (pid) => {
     if (!pid) return;
@@ -52,7 +57,7 @@ export default function DelegacaoPage() {
     } catch (err) {
       setError(true);
       console.error(err);
-      toast.error('Erro ao carregar dados do período');
+      toast.error(t('error_loading_period_data'));
     } finally {
       setLoading(false);
     }
@@ -62,12 +67,16 @@ export default function DelegacaoPage() {
     const init = async () => {
       try {
         setLoading(true); setError(false);
-        const [periods, users] = await Promise.all([
+        const [periods, users, ugData, ccData] = await Promise.all([
           getReviewPeriods(),
           getUsers(),
+          getManagementUnits(),
+          getCostCenters(),
         ]);
         setPeriodos(Array.isArray(periods) ? periods : []);
         setUsuarios(Array.isArray(users) ? users : []);
+        setUgs(Array.isArray(ugData) ? ugData : []);
+        setCostCenters(Array.isArray(ccData) ? ccData : []);
         if (periods && periods.length > 0) {
           const pid = periods[0].id;
           setSelectedPeriodoId(pid);
@@ -104,6 +113,33 @@ export default function DelegacaoPage() {
     const vals = Array.from(new Set((availableItems || []).map((i) => i.classe).filter(Boolean)));
     return vals.sort();
   }, [availableItems]);
+  // Mapa de CC por código e UG por id
+  const ccByCodigo = useMemo(() => {
+    const m = new Map();
+    (costCenters || []).forEach((cc) => m.set(String(cc.codigo), cc));
+    return m;
+  }, [costCenters]);
+  const ugById = useMemo(() => {
+    const m = new Map();
+    (ugs || []).forEach((u) => m.set(Number(u.id), u));
+    return m;
+  }, [ugs]);
+  // UGs únicas presentes nos itens (derivadas via CC -> UG)
+  const uniqueUGs = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    (availableItems || []).forEach((i) => {
+      const cc = ccByCodigo.get(String(i.centro_custo || ''));
+      const ugId = cc?.ug_id ? Number(cc.ug_id) : null;
+      if (!ugId || seen.has(ugId)) return;
+      const ug = ugById.get(ugId);
+      if (ug) {
+        seen.add(ugId);
+        result.push(ug);
+      }
+    });
+    return result.sort((a, b) => String(a.codigo).localeCompare(String(b.codigo)));
+  }, [availableItems, ccByCodigo, ugById]);
 
   // Função util para parse de decimais com vírgula
   const parseDecimal = (val) => {
@@ -136,7 +172,14 @@ export default function DelegacaoPage() {
       list = list.filter((i) => String(i.centro_custo || '').toLowerCase().includes(fv));
     } else if (filterType === 'ug' && filterValue) {
       const fv = filterValue.toLowerCase();
-      list = list.filter((i) => String(i.centro_custo || '').toLowerCase().includes(fv));
+      list = list.filter((i) => {
+        const cc = ccByCodigo.get(String(i.centro_custo || ''));
+        const ugId = cc?.ug_id ? Number(cc.ug_id) : null;
+        const ug = ugId ? ugById.get(ugId) : null;
+        const codigo = String(ug?.codigo || '').toLowerCase();
+        const nome = String(ug?.nome || '').toLowerCase();
+        return ug && (codigo.includes(fv) || nome.includes(fv));
+      });
     } else if (filterType === 'classe' && filterValue) {
       const fv = filterValue.toLowerCase();
       list = list.filter((i) => String(i.classe || '').toLowerCase().includes(fv));
@@ -186,17 +229,17 @@ export default function DelegacaoPage() {
   };
   const onToggleSelectAll = () => {
     if (filteredLeft.length === 0) return;
+    // Ajuste: seleção em massa passa a refletir SOMENTE os itens atualmente visíveis
     setSelectedItemIds((prev) => {
       const ids = new Set(prev);
       const everySelected = filteredLeft.every((i) => ids.has(i.id));
       if (everySelected) {
-        // remove os filtrados
-        return prev.filter((id) => !filteredLeft.some((i) => i.id === id));
+        // desmarca todos os visíveis
+        const visibles = new Set(filteredLeft.map((i) => i.id));
+        return prev.filter((id) => !visibles.has(id));
       }
-      // adiciona os filtrados
-      const merged = new Set(prev);
-      filteredLeft.forEach((i) => merged.add(i.id));
-      return Array.from(merged);
+      // marca exatamente os visíveis (evita carregar seleções antigas)
+      return Array.from(new Set(filteredLeft.map((i) => i.id)));
     });
   };
 
@@ -239,25 +282,25 @@ export default function DelegacaoPage() {
   };
 
   const onUndelegateSelected = async () => {
-    if (selectedDelegacaoIds.length === 0) { toast.error('Nenhuma delegação selecionada.'); return; }
+    if (selectedDelegacaoIds.length === 0) { toast.error(t('delegation_none_selected')); return; }
     try {
       setLoading(true);
       await Promise.all(selectedDelegacaoIds.map((id) => deleteReviewDelegation(id).catch((err) => { console.error(err); })));
-      toast.success('Delegações removidas');
+      toast.success(t('delegations_removed'));
       setSelectedDelegacaoIds([]);
       await refreshLists(selectedPeriodoId);
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao remover selecionados');
+      toast.error(t('error_removing_selected'));
     } finally {
       setLoading(false);
     }
   };
 
   const onDelegateSelected = async () => {
-    if (!selectedPeriodoId) { toast.error('Selecione um período.'); return; }
-    if (!revisorId) { toast.error('Selecione um revisor.'); return; }
-    if (selectedItemIds.length === 0) { toast.error('Nenhum item selecionado.'); return; }
+    if (!selectedPeriodoId) { toast.error(t('select_period_msg')); return; }
+    if (!revisorId) { toast.error(t('select_reviewer_msg')); return; }
+    if (selectedItemIds.length === 0) { toast.error(t('no_items_selected')); return; }
     try {
       setLoading(true);
       const payloads = selectedItemIds.map((id) => ({
@@ -267,13 +310,13 @@ export default function DelegacaoPage() {
         atribuido_por: periodoInfo?.responsavel_id || Number(revisorId),
       }));
       await Promise.all(payloads.map((p) => createReviewDelegation(p).catch((err) => { console.error(err); })));
-      toast.success('Delegações criadas (grupo por imobilizado).');
+      toast.success(t('delegations_created_by_asset'));
       setSelectedItemIds([]);
       await refreshLists(selectedPeriodoId);
     } catch (err) {
       console.error(err);
       const detail = extractBackendDetail(err?.message);
-      toast.error(detail || 'Erro ao delegar selecionados');
+      toast.error(detail || t('error_delegating_selected'));
     } finally {
       setLoading(false);
     }
@@ -281,11 +324,11 @@ export default function DelegacaoPage() {
 
   const handleDelegar = async (item) => {
     if (!selectedPeriodoId) {
-      toast.error('Selecione um período.');
+      toast.error(t('select_period_msg'));
       return;
     }
     if (!revisorId) {
-      toast.error('Selecione um revisor.');
+      toast.error(t('select_reviewer_msg'));
       return;
     }
     try {
@@ -296,23 +339,23 @@ export default function DelegacaoPage() {
         atribuido_por: periodoInfo?.responsavel_id || Number(revisorId),
       };
       await createReviewDelegation(payload);
-      toast.success('Delegação criada (grupo por imobilizado).');
+      toast.success(t('delegation_created_by_asset'));
       await refreshLists(selectedPeriodoId);
     } catch (err) {
       console.error(err);
       const detail = extractBackendDetail(err?.message);
-      toast.error(detail || 'Erro ao delegar');
+      toast.error(detail || t('error_delegating'));
     }
   };
 
   const handleRemover = async (d) => {
     try {
       await deleteReviewDelegation(d.id);
-      toast.success('Delegação removida');
+      toast.success(t('delegation_removed'));
       await refreshLists(selectedPeriodoId);
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao remover delegação');
+      toast.error(t('error_removing_delegation'));
     }
   };
 
@@ -335,9 +378,9 @@ export default function DelegacaoPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Delegação de Revisão</h2>
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('delegation_title')}</h2>
         <div className="flex items-center gap-2">
-          <Select label="Período" name="periodo" value={selectedPeriodoId || ''} onChange={onPeriodoChange}>
+          <Select label={t('period_label')} name="periodo" value={selectedPeriodoId || ''} onChange={onPeriodoChange}>
             {(periodos || []).map((p) => (
               <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
             ))}
@@ -351,67 +394,75 @@ export default function DelegacaoPage() {
           <div className="flex items-end gap-2 mb-3">
             {/* Dropdown de filtro */}
             <Select label="" name="filterType" value={filterType} onChange={(e) => setFilterType(e.target.value)} className="min-w-[150px] md:min-w-[160px]">
-              <option value="ug">Unidade Gerencial</option>
-              <option value="cc">Centro de Custos</option>
-              <option value="classe">Classe Contábil</option>
-              <option value="valor">Valor Contábil</option>
-              <option value="selecao">Seleção Manual</option>
+              <option value="ug">{t('filter_ug')}</option>
+              <option value="cc">{t('filter_cc')}</option>
+              <option value="classe">{t('filter_class')}</option>
+              <option value="valor">{t('filter_value')}</option>
+              <option value="selecao">{t('filter_selection')}</option>
             </Select>
             {/* Valor do filtro dinâmico */}
             {filterType === 'classe' && (
               <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-36 md:w-40 shrink-0">
-                <option value="">Todas</option>
+                <option value="">{t('all')}</option>
                 {uniqueClasses.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </Select>
             )}
-            {(filterType === 'cc' || filterType === 'ug') && (
+            {filterType === 'cc' && (
               <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-36 md:w-40 shrink-0">
-                <option value="">Todos</option>
+                <option value="">{t('all')}</option>
                 {uniqueCCs.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </Select>
             )}
+            {filterType === 'ug' && (
+              <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-40 shrink-0">
+                <option value="">{t('all')}</option>
+                {uniqueUGs.map((u) => (
+                  <option key={u.id} value={u.codigo}>{u.codigo} - {u.nome}</option>
+                ))}
+              </Select>
+            )}
             {filterType === 'valor' && (
               <div className="flex items-end gap-2">
-                <Input label="Mín" type="number" name="valorMin" value={valorMin} onChange={(e) => setValorMin(e.target.value)} className="w-28" />
-                <Input label="Máx" type="number" name="valorMax" value={valorMax} onChange={(e) => setValorMax(e.target.value)} className="w-28" />
+                <Input label={t('min_label')} type="number" name="valorMin" value={valorMin} onChange={(e) => setValorMin(e.target.value)} className="w-28" />
+                <Input label={t('max_label')} type="number" name="valorMax" value={valorMax} onChange={(e) => setValorMax(e.target.value)} className="w-28" />
               </div>
             )}
             {/* Pesquisa */}
-            <Input label="" name="qleft" placeholder={filterType === 'valor' ? 'Valor exato (ex: 0,00)' : 'Pesquisar item'} value={queryLeft} onChange={(e) => setQueryLeft(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
+            <Input label="" name="qleft" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={queryLeft} onChange={(e) => setQueryLeft(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
             {/* Toolbar esquerda: ações de delegação */}
             <div className="ml-auto flex items-center gap-2">
-               <Button variant="primary" className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-500 shrink-0" title="Delegar selecionados" onClick={onDelegateSelected}>
+               <Button variant="primary" className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-500 shrink-0" title={t('delegation_delegate_selected')} onClick={onDelegateSelected}>
                  <ArrowRight size={16} />
                </Button>
              </div>
 
           </div>
 
-          {loading && <p className="text-slate-500">Carregando...</p>}
-          {error && <p className="text-red-600">Erro no backend</p>}
+          {loading && <p className="text-slate-500">{t('loading')}</p>}
+          {error && <p className="text-red-600">{t('backend_error')}</p>}
           {!loading && !error && (
             filteredLeft.length === 0 ? (
-              <p className="text-slate-500">Nenhum item disponível para delegar.</p>
+              <p className="text-slate-500">{t('delegation_no_items')}</p>
             ) : (
-              <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1">
-                <div className="overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
+              <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1 scrollbar-stable" style={{ scrollbarGutter: 'stable both-edges' }}>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-800">
                   <table className="min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
-                    <thead className="bg-slate-50 dark:bg-slate-900">
+                    <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                       <tr>
                         <th className="w-12 px-3 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
                           <div className="flex justify-center">
                             <input type="checkbox" checked={allSelected} onChange={onToggleSelectAll} />
                           </div>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Nº do Imobilizado</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Sub. Nº</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Descrição</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Classe</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Valor contábil</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_asset_number')}</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_sub_number')}</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_description')}</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_class')}</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_book_value')}</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-950 divide-y divide-slate-200 dark:divide-slate-800">
@@ -438,51 +489,51 @@ export default function DelegacaoPage() {
         {/* Coluna Direita - Delegações existentes */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Select label="" name="revisor" value={revisorId} onChange={(e) => setRevisorId(e.target.value)} className="min-w-[260px]">
-              <option value="">Selecione...</option>
-              {(usuarios || []).map((u) => (
-                <option key={u.id} value={u.id}>{u.codigo} - {u.nome_completo}</option>
-              ))}
-            </Select>
-            <Input label="" name="qright" placeholder={revisorId ? 'Pesquisar delegação' : 'Selecione um revisor'} value={queryRight} onChange={(e) => setQueryRight(e.target.value)} disabled={!revisorId} />
-            {/* Toolbar direita: selecionar tudo e mover para esquerda */}
+            {/* Agrupa os controles à direita e posiciona o botão azul antes dos campos */}
             <div className="ml-auto flex items-center gap-2">
-              <input type="checkbox" checked={allSelectedRight} onChange={onToggleSelectAllRight} title="Selecionar todas as delegações visíveis" />
-              <Button variant="primary" className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-500 shrink-0" title="Enviar selecionadas para a esquerda" onClick={onUndelegateSelected}>
+              <Button variant="primary" className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-500 shrink-0" title={t('delegation_send_left')} onClick={onUndelegateSelected}>
                 <ArrowLeft size={16} />
               </Button>
+              <Select label="" name="revisor" value={revisorId} onChange={(e) => setRevisorId(e.target.value)} className="min-w-[260px]">
+                <option value="">{t('select')}...</option>
+                {(usuarios || []).map((u) => (
+                  <option key={u.id} value={u.id}>{u.codigo} - {u.nome_completo}</option>
+                ))}
+              </Select>
+              <Input label="" name="qright" placeholder={revisorId ? t('delegation_search_placeholder') : t('delegation_select_reviewer')} value={queryRight} onChange={(e) => setQueryRight(e.target.value)} disabled={!revisorId} />
+              <input type="checkbox" checked={allSelectedRight} onChange={onToggleSelectAllRight} title={t('delegation_select_all_visible')} />
             </div>
           </div>
 
-          {loading && <p className="text-slate-500">Carregando...</p>}
-          {error && <p className="text-red-600">Erro no backend</p>}
+          {loading && <p className="text-slate-500">{t('loading')}</p>}
+          {error && <p className="text-red-600">{t('backend_error')}</p>}
           {!loading && !error && (
             filteredRight.length === 0 ? (
-              <p className="text-slate-500">Nenhuma delegação encontrada.</p>
+              <p className="text-slate-500">{t('delegation_none_found')}</p>
             ) : (
-              <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1">
-                <div className="overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
+              <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1 scrollbar-stable" style={{ scrollbarGutter: 'stable both-edges' }}>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-800">
                   <table className="min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
-                    <thead className="bg-slate-50 dark:bg-slate-900">
+                    <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                       <tr>
                         <th className="w-12 px-3 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
                           <div className="flex justify-center">
-                            <input type="checkbox" checked={allSelectedRight} onChange={onToggleSelectAllRight} title="Selecionar todas as delegações visíveis" />
+                            <input type="checkbox" checked={allSelectedRight} onChange={onToggleSelectAllRight} title={t('delegation_select_all_visible')} />
                           </div>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Nº do Imobilizado</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Sub. Nº</th>
-                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Descrição</th>
-                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Revisor</th>
-                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Valor contábil</th>
-                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">Atribuído em</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_asset_number')}</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_sub_number')}</th>
+                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_description')}</th>
+                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('reviewer_label')}</th>
+                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_book_value')}</th>
+                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('assigned_at')}</th>
                        </tr>
                      </thead>
                     <tbody className="bg-white dark:bg-slate-950 divide-y divide-slate-200 dark:divide-slate-800">
                       {filteredRight.map((d) => (
                         <tr key={d.id} className="hover:bg-slate-50 dark:hover:bg-slate-900">
                           <td className="w-12 px-3 py-2 text-center text-sm text-slate-700 dark:text-slate-200">
-                            <input type="checkbox" checked={selectedDelegacaoIds.includes(d.id)} onChange={() => onToggleSelectRight(d.id)} title="Selecionar delegação" />
+                            <input type="checkbox" checked={selectedDelegacaoIds.includes(d.id)} onChange={() => onToggleSelectRight(d.id)} title={t('delegation_select_title')} />
                           </td>
                           <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{d.numero_imobilizado}</td>
                           <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{itemById.get(d.ativo_id)?.sub_numero ?? d.sub_numero ?? ''}</td>

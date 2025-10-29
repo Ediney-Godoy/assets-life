@@ -1,11 +1,11 @@
 import React from 'react';
 import clsx from 'clsx';
 
-export default function Table({ columns, data, onRowClick, className }) {
+export default function Table({ columns, data, onRowClick, className, getRowClassName }) {
   return (
-    <div className={clsx('overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800', className)}>
+    <div className={clsx('overflow-auto scrollbar-stable max-h-[65vh] rounded-lg border border-slate-200 dark:border-slate-800', className)}>
       <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-        <thead className="bg-slate-50 dark:bg-slate-900">
+        <thead className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-10">
           <tr>
             {columns.map((col) => (
               <th
@@ -22,7 +22,10 @@ export default function Table({ columns, data, onRowClick, className }) {
             <tr
               key={row.id ?? idx}
               onClick={() => onRowClick && onRowClick(row)}
-              className="hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
+              className={clsx(
+                'hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer',
+                getRowClassName ? getRowClassName(row) : null
+              )}
             >
               {columns.map((col) => (
                 <td key={col.key} className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">
