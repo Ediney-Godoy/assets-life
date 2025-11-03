@@ -1,4 +1,5 @@
-const BASE_URL = 'http://localhost:8000';
+const PRIMARY_BASE = (import.meta?.env?.VITE_API_URL) || 'http://localhost:8001';
+const BASE_CANDIDATES = [PRIMARY_BASE, 'http://127.0.0.1:8001'];
 
 function getToken() {
   try {
@@ -9,37 +10,60 @@ function getToken() {
 }
 
 async function request(path, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 5000);
-  try {
-    const token = getToken();
-    const res = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-        ...(token && !(options.headers || {}).Authorization ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    clearTimeout(timeoutId);
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`HTTP ${res.status}: ${text}`);
+  const token = getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+    ...(token && !(options.headers || {}).Authorization ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  let lastErr;
+  for (const base of BASE_CANDIDATES) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 5000);
+    try {
+      const res = await fetch(`${base}${path}`, {
+        ...options,
+        signal: controller.signal,
+        headers,
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) {
+        const text = await res.text();
+        if (res.status === 401 && /Token inválido|Not authenticated/i.test(text)) {
+          try {
+            localStorage.removeItem('assetlife_token');
+            localStorage.removeItem('assetlife_permissoes');
+            localStorage.removeItem('assetlife_user');
+          } catch {}
+          if (path !== '/auth/login' && typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+        }
+        // Para erros de cliente/negócio, não tenta próximo base
+        if (res.status >= 400 && res.status < 500) {
+          throw new Error(`HTTP ${res.status}: ${text}`);
+        }
+        lastErr = new Error(`HTTP ${res.status}: ${text}`);
+        continue;
+      }
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        return res.json();
+      }
+      return res.text();
+    } catch (err) {
+      clearTimeout(timeoutId);
+      lastErr = err;
+      // tenta próximo base em caso de falhas de rede/timeout
+      continue;
     }
-    const contentType = res.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      return res.json();
-    }
-    return res.text();
-  } catch (err) {
-    clearTimeout(timeoutId);
-    throw err;
   }
+  throw lastErr || new Error('Falha ao conectar ao backend');
 }
 
-export async function getHealth() {
-  return request('/health');
+export async function getHealth(options = {}) {
+  return request('/health', { ...options, timeout: Math.max(options.timeout ?? 0, 6000) });
 }
 
 export async function getCompanies() {
@@ -180,6 +204,12 @@ export async function getReviewItems(periodoId) {
 // Atualizar item de revisão (útil para ajustar vida útil, data fim e metadados)
 export async function updateReviewItem(periodoId, itemId, payload) {
   return request(`/revisoes/${periodoId}/itens/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+// Aplicar revisão em massa
+export async function applyMassRevision(payload) {
+  // payload: { ativos_ids: number[], incremento?, nova_vida_util_anos?, nova_vida_util_meses?, nova_data_fim?, condicao_fisica?, motivo?, justificativa? }
+  return request('/revisoes/massa', { method: 'POST', body: JSON.stringify(payload), timeout: 20000 });
 }
 
 // Delegações de Revisão

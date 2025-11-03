@@ -18,15 +18,20 @@ import ReviewsMenu from './pages/ReviewsMenu';
 import Reviews from './pages/Reviews';
 import DelegacaoPage from './pages/Delegacao';
 import RevisaoVidasUteis from './pages/RevisaoVidasUteis';
+import MassRevisionView from './pages/MassRevisionView';
 import CostCentersPage from './pages/CostCenters';
 import UsersPage from './pages/Users';
 import PermissionsPage from './pages/Permissions';
+import AssetSpeciesPage from './pages/AssetSpecies';
+import ReportUsefulLifePage from './pages/ReportUsefulLife';
+import ReportsMenu from './pages/ReportsMenu';
+import PermissionsMenu from './pages/PermissionsMenu';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/Login';
 import ForgotPasswordPage from './pages/ForgotPassword';
 import ResetPasswordPage from './pages/ResetPassword';
 import FirstAccessPage from './pages/FirstAccess';
-import { clearToken } from './apiClient';
+import { clearToken, getHealth } from './apiClient';
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -40,11 +45,8 @@ export default function App() {
 
   const checkBackend = async () => {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch('http://localhost:8000/health', { signal: controller.signal });
-      clearTimeout(timeoutId);
-      setBackendStatus(res.ok ? 'ok' : 'error');
+      const res = await getHealth({ timeout: 3000 });
+      setBackendStatus(res ? 'ok' : 'error');
     } catch (err) {
       setBackendStatus('error');
     }
@@ -74,6 +76,21 @@ export default function App() {
     return children;
   }
 
+  function RequirePermission({ route, children }) {
+    try {
+      const raw = localStorage.getItem('assetlife_permissoes');
+      const rotas = raw ? JSON.parse(raw)?.rotas : [];
+      const allowed = new Set(Array.isArray(rotas) ? rotas : []);
+      const altMap = {
+        '/reviews/massa': '/revisoes-massa',
+      };
+      const alt = altMap[route];
+      const ok = allowed.size === 0 || allowed.has(route) || (alt ? allowed.has(alt) : false);
+      if (!ok) return <Navigate to="/dashboard" replace state={{ denied: route }} />;
+    } catch {}
+    return children;
+  }
+
   return (
     <ThemeProvider>
       <div className="h-screen flex bg-surface-muted dark:bg-darksurface-muted">
@@ -100,13 +117,18 @@ export default function App() {
               <Route path="/ugs" element={<RequireAuth><ManagementUnitsPage /></RequireAuth>} />
               <Route path="/tabs-demo" element={<RequireAuth><TabsDemo /></RequireAuth>} />
               <Route path="/assets" element={<RequireAuth><Section title={t('nav_assets')} body={t('coming_soon')} /></RequireAuth>} />
+              <Route path="/asset-species" element={<RequireAuth><AssetSpeciesPage /></RequireAuth>} />
               <Route path="/reviews" element={<RequireAuth><ReviewsMenu /></RequireAuth>} />
-              <Route path="/reviews/periodos" element={<RequireAuth><Reviews /></RequireAuth>} />
-              <Route path="/reviews/delegacao" element={<RequireAuth><DelegacaoPage /></RequireAuth>} />
-              <Route path="/reviews/vidas-uteis" element={<RequireAuth><RevisaoVidasUteis /></RequireAuth>} />
+              <Route path="/reviews/periodos" element={<RequireAuth><RequirePermission route="/reviews/periodos"><Reviews /></RequirePermission></RequireAuth>} />
+              <Route path="/reviews/delegacao" element={<RequireAuth><RequirePermission route="/reviews/delegacao"><DelegacaoPage /></RequirePermission></RequireAuth>} />
+              <Route path="/reviews/vidas-uteis" element={<RequireAuth><RequirePermission route="/reviews/vidas-uteis"><RevisaoVidasUteis /></RequirePermission></RequireAuth>} />
+              <Route path="/reviews/massa" element={<RequireAuth><RequirePermission route="/reviews/massa"><MassRevisionView /></RequirePermission></RequireAuth>} />
+              <Route path="/revisoes-massa" element={<RequireAuth><RequirePermission route="/revisoes-massa"><MassRevisionView /></RequirePermission></RequireAuth>} />
               <Route path="/cost-centers" element={<RequireAuth><CostCentersPage /></RequireAuth>} />
-              <Route path="/reports" element={<RequireAuth><Section title={t('nav_reports')} body={t('coming_soon')} /></RequireAuth>} />
-              <Route path="/permissions" element={<RequireAuth><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireAuth>} />
+              <Route path="/reports" element={<RequireAuth><ReportsMenu /></RequireAuth>} />
+              <Route path="/reports/vida-util" element={<RequireAuth><ReportUsefulLifePage /></RequireAuth>} />
+              <Route path="/permissions" element={<RequireAuth><PermissionsMenu /></RequireAuth>} />
+              <Route path="/permissions/groups" element={<RequireAuth><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireAuth>} />
               <Route path="/users" element={<RequireAuth><UsersPage /></RequireAuth>} />
             </Routes>
             <Toaster position="top-right" toastOptions={{

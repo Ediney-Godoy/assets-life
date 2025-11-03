@@ -1,4 +1,4 @@
-﻿# OS
+# OS
 .DS_Store
 Thumbs.db
 
@@ -10,6 +10,7 @@ Thumbs.db
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+frontend/.env.local
 frontend/.cache/
 frontend/.vite/
 frontend/.eslintcache

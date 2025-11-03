@@ -1,18 +1,28 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Table from '../components/ui/Table';
-import { getReviewPeriods, getReviewItems, updateReviewItem } from '../apiClient';
+import Input from '../components/ui/Input';
+import Select from '../components/ui/Select';
+import { getReviewPeriods, getReviewItems, updateReviewItem, getManagementUnits, getCostCenters } from '../apiClient';
 
 export default function RevisaoVidasUteis() {
   const { t } = useTranslation();
   const [periodos, setPeriodos] = React.useState([]);
   const [periodoId, setPeriodoId] = React.useState(null);
   const [items, setItems] = React.useState([]);
-  const [filter, setFilter] = React.useState({ texto: '' });
+  // Filtros avançados (mesmos da tela de Revisões em Massa)
+  const [filterType, setFilterType] = React.useState('cc'); // 'ug' | 'cc' | 'classe' | 'valor'
+  const [filterValue, setFilterValue] = React.useState('');
+  const [valorMin, setValorMin] = React.useState('');
+  const [valorMax, setValorMax] = React.useState('');
+  const [advancedQuery, setAdvancedQuery] = React.useState('');
+  // Dados auxiliares para mapear CC -> UG
+  const [ugs, setUgs] = React.useState([]);
+  const [costCenters, setCostCenters] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [editingItem, setEditingItem] = React.useState(null);
-  const [editForm, setEditForm] = React.useState({ revisada_anos: '', revisada_meses: '', condicao_fisica: '', incremento: 'Manter', motivo: '', justificativa: '' });
+  const [editForm, setEditForm] = React.useState({ revisada_anos: '', revisada_meses: '', nova_data_fim: '', condicao_fisica: '', incremento: 'Manter', motivo: '', justificativa: '' });
   const [activeTab, setActiveTab] = React.useState('pendentes'); // 'pendentes' | 'revisados'
 
   React.useEffect(() => {
@@ -26,6 +36,24 @@ export default function RevisaoVidasUteis() {
       }
     };
     run();
+  }, []);
+
+  // Carregar UGs e Centros de Custo para suportar filtro por UG
+  React.useEffect(() => {
+    const loadAux = async () => {
+      try {
+        const [ugData, ccData] = await Promise.all([
+          getManagementUnits(),
+          getCostCenters(),
+        ]);
+        setUgs(Array.isArray(ugData) ? ugData : []);
+        setCostCenters(Array.isArray(ccData) ? ccData : []);
+      } catch (_) {
+        setUgs([]);
+        setCostCenters([]);
+      }
+    };
+    loadAux();
   }, []);
 
   React.useEffect(() => {
@@ -65,11 +93,27 @@ export default function RevisaoVidasUteis() {
     return `${dd}/${mm}/${yyyy}`;
   };
 
+  const toISO = (d) => {
+    if (!d) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const formatNumberBR = (num) => {
     if (num === null || num === undefined) return '-';
     const n = Number(num);
     if (Number.isNaN(n)) return '-';
     return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  };
+
+  const parseDecimal = (s) => {
+    const str = String(s || '').trim();
+    if (!str) return null;
+    const norm = str.replace(/\./g, '').replace(/,/g, '.');
+    const n = Number(norm);
+    return Number.isFinite(n) ? n : null;
   };
 
   const monthsUntil = (target) => {
@@ -95,6 +139,20 @@ export default function RevisaoVidasUteis() {
     const anos = Math.floor(m / 12);
     const meses = m % 12;
     return { anos, meses };
+  };
+
+  const addMonths = (dateObj, months) => {
+    if (!dateObj || months == null) return null;
+    const d = new Date(dateObj.getTime());
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const targetMonth = m + Number(months);
+    const ty = y + Math.floor(targetMonth / 12);
+    const tm = targetMonth % 12;
+    // Ajusta fim de mês
+    const endOfTargetMonth = new Date(ty, tm + 1, 0).getDate();
+    const day = Math.min(d.getDate(), endOfTargetMonth);
+    return new Date(ty, tm, day);
   };
 
   // Motivos por incremento vindos do i18n (arrays de strings traduzidas)
@@ -159,19 +217,94 @@ export default function RevisaoVidasUteis() {
     { key: 'alterado', header: t('col_changed'), render: (v) => (v ? t('yes') : t('no')) },
   ];
 
+  // Mapas auxiliares para CC -> UG
+  const ccByCodigo = React.useMemo(() => {
+    const m = new Map();
+    (costCenters || []).forEach((c) => m.set(String(c.codigo || '').toLowerCase(), c));
+    return m;
+  }, [costCenters]);
+  const ugById = React.useMemo(() => {
+    const m = new Map();
+    (ugs || []).forEach((u) => m.set(Number(u.id), u));
+    return m;
+  }, [ugs]);
+
+  const uniqueCCs = React.useMemo(() => {
+    const vals = Array.from(new Set((items || []).map((i) => i.centro_custo).filter(Boolean)));
+    return vals;
+  }, [items]);
+  const uniqueClasses = React.useMemo(() => {
+    const vals = Array.from(new Set((items || []).map((i) => i.classe).filter(Boolean)));
+    return vals;
+  }, [items]);
+  const uniqueUGs = React.useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    (items || []).forEach((i) => {
+      const directUgId = i.ug_id != null ? Number(i.ug_id) : (i.unidade_gerencial_id != null ? Number(i.unidade_gerencial_id) : null);
+      const ugId = directUgId ?? (() => {
+        const cc = ccByCodigo.get(String(i.centro_custo || '').toLowerCase());
+        return cc?.ug_id ? Number(cc.ug_id) : null;
+      })();
+      if (!ugId || seen.has(ugId)) return;
+      const ug = ugById.get(ugId);
+      if (ug) { seen.add(ugId); result.push(ug); }
+    });
+    return result;
+  }, [items, ccByCodigo, ugById]);
+
   const filteredByTab = React.useMemo(() => {
     return items.filter((it) => (activeTab === 'revisados' ? isItemRevisado(it) : !isItemRevisado(it)));
   }, [items, activeTab]);
 
-  const filtered = filteredByTab.filter((it) => {
-    const q = filter.texto.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      String(it.numero_imobilizado).toLowerCase().includes(q) ||
-      String(it.descricao).toLowerCase().includes(q) ||
-      String(it.centro_custo || '').toLowerCase().includes(q)
-    );
-  });
+  const filtered = React.useMemo(() => {
+    let list = [...filteredByTab];
+    // Complemento via campo editável (mesmo padrão da tela de Massa)
+    const qLower = (advancedQuery || '').trim().toLowerCase();
+    const qNum = parseDecimal(advancedQuery);
+    list = list.filter((i) => {
+      const baseMatch = !qLower ? true : (
+        String(i.numero_imobilizado).toLowerCase().includes(qLower) ||
+        String(i.descricao).toLowerCase().includes(qLower) ||
+        String(i.centro_custo || '').toLowerCase().includes(qLower)
+      );
+      const valueMatch = qNum !== null ? Number(i.valor_contabil || 0) === qNum : false;
+      return baseMatch || valueMatch;
+    });
+
+    // Filtro por tipo selecionado
+    const fv = String(filterValue || '').trim().toLowerCase();
+    if (filterType === 'cc' && fv) {
+      list = list.filter((i) => String(i.centro_custo || '').toLowerCase().includes(fv));
+    } else if (filterType === 'classe' && fv) {
+      list = list.filter((i) => String(i.classe || '').toLowerCase().includes(fv));
+    } else if (filterType === 'ug' && fv) {
+      list = list.filter((i) => {
+        const directCode = String(i.ug_codigo || i.unidade_gerencial || i.ug || '').toLowerCase();
+        const directName = String(i.ug_nome || i.unidade_gerencial_nome || '').toLowerCase();
+        if (directCode || directName) {
+          return directCode.includes(fv) || directName.includes(fv);
+        }
+        const cc = ccByCodigo.get(String(i.centro_custo || '').toLowerCase());
+        const ugId = cc?.ug_id ? Number(cc.ug_id) : null;
+        const ug = ugId ? ugById.get(ugId) : null;
+        const codigo = String(ug?.codigo || '').toLowerCase();
+        const nome = String(ug?.nome || '').toLowerCase();
+        return !!ug && (codigo.includes(fv) || nome.includes(fv));
+      });
+    } else if (filterType === 'valor') {
+      const minParsed = parseDecimal(valorMin);
+      const maxParsed = parseDecimal(valorMax);
+      list = list.filter((i) => {
+        const v = Number(i.valor_contabil || 0);
+        const byMin = minParsed !== null ? v >= minParsed : true;
+        const byMax = maxParsed !== null ? v <= maxParsed : true;
+        return byMin && byMax;
+      });
+    }
+
+    return list;
+  }, [filteredByTab, advancedQuery, filterType, filterValue, valorMin, valorMax, ccByCodigo, ugById]);
 
   const sorted = React.useMemo(() => {
     const arr = [...filtered];
@@ -195,9 +328,10 @@ export default function RevisaoVidasUteis() {
     setEditForm({
       revisada_anos: row.vida_util_revisada != null ? Math.floor(Number(row.vida_util_revisada) / 12) : '',
       revisada_meses: row.vida_util_revisada != null ? (Number(row.vida_util_revisada) % 12) : '',
+      nova_data_fim: row.data_fim_revisada || '',
       condicao_fisica: row.condicao_fisica ?? '',
-      incremento: row.incremento ?? 'Manter',
-      motivo: row.motivo ?? '',
+      incremento: row.auxiliar2 ?? 'Manter',
+      motivo: row.auxiliar3 ?? '',
       justificativa: row.justificativa ?? '',
     });
   };
@@ -221,15 +355,74 @@ export default function RevisaoVidasUteis() {
         mesesRevisados = a * 12 + m;
       }
 
+      // Bidirecional: se usuário informou nova_data_fim, recalculamos mesesRevisados com base no início do período
+      const inicioNovaVida = parseDate(periodoSel.data_inicio_nova_vida_util);
+      const novaFim = parseDate(editForm.nova_data_fim);
+      if (!mesesRevisados && novaFim && inicioNovaVida) {
+        const m = monthsDiff(inicioNovaVida, novaFim);
+        mesesRevisados = m;
+      }
+
+      // Validações e avisos
+      const now = new Date();
+      const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthsToEnd = novaFim ? monthsUntil(novaFim) : (mesesRevisados != null ? monthsUntil(addMonths(inicioNovaVida, mesesRevisados)) : null);
+      const originalMonths = Number(editingItem.vida_util_periodos || 0);
+
+      // Comparação deve ser feita sobre a vida útil TOTAL (início da depreciação -> nova data fim)
+      const inicioOriginal = parseDate(editingItem.data_inicio_depreciacao);
+      const novoFimCalculado = novaFim || (inicioNovaVida && mesesRevisados != null ? addMonths(inicioNovaVida, mesesRevisados) : null);
+      const totalNewMonths = (inicioOriginal && novoFimCalculado) ? monthsDiff(inicioOriginal, novoFimCalculado) : null;
+
+      if (editForm.incremento !== 'Manter' && novaFim && novaFim < startOfThisMonth) {
+        const ok = window.confirm(t('confirm_past_end_msg') || 'A nova data de fim está anterior ao mês corrente. Deseja continuar?');
+        if (!ok) return;
+      }
+      if (editForm.incremento !== 'Manter' && monthsToEnd != null && monthsToEnd >= 0 && monthsToEnd <= 18) {
+        // Requer justificativa
+        if (!editForm.justificativa) {
+          setError(t('warning_less_18_months_require_justification') || 'Itens com vencimento < 18 meses exigem justificativa.');
+          return;
+        }
+      }
+      if ((editForm.incremento === 'Decréscimo') && (mesesRevisados != null) && originalMonths > 0 && (mesesRevisados < Math.floor(originalMonths / 2))) {
+        const ok = window.confirm(t('confirm_drastic_reduction') || 'Redução drástica de vida útil detectada (>50%). Deseja continuar?');
+        if (!ok) return;
+      }
+      // Regras de incremento coerentes com a opção selecionada
+      if (editForm.incremento === 'Manter') {
+        mesesRevisados = null; // ignora alterações de vida útil
+      } else if (editForm.incremento === 'Decréscimo') {
+        // Para redução, a vida útil TOTAL deve ser menor que a original
+        if (totalNewMonths == null || !(totalNewMonths < originalMonths)) {
+          setError(t('error_increment_decrease_requires_less'));
+          return;
+        }
+      } else if (editForm.incremento === 'Acréscimo') {
+        // Para aumento, a vida útil TOTAL deve ser maior que a original
+        if (totalNewMonths == null || !(totalNewMonths > originalMonths)) {
+          setError(t('error_increment_increase_requires_more'));
+          return;
+        }
+      }
+
       const payload = {
-        vida_util_revisada: mesesRevisados,
+        vida_util_revisada: editForm.incremento === 'Manter' ? null : mesesRevisados,
         condicao_fisica: editForm.condicao_fisica || null,
         incremento: editForm.incremento || 'Manter',
         motivo: editForm.motivo || null,
+        nova_data_fim: editForm.incremento === 'Manter' ? undefined : (editForm.nova_data_fim || undefined),
         justificativa: editForm.justificativa || null,
       };
       const updated = await updateReviewItem(periodoId, editingItem.id, payload);
       setItems((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
+      // Após salvar, recarrega itens do período para refletir campos calculados no backend
+      try {
+        const refreshed = await getReviewItems(periodoId);
+        setItems(refreshed);
+      } catch (e) {
+        // Se falhar o refresh, mantém merge local para não interromper fluxo
+      }
       setEditingItem(null);
     } catch (err) {
       setError(String(err?.message || err));
@@ -240,9 +433,8 @@ export default function RevisaoVidasUteis() {
 
   return (
     <section>
-      <div className="mb-4 px-4">
+      <div className="mb-2 px-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('review_title')}</h2>
-        <p className="text-slate-600 dark:text-slate-300">{t('review_subtitle')}</p>
       </div>
 
       <div className="px-4 mb-2">
@@ -260,48 +452,87 @@ export default function RevisaoVidasUteis() {
       </div>
       </div>
 
-      <div className="px-4 flex flex-wrap gap-3 items-end mb-4">
-        <div>
-          <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('period_label')}</label>
+      <div className="px-4 flex flex-wrap gap-2 items-center mb-3">
+        <div className="flex items-center">
+          <span className="mr-2 text-sm text-slate-700 dark:text-slate-300">Período</span>
           <select
             value={periodoId ?? ''}
             onChange={(e) => setPeriodoId(Number(e.target.value) || null)}
-            className="rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
+            className="min-w-[240px] w-[320px] md:w-[380px] rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5"
           >
             {periodos.map((p) => (
               <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
             ))}
           </select>
         </div>
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('quick_filter_label')}</label>
-          <input
-            type="text"
-            value={filter.texto}
-            onChange={(e) => setFilter({ ...filter, texto: e.target.value })}
-            placeholder={t('quick_filter_placeholder')}
-            className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
-          />
+
+        {/* Filtros avançados: UG/CC/Classe/Valor + Pesquisa */}
+        <div className="flex items-end gap-2">
+          <Select label="" name="filterType" value={filterType} onChange={(e) => setFilterType(e.target.value)} className="min-w-[150px] md:min-w-[160px]">
+            <option value="ug">{t('filter_ug')}</option>
+            <option value="cc">{t('filter_cc')}</option>
+            <option value="classe">{t('filter_class')}</option>
+            <option value="valor">{t('filter_value')}</option>
+          </Select>
+
+          {filterType === 'classe' && (
+            <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-36 md:w-40 shrink-0">
+              <option value="">{t('all')}</option>
+              {uniqueClasses.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          )}
+          {filterType === 'cc' && (
+            <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-36 md:w-40 shrink-0">
+              <option value="">{t('all')}</option>
+              {uniqueCCs.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          )}
+          {filterType === 'ug' && (
+            <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-40 shrink-0">
+              <option value="">{t('all')}</option>
+              {uniqueUGs.map((u) => (
+                <option key={u.id} value={u.codigo}>{u.codigo} - {u.nome}</option>
+              ))}
+            </Select>
+          )}
+          {filterType === 'valor' && (
+            <div className="flex items-end gap-2">
+              <Input label={t('min_label')} type="number" name="valorMin" value={valorMin} onChange={(e) => setValorMin(e.target.value)} className="w-28" />
+              <Input label={t('max_label')} type="number" name="valorMax" value={valorMax} onChange={(e) => setValorMax(e.target.value)} className="w-28" />
+            </div>
+          )}
+          <Input label="" name="advQuery" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={advancedQuery} onChange={(e) => setAdvancedQuery(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
         </div>
+
         {error && <div className="text-red-600 text-sm">{error}</div>}
       </div>
 
       <div className="px-4">
-        {loading ? (
-          <div className="p-4 text-slate-700 dark:text-slate-300">{t('loading_items')}</div>
-        ) : (
-          <Table
-            columns={columns}
-            data={sorted}
-            onRowClick={handleStartEdit}
-            getRowClassName={(row) => {
-              const target = parseDate(row.data_fim_revisada) || parseDate(row.data_fim_depreciacao);
-              const m = monthsUntil(target);
-              const isSoon = m >= 0 && m <= 18;
-              return isSoon ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' : '';
-            }}
-          />
-        )}
+        {/* Alinha a largura com a tela de Revisões em Massa quando painel está recolhido */}
+        <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-3">
+          <div className="min-w-0 lg:col-span-12">
+            {loading ? (
+              <div className="p-4 text-slate-700 dark:text-slate-300">{t('loading_items')}</div>
+            ) : (
+              <Table
+                columns={columns}
+                data={sorted}
+                className="w-full pr-1"
+                onRowClick={handleStartEdit}
+                getRowClassName={(row) => {
+                  const target = parseDate(row.data_fim_revisada) || parseDate(row.data_fim_depreciacao);
+                  const m = monthsUntil(target);
+                  const isSoon = m >= 0 && m <= 18;
+                  return isSoon ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' : '';
+                }}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       {editingItem && (
@@ -330,7 +561,15 @@ export default function RevisaoVidasUteis() {
                   value={editForm.incremento}
                   onChange={(e) => {
                     const novoInc = e.target.value;
-                    setEditForm((prev) => ({ ...prev, incremento: novoInc, motivo: '', justificativa: '' }));
+                    setEditForm((prev) => ({
+                      ...prev,
+                      incremento: novoInc,
+                      motivo: '',
+                      justificativa: '',
+                      revisada_anos: novoInc === 'Manter' ? '' : prev.revisada_anos,
+                      revisada_meses: novoInc === 'Manter' ? '' : prev.revisada_meses,
+                      nova_data_fim: novoInc === 'Manter' ? '' : prev.nova_data_fim,
+                    }));
                   }}
                   className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
                 >
@@ -349,8 +588,18 @@ export default function RevisaoVidasUteis() {
                   type="number"
                   min="0"
                   value={editForm.revisada_anos}
-                  onChange={(e) => setEditForm({ ...editForm, revisada_anos: e.target.value })}
-                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const periodoSel = periodos.find((p) => p.id === periodoId);
+                    const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util);
+                    const anos = Number(val || 0);
+                    const meses = Number(editForm.revisada_meses || 0);
+                    const total = anos * 12 + meses;
+                    const fim = addMonths(inicioNovaVida, total);
+                    setEditForm({ ...editForm, revisada_anos: val, nova_data_fim: toISO(fim) });
+                  }}
+                  disabled={editForm.incremento === 'Manter'}
+                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                 />
               </div>
               <div>
@@ -360,10 +609,60 @@ export default function RevisaoVidasUteis() {
                   min="0"
                   max="11"
                   value={editForm.revisada_meses}
-                  onChange={(e) => setEditForm({ ...editForm, revisada_meses: e.target.value })}
-                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const periodoSel = periodos.find((p) => p.id === periodoId);
+                    const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util);
+                    const anos = Number(editForm.revisada_anos || 0);
+                    const meses = Number(val || 0);
+                    const total = anos * 12 + meses;
+                    const fim = addMonths(inicioNovaVida, total);
+                    setEditForm({ ...editForm, revisada_meses: val, nova_data_fim: toISO(fim) });
+                  }}
+                  disabled={editForm.incremento === 'Manter'}
+                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                 />
               </div>
+            </div>
+
+            {/* Linha 2b: Nova data fim (bidirecional) */}
+            <div className="mb-3">
+              <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('new_end_date_label')}</label>
+              <input
+                type="date"
+                value={editForm.nova_data_fim}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const periodoSel = periodos.find((p) => p.id === periodoId);
+                  const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util);
+                  const novaFim = parseDate(val);
+                  let total = null;
+                  if (inicioNovaVida && novaFim) total = monthsDiff(inicioNovaVida, novaFim);
+                  const { anos, meses } = splitYearsMonths(total);
+                  setEditForm({ ...editForm, nova_data_fim: val, revisada_anos: anos ?? '', revisada_meses: meses ?? '' });
+                }}
+                disabled={editForm.incremento === 'Manter'}
+                className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+              />
+              {/* Avisos contextuais */}
+              {(() => {
+                const periodoSel = periodos.find((p) => p.id === periodoId);
+                const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util);
+                const novaFim = parseDate(editForm.nova_data_fim);
+                const monthsToEnd = novaFim ? monthsUntil(novaFim) : null;
+                const originalMonths = Number(editingItem?.vida_util_periodos || 0);
+                const revisadosTotal = (editForm.revisada_anos || editForm.revisada_meses) ? (Number(editForm.revisada_anos || 0) * 12 + Number(editForm.revisada_meses || 0)) : (inicioNovaVida && novaFim ? monthsDiff(inicioNovaVida, novaFim) : null);
+                return (
+                  <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                    {monthsToEnd != null && monthsToEnd >= 0 && monthsToEnd <= 18 && (
+                      <div className="text-amber-600 dark:text-amber-400">{t('warning_less_18_months') || 'Atenção: vencimento em menos de 18 meses.'}</div>
+                    )}
+                    {(editForm.incremento === 'Decréscimo') && revisadosTotal != null && originalMonths > 0 && (revisadosTotal < Math.floor(originalMonths / 2)) && (
+                      <div className="text-red-600 dark:text-red-400">{t('warning_drastic_reduction') || 'Redução drástica (>50%) detectada.'}</div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Linha 3: Motivo dinâmico */}
@@ -396,6 +695,28 @@ export default function RevisaoVidasUteis() {
                 placeholder={t('justification_placeholder')}
                 className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
               />
+            </div>
+
+            {/* Informações do ativo */}
+            <div className="mt-3 p-3 rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <div className="text-slate-500 dark:text-slate-400">{t('asset_code_label') || 'Código do ativo'}</div>
+                  <div className="text-slate-800 dark:text-slate-200">{String(editingItem?.numero_imobilizado || '')}{editingItem?.sub_numero ? `/${editingItem.sub_numero}` : ''}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500 dark:text-slate-400">{t('asset_description_label') || 'Descrição'}</div>
+                  <div className="text-slate-800 dark:text-slate-200">{String(editingItem?.descricao || '')}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500 dark:text-slate-400">{t('asset_start_label') || 'Início de depreciação'}</div>
+                  <div className="text-slate-800 dark:text-slate-200">{formatDateBR(editingItem?.data_inicio_depreciacao)}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500 dark:text-slate-400">{t('asset_original_end_label') || 'Fim da depreciação (original)'}</div>
+                  <div className="text-slate-800 dark:text-slate-200">{formatDateBR(editingItem?.data_fim_depreciacao)}</div>
+                </div>
+              </div>
             </div>
 
             <div className="mt-4 flex justify-end gap-2">

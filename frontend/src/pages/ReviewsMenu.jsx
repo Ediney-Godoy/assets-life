@@ -1,11 +1,30 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, FileText, Clock } from 'lucide-react';
+import { ClipboardList, FileText, Clock, ListChecks } from 'lucide-react';
 
 export default function ReviewsMenu() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const allowed = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('assetlife_permissoes');
+      const rotas = raw ? JSON.parse(raw)?.rotas : [];
+      if (Array.isArray(rotas) && rotas.length > 0) {
+        return new Set(rotas);
+      }
+    } catch {}
+    return new Set();
+  }, []);
+
+  const hasPerm = (path) => {
+    if (!allowed || allowed.size === 0) return true; // sem rotas definidas, não filtra
+    if (allowed.has(path)) return true;
+    // compatibilidade: rota alternativa para revisão em massa
+    if (path === '/reviews/massa' && allowed.has('/revisoes-massa')) return true;
+    return false;
+  };
 
   return (
     <section>
@@ -13,53 +32,85 @@ export default function ReviewsMenu() {
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_title')}</h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <button
-          type="button"
-          onClick={() => navigate('/reviews/periodos')}
-          className="text-left rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm p-4 hover:bg-gray-50 dark:hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          aria-label={t('reviews_menu_periods_title')}
-          title={t('reviews_menu_periods_title')}
-        >
-          <div className="flex items-center gap-3">
-            <ClipboardList size={24} className="text-slate-800 dark:text-slate-200" />
-            <div>
-              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_periods_title')}</div>
-              <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_periods_subtitle')}</div>
+        {hasPerm('/reviews/periodos') && (
+          <button
+            type="button"
+            onClick={() => navigate('/reviews/periodos')}
+            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-blue-50/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 hover:border-blue-200 dark:hover:border-blue-800"
+            aria-label={t('reviews_menu_periods_title')}
+            title={t('reviews_menu_periods_title')}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                <ClipboardList size={22} />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_periods_title')}</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_periods_subtitle')}</div>
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
+        )}
 
-        <button
-          type="button"
-          onClick={() => navigate('/reviews/delegacao')}
-          className="text-left rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm p-4 hover:bg-gray-50 dark:hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          aria-label={t('reviews_menu_delegations_title')}
-          title={t('reviews_menu_delegations_title')}
-        >
-          <div className="flex items-center gap-3">
-            <FileText size={24} className="text-slate-800 dark:text-slate-200" />
-            <div>
-              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_delegations_title')}</div>
-              <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_delegations_subtitle')}</div>
+        {hasPerm('/reviews/delegacao') && (
+          <button
+            type="button"
+            onClick={() => navigate('/reviews/delegacao')}
+            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-violet-50/60 dark:bg-violet-900/20 border-violet-100 dark:border-violet-900/30 hover:border-violet-200 dark:hover:border-violet-800"
+            aria-label={t('reviews_menu_delegations_title')}
+            title={t('reviews_menu_delegations_title')}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">
+                <FileText size={22} />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_delegations_title')}</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_delegations_subtitle')}</div>
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
+        )}
 
-        <button
-          type="button"
-          onClick={() => navigate('/reviews/vidas-uteis')}
-          className="text-left rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm p-4 hover:bg-gray-50 dark:hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          aria-label={t('reviews_menu_useful_lives_title')}
-          title={t('reviews_menu_useful_lives_title')}
-        >
-          <div className="flex items-center gap-3">
-            <Clock size={24} className="text-slate-800 dark:text-slate-200" />
-            <div>
-              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_useful_lives_title')}</div>
-              <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_useful_lives_subtitle')}</div>
+        {hasPerm('/reviews/massa') && (
+          <button
+            type="button"
+            onClick={() => navigate('/reviews/massa')}
+            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-emerald-50/60 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-200 dark:hover:border-emerald-800"
+            aria-label={t('reviews_menu_mass_title')}
+            title={t('reviews_menu_mass_title')}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                <ListChecks size={22} />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_mass_title')}</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_mass_subtitle')}</div>
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
+        )}
+
+        {hasPerm('/reviews/vidas-uteis') && (
+          <button
+            type="button"
+            onClick={() => navigate('/reviews/vidas-uteis')}
+            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-amber-50/60 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 hover:border-amber-200 dark:hover:border-amber-800"
+            aria-label={t('reviews_menu_useful_lives_title')}
+            title={t('reviews_menu_useful_lives_title')}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                <Clock size={22} />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_useful_lives_title')}</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_useful_lives_subtitle')}</div>
+              </div>
+            </div>
+          </button>
+        )}
       </div>
     </section>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { Pencil, Trash2, Plus, Save, FileDown, FileText, Printer } from 'lucide-react';
+import { Pencil, Trash2, Plus, Save, FileDown, FileText, Printer, Search, X } from 'lucide-react';
 import {
   getManagementUnits,
   createManagementUnit,
@@ -24,6 +24,13 @@ export default function ManagementUnitsPage() {
   const [query, setQuery] = React.useState('');
   const [editingId, setEditingId] = React.useState(null);
   const [errors, setErrors] = React.useState({});
+  // Modais de busca
+  const [companyModalOpen, setCompanyModalOpen] = React.useState(false);
+  const [companySearch, setCompanySearch] = React.useState('');
+  const [respModalOpen, setRespModalOpen] = React.useState(false);
+  const [respQuery, setRespQuery] = React.useState('');
+  const [ugPaiModalOpen, setUgPaiModalOpen] = React.useState(false);
+  const [ugQuery, setUgQuery] = React.useState('');
 
   const [form, setForm] = React.useState({
     nome: '',
@@ -64,6 +71,11 @@ export default function ManagementUnitsPage() {
     setForm((f) => ({ ...f, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: null }));
   };
+
+  // Selecionados (para exibir nomes)
+  const selectedCompany = React.useMemo(() => companies.find((c) => String(c.id) === String(form.empresa_id)), [companies, form.empresa_id]);
+  const selectedResp = React.useMemo(() => employees.find((e) => String(e.id) === String(form.responsavel_id)), [employees, form.responsavel_id]);
+  const selectedUGPai = React.useMemo(() => ugs.find((u) => String(u.id) === String(form.ug_superior_id)), [ugs, form.ug_superior_id]);
 
   const validate = () => {
     const next = {};
@@ -194,6 +206,70 @@ export default function ManagementUnitsPage() {
     }
   }, [form.nivel_hierarquico]);
 
+  // --- Busca de Empresa ---
+  const modalFilteredCompanies = React.useMemo(() => {
+    const q = (companySearch || '').trim().toLowerCase();
+    let list = companies || [];
+    if (!q) return list.slice(0, 100);
+    return list
+      .filter((c) => String(c.name || '').toLowerCase().includes(q) || String(c.cnpj || '').toLowerCase().includes(q))
+      .slice(0, 100);
+  }, [companySearch, companies]);
+  const openCompanySearch = () => { setCompanyModalOpen(true); setCompanySearch(''); };
+  const closeCompanySearch = () => { setCompanyModalOpen(false); setCompanySearch(''); };
+  const selectCompany = (c) => {
+    setForm((f) => ({ ...f, empresa_id: String(c.id), ug_superior_id: '' }));
+    setErrors((prev) => ({ ...prev, empresa_id: null }));
+    setCompanyModalOpen(false);
+  };
+
+  // --- Busca de Responsável ---
+  const filteredEmployees = React.useMemo(() => {
+    const q = (respQuery || '').trim().toLowerCase();
+    let list = employees || [];
+    if (!q) return list.slice(0, 100);
+    const qDigits = q.replace(/\D/g, '');
+    return list
+      .filter((e) => {
+        const nome = String(e.full_name || '').toLowerCase();
+        const email = String(e.email_corporativo || '').toLowerCase();
+        const cpf = String(e.cpf || '').replace(/\D/g, '');
+        const matricula = String(e.matricula || '').toLowerCase();
+        return (
+          nome.includes(q) ||
+          email.includes(q) ||
+          matricula.includes(q) ||
+          (qDigits && cpf.includes(qDigits))
+        );
+      })
+      .slice(0, 100);
+  }, [respQuery, employees]);
+  const openRespSearch = () => { setRespModalOpen(true); setRespQuery(''); };
+  const closeRespSearch = () => { setRespModalOpen(false); setRespQuery(''); };
+  const selectResp = (e) => {
+    setForm((f) => ({ ...f, responsavel_id: String(e.id) }));
+    setErrors((prev) => ({ ...prev, responsavel_id: null }));
+    setRespModalOpen(false);
+  };
+
+  // --- Busca de UG Superior (Pai) ---
+  const modalFilteredUgs = React.useMemo(() => {
+    const q = (ugQuery || '').trim().toLowerCase();
+    let list = ugs || [];
+    if (form.empresa_id) list = list.filter((u) => String(u.empresa_id) === String(form.empresa_id));
+    if (!q) return list.slice(0, 100);
+    return list
+      .filter((u) => (String(u.codigo || '').toLowerCase().includes(q) || String(u.nome || '').toLowerCase().includes(q)))
+      .slice(0, 100);
+  }, [ugQuery, ugs, form.empresa_id]);
+  const openUgPaiSearch = () => { if (form.nivel_hierarquico !== 'CEO') { setUgPaiModalOpen(true); setUgQuery(''); } };
+  const closeUgPaiSearch = () => { setUgPaiModalOpen(false); setUgQuery(''); };
+  const selectUGPai = (u) => {
+    setForm((f) => ({ ...f, ug_superior_id: String(u.id) }));
+    setErrors((prev) => ({ ...prev, ug_superior_id: null }));
+    setUgPaiModalOpen(false);
+  };
+
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
@@ -220,18 +296,29 @@ export default function ManagementUnitsPage() {
             <Select label="Nível Hierárquico" name="nivel_hierarquico" value={form.nivel_hierarquico} onChange={onChange}>
               {nivelOptions.map((v) => <option key={v} value={v}>{v}</option>)}
             </Select>
-            <Select label="Empresa" name="empresa_id" value={form.empresa_id} onChange={onChange} error={errors.empresa_id}>
-              <option value="">Selecione...</option>
-              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
-            <Select label="Responsável" name="responsavel_id" value={form.responsavel_id} onChange={onChange}>
-              <option value="">Selecione...</option>
-              {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-            </Select>
-            <Select label="UG Superior (Pai)" name="ug_superior_id" value={form.ug_superior_id} onChange={onChange} disabled={form.nivel_hierarquico === 'CEO'} error={errors.ug_superior_id}>
-              <option value="">{form.nivel_hierarquico === 'CEO' ? 'N/A para CEO' : 'Selecione...'}</option>
-              {ugs.map((u) => <option key={u.id} value={u.id}>{u.codigo} - {u.nome}</option>)}
-            </Select>
+            {/* Empresa com busca (lupa) */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input label="Empresa" name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} error={errors.empresa_id} disabled />
+              </div>
+              <Button variant="secondary" onClick={openCompanySearch} title="Pesquisar Empresa" aria-label="Pesquisar Empresa" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+            </div>
+
+            {/* Responsável com busca (lupa) */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input label="Responsável" name="responsavel_nome" value={selectedResp ? selectedResp.full_name : ''} onChange={() => {}} disabled />
+              </div>
+              <Button variant="secondary" onClick={openRespSearch} title="Pesquisar Responsável" aria-label="Pesquisar Responsável" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+            </div>
+
+            {/* UG Superior (Pai) com busca (lupa) */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input label="UG Superior (Pai)" name="ug_pai_nome" value={selectedUGPai ? `${selectedUGPai.codigo} - ${selectedUGPai.nome}` : ''} onChange={() => {}} disabled />
+              </div>
+              <Button variant="secondary" onClick={openUgPaiSearch} title="Pesquisar UG Superior" aria-label="Pesquisar UG Superior" className="p-0 h-10 w-10 justify-center" disabled={form.nivel_hierarquico === 'CEO'}><Search size={18} /></Button>
+            </div>
             <Select label="Status" name="status" value={form.status} onChange={onChange}>
               <option value="Ativo">Ativo</option>
               <option value="Inativo">Inativo</option>
@@ -284,6 +371,101 @@ export default function ManagementUnitsPage() {
           )}
         </div>
       </div>
+
+      {/* Modal: Buscar Empresa */}
+      {companyModalOpen && (
+        <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-950 w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Buscar Empresa</h3>
+              <Button variant="secondary" onClick={closeCompanySearch} title="Fechar" aria-label="Fechar" className="px-2 py-2"><X size={18} /></Button>
+            </div>
+            <input
+              className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Digite nome ou CNPJ..."
+              value={companySearch}
+              onChange={(e) => setCompanySearch(e.target.value)}
+              autoComplete="off"
+            />
+            <div className="mt-3 max-h-[360px] overflow-y-auto pr-1 divide-y divide-slate-200 dark:divide-slate-800">
+              {modalFilteredCompanies.length === 0 ? (
+                <p className="text-slate-500">Nenhuma empresa encontrada.</p>
+              ) : (
+                modalFilteredCompanies.map((c) => (
+                  <button key={c.id} onClick={() => selectCompany(c)} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">{c.name}</div>
+                    <div className="text-xs text-slate-600 dark:text-slate-300">CNPJ: {c.cnpj}</div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Buscar Responsável */}
+      {respModalOpen && (
+        <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-950 w-full max-w-2xl rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Buscar Responsável</h3>
+              <Button variant="secondary" onClick={closeRespSearch} title="Fechar" aria-label="Fechar" className="px-2 py-2"><X size={18} /></Button>
+            </div>
+            <input
+              className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Digite nome, e-mail, matrícula ou CPF..."
+              value={respQuery}
+              onChange={(e) => setRespQuery(e.target.value)}
+              autoComplete="off"
+            />
+            <div className="mt-3 max-h-[360px] overflow-y-auto pr-1">
+              {filteredEmployees.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => selectResp(c)}
+                  className="w-full text-left rounded-lg bg-gray-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 mb-2 hover:bg-gray-100 dark:hover:bg-slate-800"
+                >
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">{c.full_name}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-300">{c.email_corporativo}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">CPF: {c.cpf}</div>
+                </button>
+              ))}
+              {filteredEmployees.length === 0 && <p className="text-slate-500">Nenhum colaborador encontrado.</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Buscar UG Superior (Pai) */}
+      {ugPaiModalOpen && (
+        <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-950 w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Buscar UG Superior (Pai)</h3>
+              <Button variant="secondary" onClick={closeUgPaiSearch} title="Fechar" aria-label="Fechar" className="px-2 py-2"><X size={18} /></Button>
+            </div>
+            <input
+              className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Digite código ou nome da UG..."
+              value={ugQuery}
+              onChange={(e) => setUgQuery(e.target.value)}
+              autoComplete="off"
+            />
+            <div className="mt-3 max-h-[360px] overflow-y-auto pr-1 divide-y divide-slate-200 dark:divide-slate-800">
+              {modalFilteredUgs.length === 0 ? (
+                <p className="text-slate-500">Nenhuma UG encontrada.</p>
+              ) : (
+                modalFilteredUgs.map((u) => (
+                  <button key={u.id} onClick={() => selectUGPai(u)} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">{u.codigo} - {u.nome}</div>
+                    <div className="text-xs text-slate-600 dark:text-slate-300">Empresa ID: {u.empresa_id}</div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

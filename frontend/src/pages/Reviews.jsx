@@ -66,7 +66,7 @@ export default function ReviewsPage() {
   const load = React.useCallback(() => {
     setLoading(true);
     setError(null);
-    Promise.all([getReviewPeriods(), getEmployees(), getCompanies(), getUsers(), getManagementUnits()])
+  Promise.all([getReviewPeriods(), getEmployees(), getCompanies(), getUsers(), getManagementUnits()])
       .then(([pData, eData, cData, uData, ugData]) => {
         setPeriods(pData || []);
         setEmployees(eData || []);
@@ -74,7 +74,7 @@ export default function ReviewsPage() {
         setUsers(uData || []);
         setUgs(ugData || []);
       })
-      .catch((err) => setError(err.message || 'Erro'))
+      .catch((err) => setError(err.message || t('error_generic') || 'Erro'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -110,12 +110,12 @@ export default function ReviewsPage() {
     const errs = {};
     if (!form.descricao) errs.descricao = 'Descrição é obrigatória';
     if (!form.data_abertura) errs.data_abertura = 'Data de abertura é obrigatória';
-    if (!form.data_inicio_nova_vida_util) errs.data_inicio_nova_vida_util = 'Início da nova vida útil é obrigatório';
+    if (!form.data_inicio_nova_vida_util) errs.data_inicio_nova_vida_util = t('field_required') || 'Início da nova vida útil é obrigatório';
     if (!form.data_fechamento_prevista) errs.data_fechamento_prevista = 'Data de fechamento prevista é obrigatória';
     if (!form.empresa_id) errs.empresa_id = 'Empresa é obrigatória';
     if (!form.ug_id) errs.ug_id = 'UG é obrigatória';
-    if (!form.responsavel_id) errs.responsavel_id = 'Responsável é obrigatório';
-    if (!['Aberto', 'Em Andamento', 'Fechado'].includes(form.status)) errs.status = 'Status inválido';
+    if (!form.responsavel_id) errs.responsavel_id = t('field_required') || 'Responsável é obrigatório';
+    if (!['Aberto', 'Em Andamento', 'Fechado'].includes(form.status)) errs.status = t('invalid_status') || 'Status inválido';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -136,7 +136,7 @@ export default function ReviewsPage() {
           observacoes: form.observacoes || null,
         };
         const created = await createReviewPeriod(payload);
-        toast.success('Período criado com sucesso');
+        toast.success(t('created_successfully') || 'Período criado com sucesso');
         setEditingId(created.id);
       } else {
         const payload = {
@@ -152,11 +152,11 @@ export default function ReviewsPage() {
           observacoes: form.observacoes || undefined,
         };
         await updateReviewPeriod(editingId, payload);
-        toast.success('Período atualizado com sucesso');
+        toast.success(t('updated_successfully') || 'Período atualizado com sucesso');
       }
       await load();
     } catch (err) {
-      toast.error(err.message || 'Erro ao salvar');
+      toast.error(err.message || t('error_saving') || 'Erro ao salvar');
     }
   };
 
@@ -178,35 +178,35 @@ export default function ReviewsPage() {
   };
 
   const onDelete = async (id) => {
-    if (!confirm('Confirmar exclusão do período?')) return;
+    if (!confirm(t('confirm_delete_period') || 'Confirmar exclusão do período?')) return;
     try {
       await deleteReviewPeriod(id);
-      toast.success('Período excluído');
+      toast.success(t('deleted_successfully') || 'Período excluído');
       if (editingId === id) {
         onNew();
       }
       await load();
     } catch (err) {
-      toast.error(err.message || 'Erro ao excluir');
+      toast.error(err.message || t('error_deleting') || 'Erro ao excluir');
     }
   };
 
   const onClosePeriod = async () => {
-    if (!editingId) return toast.error('Selecione um período');
+    if (!editingId) return toast.error(t('select_period_msg') || 'Selecione um período');
     try {
       const updated = await closeReviewPeriod(editingId);
-      toast.success('Período fechado');
+      toast.success(t('period_closed') || 'Período fechado');
       onEdit(updated);
       await load();
     } catch (err) {
-      toast.error(err.message || 'Erro ao fechar período');
+      toast.error(err.message || t('error_closing_period') || 'Erro ao fechar período');
     }
   };
 
   const fileInputRef = React.useRef(null);
   const onUploadClick = () => {
-    if (!editingId) return toast.error('Selecione um período');
-    if (form.status === 'Fechado') return toast.error('Período está fechado. Upload não permitido.');
+    if (!editingId) return toast.error(t('select_period_msg') || 'Selecione um período');
+    if (form.status === 'Fechado') return toast.error(t('period_closed_upload_not_allowed') || 'Período está fechado. Upload não permitido.');
     setUploadModalOpen(true);
     setUploadDragActive(false);
     setIsUploading(false);
@@ -218,7 +218,7 @@ export default function ReviewsPage() {
     if (!file) return;
     const name = (file.name || '').toLowerCase();
     if (!(name.endsWith('.csv') || name.endsWith('.xlsx'))) {
-      toast.error('Formato inválido. Envie .csv ou .xlsx');
+      toast.error(t('invalid_file_format') || 'Formato inválido. Envie .csv ou .xlsx');
       return;
     }
     setUploadFile(file);
@@ -238,19 +238,19 @@ export default function ReviewsPage() {
   };
 
   const startUpload = async () => {
-    if (!editingId) return toast.error('Selecione um período');
-    if (!uploadFile) return toast.error('Selecione um arquivo');
+    if (!editingId) return toast.error(t('select_period_msg') || 'Selecione um período');
+    if (!uploadFile) return toast.error(t('select_file_msg') || 'Selecione um arquivo');
     try {
       setIsUploading(true);
       const result = await uploadReviewBase(editingId, uploadFile);
       setUploadResult(result);
-      toast.success(`Importação: ${result.importados} importados, ${result.rejeitados} rejeitados.`);
+      toast.success(t('import_summary', { imported: result.importados, rejected: result.rejeitados }) || `Importação: ${result.importados} importados, ${result.rejeitados} rejeitados.`);
       // Opcional: buscar itens
       try {
         await getReviewItems(editingId);
       } catch {}
     } catch (err) {
-      toast.error(err.message || 'Falha no upload');
+      toast.error(err.message || t('upload_failed') || 'Falha no upload');
     } finally {
       setIsUploading(false);
     }
@@ -269,22 +269,22 @@ export default function ReviewsPage() {
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 
   const columns = [
-    { key: 'codigo', header: 'Código', width: 120 },
-    { key: 'descricao', header: 'Descrição do Período' },
-    { key: 'data_abertura', header: 'Data de Abertura', width: 140 },
-    { key: 'empresa_id', header: 'Empresa', width: 220, render: (value) => {
+    { key: 'codigo', header: t('period_code') || 'Código', width: 120 },
+    { key: 'descricao', header: t('period_description') || 'Descrição do Período' },
+    { key: 'data_abertura', header: t('open_date') || 'Data de Abertura', width: 140 },
+    { key: 'empresa_id', header: t('company_label') || 'Empresa', width: 220, render: (value) => {
       const c = companies.find((x) => x.id === value);
       return c ? c.name : '—';
     } },
-    { key: 'ug_id', header: 'UG', width: 220, render: (value) => {
+    { key: 'ug_id', header: t('ug_label') || 'UG', width: 220, render: (value) => {
       const g = ugs.find((x) => x.id === value);
       return g ? `${g.codigo} - ${g.nome}` : '—';
     } },
-    { key: 'responsavel_id', header: 'Responsável', width: 220, render: (value) => {
+    { key: 'responsavel_id', header: t('review_responsible') || 'Responsável', width: 220, render: (value) => {
       const u = users.find((x) => x.id === value);
       return u ? u.nome_completo : '—';
     } },
-    { key: 'status', header: 'Status', width: 140 },
+    { key: 'status', header: t('status') || 'Status', width: 140 },
   ];
 
   const disabled = form.status === 'Fechado';
@@ -307,16 +307,16 @@ export default function ReviewsPage() {
   return (
     <section>
       <div className="flex items-center justify-between mb-4 px-4">
-          <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Abertura de Período de Revisão de Vidas Úteis</h2>
+          <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('review_period_open_title') || 'Abertura de Período de Revisão de Vidas Úteis'}</h2>
           <div className="flex items-center gap-2">
             <Button variant="secondary" title={t('new') || '+ Novo'} aria-label={t('new') || 'Novo'} onClick={onNew} className="px-2 py-2"><Plus size={18} /></Button>
             <Button variant="primary" title={t('save') || 'Salvar'} aria-label={t('save') || 'Salvar'} onClick={onSave} className="px-2 py-2"><Save size={18} /></Button>
-            <Button variant="secondary" title="Delegação" aria-label="Delegação" onClick={() => navigate('/reviews/delegacao')} className="px-3 py-2"><FileText size={18} /></Button>
+            <Button variant="secondary" title={t('nav_review_delegations') || 'Delegação'} aria-label={t('nav_review_delegations') || 'Delegação'} onClick={() => navigate('/reviews/delegacao')} className="px-3 py-2"><FileText size={18} /></Button>
             <Button variant="secondary" title={t('edit') || 'Editar'} aria-label={t('edit') || 'Editar'} disabled={!editingId} onClick={() => editingId && onEdit(periods.find((x) => x.id === editingId))} className="px-2 py-2"><Pencil size={18} /></Button>
             <Button variant="danger" title={t('delete') || 'Excluir'} aria-label={t('delete') || 'Excluir'} disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="px-2 py-2"><Trash2 size={18} /></Button>
             <Button variant="secondary" title={t('print') || 'Imprimir'} aria-label={t('print') || 'Imprimir'} onClick={() => window.print()} className="px-2 py-2"><Printer size={18} /></Button>
-            <Button variant="secondary" title={t('export_excel') || 'Exportar Excel'} aria-label={t('export_excel') || 'Exportar Excel'} onClick={() => toast('Exportação Excel em breve')} className="px-2 py-2"><FileDown size={18} /></Button>
-            <Button variant="secondary" title={t('export_pdf') || 'Exportar PDF'} aria-label={t('export_pdf') || 'Exportar PDF'} onClick={() => toast('Exportação PDF em breve')} className="px-2 py-2"><FileText size={18} /></Button>
+            <Button variant="secondary" title={t('export_excel') || 'Exportar Excel'} aria-label={t('export_excel') || 'Exportar Excel'} onClick={() => toast(t('coming_soon') || 'Em breve.')} className="px-2 py-2"><FileDown size={18} /></Button>
+            <Button variant="secondary" title={t('export_pdf') || 'Exportar PDF'} aria-label={t('export_pdf') || 'Exportar PDF'} onClick={() => toast(t('coming_soon') || 'Em breve.')} className="px-2 py-2"><FileText size={18} /></Button>
           </div>
         </div>
 
@@ -324,45 +324,45 @@ export default function ReviewsPage() {
         {/* Formulário (Esquerda) */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Input label="Código da Revisão" name="codigo" value={form.codigo} onChange={() => {}} disabled />
-            <Select label="Status" name="status" value={form.status} onChange={onChange} disabled={disabled}>
-              <option value="Aberto">Aberto</option>
-              <option value="Em Andamento">Em Andamento</option>
-              <option value="Fechado">Fechado</option>
+            <Input label={t('period_code') || 'Código da Revisão'} name="codigo" value={form.codigo} onChange={() => {}} disabled />
+            <Select label={t('status') || 'Status'} name="status" value={form.status} onChange={onChange} disabled={disabled}>
+              <option value="Aberto">{t('open_status') || 'Aberto'}</option>
+              <option value="Em Andamento">{t('in_progress_status') || 'Em Andamento'}</option>
+              <option value="Fechado">{t('closed_status') || 'Fechado'}</option>
             </Select>
-            <Input label="Descrição do Período" name="descricao" value={form.descricao} onChange={onChange} error={errors.descricao} disabled={disabled} />
+            <Input label={t('period_description') || 'Descrição do Período'} name="descricao" value={form.descricao} onChange={onChange} error={errors.descricao} disabled={disabled} />
 
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Input className="w-full" label="Empresa" name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} error={errors.empresa_id} disabled />
+                <Input className="w-full" label={t('company_label') || 'Empresa'} name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} error={errors.empresa_id} disabled />
               </div>
-              <Button variant="secondary" onClick={() => setCompanyModalOpen(true)} disabled={disabled} title="Buscar Empresa" aria-label="Buscar Empresa" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+              <Button variant="secondary" onClick={() => setCompanyModalOpen(true)} disabled={disabled} title={t('search_company') || 'Buscar Empresa'} aria-label={t('search_company') || 'Buscar Empresa'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
 
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Input className="w-full" label="UG - Unidade Gerencial" name="ug_nome" value={selectedUG ? `${selectedUG.codigo} - ${selectedUG.nome}` : ''} onChange={() => {}} error={errors.ug_id} disabled />
+                <Input className="w-full" label={t('ug_label') || 'UG - Unidade Gerencial'} name="ug_nome" value={selectedUG ? `${selectedUG.codigo} - ${selectedUG.nome}` : ''} onChange={() => {}} error={errors.ug_id} disabled />
               </div>
-              <Button variant="secondary" onClick={() => setUgModalOpen(true)} disabled={disabled || !form.empresa_id} title="Buscar UG" aria-label="Buscar UG" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+              <Button variant="secondary" onClick={() => setUgModalOpen(true)} disabled={disabled || !form.empresa_id} title={t('search_ug') || 'Buscar UG'} aria-label={t('search_ug') || 'Buscar UG'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
 
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Input className="w-full" label="Responsável pela Revisão" name="responsavel_nome" value={selectedResponsavel ? selectedResponsavel.nome_completo : ''} onChange={() => {}} error={errors.responsavel_id} disabled />
+                <Input className="w-full" label={t('review_responsible') || 'Responsável pela Revisão'} name="responsavel_nome" value={selectedResponsavel ? selectedResponsavel.nome_completo : ''} onChange={() => {}} error={errors.responsavel_id} disabled />
               </div>
-              <Button variant="secondary" onClick={() => setRespModalOpen(true)} disabled={disabled} title="Buscar Colaborador" aria-label="Buscar Colaborador" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+              <Button variant="secondary" onClick={() => setRespModalOpen(true)} disabled={disabled} title={t('search_employee') || 'Buscar Colaborador'} aria-label={t('search_employee') || 'Buscar Colaborador'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
-            <Input type="date" label="Data de Abertura" name="data_abertura" value={form.data_abertura} onChange={onChange} error={errors.data_abertura} disabled={disabled} />
-            <Input type="date" label="Início Nova Vida Útil" name="data_inicio_nova_vida_util" value={form.data_inicio_nova_vida_util} onChange={onChange} error={errors.data_inicio_nova_vida_util} disabled={disabled} />
-            <Input type="date" label="Data de Fechamento Prevista" name="data_fechamento_prevista" value={form.data_fechamento_prevista} onChange={onChange} error={errors.data_fechamento_prevista} disabled={disabled} />
-            <Input type="date" label="Data de Fechamento" name="data_fechamento" value={form.data_fechamento} onChange={onChange} disabled />
+            <Input type="date" label={t('open_date') || 'Data de Abertura'} name="data_abertura" value={form.data_abertura} onChange={onChange} error={errors.data_abertura} disabled={disabled} />
+            <Input type="date" label={t('start_new_useful_life') || 'Início Nova Vida Útil'} name="data_inicio_nova_vida_util" value={form.data_inicio_nova_vida_util} onChange={onChange} error={errors.data_inicio_nova_vida_util} disabled={disabled} />
+            <Input type="date" label={t('expected_close_date') || 'Data de Fechamento Prevista'} name="data_fechamento_prevista" value={form.data_fechamento_prevista} onChange={onChange} error={errors.data_fechamento_prevista} disabled={disabled} />
+            <Input type="date" label={t('close_date') || 'Data de Fechamento'} name="data_fechamento" value={form.data_fechamento} onChange={onChange} disabled />
              <div className="md:col-span-2">
-               <Input label="Observações" name="observacoes" value={form.observacoes} onChange={onChange} multiline disabled={disabled} />
+               <Input label={t('observations') || 'Observações'} name="observacoes" value={form.observacoes} onChange={onChange} multiline disabled={disabled} />
              </div>
           </div>
           <div className="flex items-center gap-2 mt-3">
-            <Button variant="secondary" onClick={onUploadClick} disabled={disabled || !editingId} title="Upload Base" aria-label="Upload Base" className="px-2 py-2"><Upload size={18} /></Button>
-            <Button variant="danger" onClick={onClosePeriod} disabled={!editingId || disabled} title="Fechar Período" aria-label="Fechar Período" className="px-2 py-2"><Lock size={18} /></Button>
+            <Button variant="secondary" onClick={onUploadClick} disabled={disabled || !editingId} title={t('upload_base') || 'Upload Base'} aria-label={t('upload_base') || 'Upload Base'} className="px-2 py-2"><Upload size={18} /></Button>
+            <Button variant="danger" onClick={onClosePeriod} disabled={!editingId || disabled} title={t('close_period') || 'Fechar Período'} aria-label={t('close_period') || 'Fechar Período'} className="px-2 py-2"><Lock size={18} /></Button>
             <input type="file" accept=".csv,.xlsx" ref={fileInputRef} onChange={onInputFileChange} className="hidden" />
           </div>
         </div>
@@ -370,12 +370,12 @@ export default function ReviewsPage() {
         {/* Listagem (Direita) */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1" placeholder="Pesquisar por código, descrição ou status" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1" placeholder={t('search_periods_placeholder') || 'Pesquisar por código, descrição ou status'} value={query} onChange={(e) => setQuery(e.target.value)} />
             <Select label="" name="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">Todos</option>
-              <option value="Aberto">Aberto</option>
-              <option value="Em Andamento">Em Andamento</option>
-              <option value="Fechado">Fechado</option>
+              <option value="">{t('all') || 'Todos'}</option>
+              <option value="Aberto">{t('review_status_open') || 'Aberto'}</option>
+              <option value="Em Andamento">{t('review_status_in_progress') || 'Em Andamento'}</option>
+              <option value="Fechado">{t('review_status_closed') || 'Fechado'}</option>
             </Select>
           </div>
 
@@ -383,11 +383,11 @@ export default function ReviewsPage() {
           {error && <p className="text-red-600">{t('backend_error') || 'Erro no backend'}</p>}
           {!loading && !error && (
             filtered.length === 0 ? (
-              <p className="text-slate-500">Nenhum período encontrado.</p>
+              <p className="text-slate-500">{t('no_periods_found') || 'Nenhum período encontrado.'}</p>
             ) : (
               <>
                 <Table columns={columns} data={filtered} onRowClick={onEdit} />
-                <div className="text-sm text-slate-600 dark:text-slate-300 mt-3">{filtered.length} períodos</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300 mt-3">{t('periods_count', { count: filtered.length }) || `${filtered.length} períodos`}</div>
               </>
             )
           )}
@@ -400,19 +400,19 @@ export default function ReviewsPage() {
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-xl bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Buscar Empresa</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('search_company_title') || 'Buscar Empresa'}</div>
                 <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setCompanyModalOpen(false)}><X size={18} /></button>
               </div>
               <div className="p-4">
-                <Input label="Pesquisar" name="companySearch" value={companySearch} onChange={(e) => setCompanySearch(e.target.value)} />
+                <Input label={t('search') || 'Pesquisar'} name="companySearch" value={companySearch} onChange={(e) => setCompanySearch(e.target.value)} />
                 <div className="mt-3 max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
                   {modalFilteredCompanies.length === 0 ? (
-                    <div className="text-slate-500">Nenhuma empresa encontrada.</div>
+                    <div className="text-slate-500">{t('no_companies_found') || 'Nenhuma empresa encontrada.'}</div>
                   ) : (
                     modalFilteredCompanies.map((c) => (
                       <button key={c.id} className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => { setForm((f) => ({ ...f, empresa_id: String(c.id) })); setCompanyModalOpen(false); setCompanySearch(''); }}>
                         <div className="font-medium">{c.name}</div>
-                        {c.cnpj && <div className="text-xs text-slate-500">CNPJ: {c.cnpj}</div>}
+                        {c.cnpj && <div className="text-xs text-slate-500">{t('cnpj') || 'CNPJ'}: {c.cnpj}</div>}
                       </button>
                     ))
                   )}
@@ -429,14 +429,14 @@ export default function ReviewsPage() {
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-xl bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Buscar Colaborador</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('search_employee_title') || 'Buscar Colaborador'}</div>
                 <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setRespModalOpen(false)}><X size={18} /></button>
               </div>
               <div className="p-4">
-                <Input label="Pesquisar" name="respQuery" value={respQuery} onChange={(e) => setRespQuery(e.target.value)} />
+                <Input label={t('search') || 'Pesquisar'} name="respQuery" value={respQuery} onChange={(e) => setRespQuery(e.target.value)} />
                 <div className="mt-3 max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
                   {modalFilteredEmployees.length === 0 ? (
-                    <div className="text-slate-500">Nenhum colaborador encontrado.</div>
+                    <div className="text-slate-500">{t('no_employees_found') || 'Nenhum colaborador encontrado.'}</div>
                   ) : (
                     <>
                       {modalFilteredEmployees.map((emp) => {
@@ -457,10 +457,10 @@ export default function ReviewsPage() {
                                 setRespModalOpen(false);
                                 setRespQuery('');
                                 setErrors((prev) => ({ ...prev, responsavel_id: null }));
-                                toast.success('Responsável selecionado');
+                                toast.success(t('responsible_selected') || 'Responsável selecionado');
                               } else {
-                                toast.error('Colaborador não possui usuário vinculado');
-                                setErrors((prev) => ({ ...prev, responsavel_id: 'Usuário não encontrado para o colaborador selecionado' }));
+                                toast.error(t('employee_no_user') || 'Colaborador não possui usuário vinculado');
+                                setErrors((prev) => ({ ...prev, responsavel_id: t('user_not_found_for_employee') || 'Usuário não encontrado para o colaborador selecionado' }));
                               }
                             }}
                           >
@@ -486,19 +486,19 @@ export default function ReviewsPage() {
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-xl bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Buscar UG</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('search_ug_title') || 'Buscar UG'}</div>
                 <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setUgModalOpen(false)}><X size={18} /></button>
               </div>
               <div className="p-4">
-                <Input label="Pesquisar" name="ugQuery" value={ugQuery} onChange={(e) => setUgQuery(e.target.value)} />
+                <Input label={t('search') || 'Pesquisar'} name="ugQuery" value={ugQuery} onChange={(e) => setUgQuery(e.target.value)} />
                 <div className="mt-3 max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
                   {modalFilteredUgs.length === 0 ? (
-                    <div className="text-slate-500">Nenhuma UG encontrada.</div>
+                    <div className="text-slate-500">{t('no_ugs_found') || 'Nenhuma UG encontrada.'}</div>
                   ) : (
                     modalFilteredUgs.map((u) => (
                       <button key={u.id} className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => { setForm((f) => ({ ...f, ug_id: String(u.id) })); setUgModalOpen(false); setUgQuery(''); setErrors((prev) => ({ ...prev, ug_id: null })); }}>
                         <div className="font-medium">{u.codigo} - {u.nome}</div>
-                        <div className="text-xs text-slate-500">Empresa: {companies.find((c) => c.id === u.empresa_id)?.name || '—'}</div>
+                        <div className="text-xs text-slate-500">{t('company_colon') || 'Empresa:'} {companies.find((c) => c.id === u.empresa_id)?.name || '—'}</div>
                       </button>
                     ))
                   )}
@@ -515,7 +515,7 @@ export default function ReviewsPage() {
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-xl bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Upload Base (.csv/.xlsx)</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('upload_base_title') || 'Upload Base (.csv/.xlsx)'}</div>
                 <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setUploadModalOpen(false)}><X size={18} /></button>
               </div>
               <div className="p-4 space-y-3">
@@ -527,10 +527,10 @@ export default function ReviewsPage() {
                 >
                   {!uploadFile ? (
                     <>
-                      <div className="text-slate-700 dark:text-slate-300">Arraste e solte o arquivo aqui</div>
-                      <div className="text-xs text-slate-500 mt-1">Formatos: .csv ou .xlsx</div>
+                      <div className="text-slate-700 dark:text-slate-300">{t('drag_drop_here') || 'Arraste e solte o arquivo aqui'}</div>
+                      <div className="text-xs text-slate-500 mt-1">{t('file_formats') || 'Formatos: .csv ou .xlsx'}</div>
                       <div className="mt-3">
-                        <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="px-3 py-2"><Upload size={18} /> Selecionar arquivo</Button>
+                        <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="px-3 py-2"><Upload size={18} /> {t('select_file') || 'Selecionar arquivo'}</Button>
                         <input type="file" accept=".csv,.xlsx" ref={fileInputRef} onChange={onInputFileChange} className="hidden" />
                       </div>
                     </>
@@ -539,12 +539,12 @@ export default function ReviewsPage() {
                       <div className="font-medium">{uploadFile.name}</div>
                       <div className="text-xs text-slate-500">{Math.round(uploadFile.size / 1024)} KB</div>
                       {!isUploading && !uploadResult && (
-                        <div className="mt-2 text-xs text-slate-600">Arquivo selecionado. Clique 'Enviar arquivo' para iniciar.</div>
+                        <div className="mt-2 text-xs text-slate-600">{t('file_selected_click_send') || "Arquivo selecionado. Clique 'Enviar arquivo' para iniciar."}</div>
                       )}
                       {/* Botão visível dentro da área ao selecionar o arquivo */}
                       <div className="mt-3 flex justify-center">
                         <Button variant="primary" onClick={startUpload} disabled={isUploading} className="px-3 py-2">
-                          {isUploading ? 'Enviando...' : 'Enviar arquivo'}
+                          {isUploading ? (t('sending') || 'Enviando...') : (t('send_file') || 'Enviar arquivo')}
                         </Button>
                       </div>
                     </div>
@@ -552,17 +552,17 @@ export default function ReviewsPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <Button variant="secondary" onClick={() => { setUploadModalOpen(false); setUploadFile(null); setUploadResult(null); }} className="px-3 py-2">Fechar</Button>
-                  <Button variant="primary" onClick={startUpload} disabled={!uploadFile || isUploading} className="px-3 py-2">{isUploading ? 'Enviando...' : 'Enviar arquivo'}</Button>
+                  <Button variant="secondary" onClick={() => { setUploadModalOpen(false); setUploadFile(null); setUploadResult(null); }} className="px-3 py-2">{t('close') || 'Fechar'}</Button>
+                  <Button variant="primary" onClick={startUpload} disabled={!uploadFile || isUploading} className="px-3 py-2">{isUploading ? (t('sending') || 'Enviando...') : (t('send_file') || 'Enviar arquivo')}</Button>
                 </div>
 
                 {uploadResult && (
                   <div className="mt-2 text-sm">
-                    <div className="font-medium">Resultado da importação</div>
-                    <div className="text-slate-700 dark:text-slate-300">Importados: {uploadResult.importados} • Rejeitados: {uploadResult.rejeitados}</div>
+                    <div className="font-medium">{t('import_result_title') || 'Resultado da importação'}</div>
+                    <div className="text-slate-700 dark:text-slate-300">{t('import_result_counts', { imported: uploadResult.importados, rejected: uploadResult.rejeitados }) || `Importados: ${uploadResult.importados} • Rejeitados: ${uploadResult.rejeitados}`}</div>
                     {uploadResult.erros && uploadResult.erros.length > 0 && (
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-slate-600">Ver erros</summary>
+                        <summary className="cursor-pointer text-slate-600">{t('view_errors') || 'Ver erros'}</summary>
                         <ul className="mt-2 max-h-40 overflow-y-auto text-xs list-disc pl-5">
                           {uploadResult.erros.slice(0, 50).map((e, idx) => (
                             <li key={idx}>{e}</li>

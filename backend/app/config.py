@@ -1,9 +1,30 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Carregamento robusto de .env
+# - Tenta carregar do root do projeto e do diretório backend
+# - Não sobrescreve variáveis já presentes no ambiente
+def _load_envs():
+    try:
+        root_env = Path(__file__).resolve().parents[2] / ".env"
+        backend_env = Path(__file__).resolve().parents[1] / ".env"
+        if root_env.exists():
+            load_dotenv(dotenv_path=root_env, override=False)
+        if backend_env.exists():
+            load_dotenv(dotenv_path=backend_env, override=False)
+        # Carrega variáveis do ambiente atual sem sobrescrever
+        load_dotenv(override=False)
+    except Exception:
+        # Em caso de qualquer problema, segue sem travar
+        pass
 
-# Allow explicit DATABASE_URL override via environment
+_load_envs()
+
+# Banco de dados: somente PostgreSQL
+# 1) Se DATABASE_URL estiver definido, usa diretamente.
+# 2) Caso contrário, monta a URL a partir das variáveis DB_*.
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
@@ -12,10 +33,4 @@ if not DATABASE_URL:
     DB_NAME = os.getenv("DB_NAME", "assetlife")
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-
-    # If Postgres credentials are provided or USE_POSTGRES=1, use Postgres
-    # Otherwise, fall back to local SQLite for development to avoid connection issues
-    if DB_PASSWORD or os.getenv("USE_POSTGRES") == "1":
-        DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    else:
-        DATABASE_URL = os.getenv("SQLITE_URL", "sqlite:///./assetlife.db")
+    DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"

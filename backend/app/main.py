@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
@@ -34,15 +35,27 @@ import secrets
 
 app = FastAPI(title="Asset Life API", version="0.2.0")
 
+# CORS de desenvolvimento: amplia suporte para localhost, 127.0.0.1 e IPs de rede
+# Inclui origens comuns de Vite e permite configurar um origin adicional via env FRONTEND_ORIGIN
 origins = [
+    # localhost (Vite ports mais comuns)
     "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176",
     "http://localhost:5180", "http://localhost:5181",
+    # 127.0.0.1 equivalentes
+    "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175", "http://127.0.0.1:5176",
     "http://127.0.0.1:5180", "http://127.0.0.1:5181",
 ]
+
+# Origin adicional via variável de ambiente (ex.: "http://192.168.101.8:5175")
+_frontend_origin = os.getenv("FRONTEND_ORIGIN")
+if _frontend_origin:
+    origins.append(_frontend_origin)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    # Permite origens de redes privadas comuns além de localhost/127.0.0.1
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
@@ -280,7 +293,9 @@ def on_startup():
     try:
         SA_Base.metadata.create_all(bind=engine)
     except Exception as e:
+        import traceback
         print("DB init error:", e)
+        traceback.print_exc()
 
     # Seed default transactions if none exist or missing
     try:
@@ -298,6 +313,7 @@ def on_startup():
             {"nome_tela": "Revisões - Períodos", "rota": "/reviews/periodos", "descricao": "Revisões por período"},
             {"nome_tela": "Revisões - Delegação", "rota": "/reviews/delegacao", "descricao": "Delegação de revisões"},
             {"nome_tela": "Revisões - Vidas Úteis", "rota": "/reviews/vidas-uteis", "descricao": "Revisão de vidas úteis"},
+            {"nome_tela": "Revisões - Massa", "rota": "/revisoes-massa", "descricao": "Revisões em massa de ativos"},
             {"nome_tela": "Relatórios", "rota": "/reports", "descricao": "Relatórios"},
             {"nome_tela": "Ativos", "rota": "/assets", "descricao": "Gestão de ativos"},
         ]
@@ -308,7 +324,9 @@ def on_startup():
         db.commit()
     except Exception as e:
         # Seed errors shouldn't break startup; just log
+        import traceback
         print("Seed transacoes error:", e)
+        traceback.print_exc()
     finally:
         try:
             db.close()
@@ -317,7 +335,19 @@ def on_startup():
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    # Checagem real de conectividade com o banco
+    try:
+        with engine.connect() as conn:
+            conn.execute(sa.text("SELECT 1"))
+        return {"status": "ok", "db": "ok"}
+    except UnicodeDecodeError:
+        # Alguns clusters locais do PostgreSQL podem disparar erros de encoding
+        # (ex.: LATIN1/WIN1252) ao conectar/consultar. Não é um erro de rede.
+        # Para não travar o frontend com 503, retornamos OK com detalhe.
+        return {"status": "ok", "db": "unknown", "detail": "encoding_issue"}
+    except Exception as e:
+        # Não expor credenciais, apenas o tipo do erro
+        return JSONResponse(status_code=503, content={"status": "error", "db": "error", "detail": e.__class__.__name__})
 
 @app.get("/")
 def root():
@@ -1686,6 +1716,9 @@ class RevisaoItemUpdate(BaseModel):
     condicao_fisica: Optional[str] = None  # Bom | Regular | Ruim
     justificativa: Optional[str] = None
     revisor_id: Optional[int] = None
+    incremento: Optional[str] = None  # Acréscimo | Decréscimo | Manter
+    motivo: Optional[str] = None
+    nova_data_fim: Optional[date] = None
 
 def _add_months(d: date, months: int) -> date:
     import calendar
@@ -1694,6 +1727,13 @@ def _add_months(d: date, months: int) -> date:
     last_day = calendar.monthrange(y, m)[1]
     day = min(d.day, last_day)
     return date(y, m, day)
+
+# diferença em meses entre duas datas, ajustando pelo dia do mês
+def _months_diff(start: date, end: date) -> int:
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    if end.day < start.day:
+        months -= 1
+    return max(0, months)
 
 @app.put("/revisoes/{rev_id}/itens/{item_id}", response_model=RevisaoItemOut)
 def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, db: Session = Depends(get_db)):
@@ -1720,6 +1760,20 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
 
     # Validações de negócio
     vida_revisada = data.get("vida_util_revisada")
+    nova_data_fim = data.get("nova_data_fim")
+    # Se informada nova_data_fim e não informada vida_util_revisada, calcular meses a partir do início definido no período
+    if vida_revisada is None and nova_data_fim is not None:
+        if not periodo.data_inicio_nova_vida_util:
+            raise HTTPException(status_code=400, detail="Defina a Data de Início da Nova Vida Útil no cabeçalho do período")
+        # calcular diferença em meses entre início e nova_data_fim
+        start = periodo.data_inicio_nova_vida_util
+        end = nova_data_fim
+        # months diff (aproximação similar à função de front-end)
+        months = (end.year - start.year) * 12 + (end.month - start.month)
+        # Ajuste por dia do mês
+        if end.day < start.day:
+            months -= 1
+        vida_revisada = max(0, months)
     if vida_revisada is not None:
         if vida_revisada <= 0:
             raise HTTPException(status_code=400, detail="Vida útil revisada deve ser maior que zero")
@@ -1729,6 +1783,13 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
         data_fim_rev = _add_months(periodo.data_inicio_nova_vida_util, vida_revisada)
         item.data_fim_revisada = data_fim_rev
         item.vida_util_revisada = vida_revisada
+    # Se vida revisada não informada mas nova_data_fim informada, persistir nova_data_fim diretamente
+    elif nova_data_fim is not None:
+        item.data_fim_revisada = nova_data_fim
+
+    # Calcular vida útil TOTAL original e revisada (do início da depreciação até o fim)
+    original_total = item.vida_util_periodos or ( _months_diff(item.data_inicio_depreciacao, item.data_fim_depreciacao) if item.data_fim_depreciacao else 0 )
+    revised_total = _months_diff(item.data_inicio_depreciacao, item.data_fim_revisada) if item.data_fim_revisada else None
 
     if "condicao_fisica" in data:
         cf = data.get("condicao_fisica")
@@ -1736,11 +1797,40 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
             raise HTTPException(status_code=400, detail="Condição física inválida")
         item.condicao_fisica = cf
 
+    # Incremento e motivo armazenados nos auxiliares
+    if "incremento" in data:
+        inc = data.get("incremento")
+        if inc is not None and inc not in {"Acréscimo", "Decréscimo", "Manter"}:
+            raise HTTPException(status_code=400, detail="Incremento inválido")
+
+        # Regras de coerência entre incremento e vida revisada
+        if inc == "Manter":
+            # Não permitir alteração de vida útil total
+            if revised_total is not None and original_total > 0 and revised_total != original_total:
+                raise HTTPException(status_code=400, detail="Para 'Manter', não é permitido alterar a vida útil total")
+        elif inc == "Decréscimo":
+            # Exigir revisão (meses ou nova data) e ser menor que a original em termos de vida total
+            if vida_revisada is None and nova_data_fim is None:
+                raise HTTPException(status_code=400, detail="Para 'Decréscimo', informe a nova vida útil ou nova data fim")
+            if revised_total is not None and original_total > 0 and revised_total >= original_total:
+                raise HTTPException(status_code=400, detail="Para 'Decréscimo', a vida útil total revisada deve ser menor que a original")
+        elif inc == "Acréscimo":
+            # Exigir revisão (meses ou nova data) e ser maior que a original em termos de vida total
+            if vida_revisada is None and nova_data_fim is None:
+                raise HTTPException(status_code=400, detail="Para 'Acréscimo', informe a nova vida útil ou nova data fim")
+            if revised_total is not None and original_total > 0 and revised_total <= original_total:
+                raise HTTPException(status_code=400, detail="Para 'Acréscimo', a vida útil total revisada deve ser maior que a original")
+
+        item.auxiliar2 = inc
+    if "motivo" in data:
+        mot = data.get("motivo")
+        item.auxiliar3 = mot
+
     # Regras de justificativa
     justificativa = data.get("justificativa")
     now18m = _add_months(date.today(), 18)
-    # se redução de vida útil, exigir justificativa
-    if vida_revisada is not None and vida_revisada < (item.vida_util_periodos or 0):
+    # se redução de vida útil TOTAL, exigir justificativa
+    if revised_total is not None and original_total > 0 and revised_total < original_total:
         if not justificativa:
             raise HTTPException(status_code=400, detail="Justificativa obrigatória para redução de vida útil")
     # se nova data fim < 18 meses, justificativa obrigatória
@@ -1748,7 +1838,7 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
         if not justificativa:
             raise HTTPException(status_code=400, detail="Justificativa obrigatória para vida útil com vencimento < 18 meses")
     # alerta original <18 meses exige justificativa detalhada em caso de redução
-    if item.data_fim_depreciacao and item.data_fim_depreciacao < now18m and vida_revisada is not None and vida_revisada < (item.vida_util_periodos or 0):
+    if item.data_fim_depreciacao and item.data_fim_depreciacao < now18m and revised_total is not None and original_total > 0 and revised_total < original_total:
         if not justificativa:
             raise HTTPException(status_code=400, detail="Justificativa obrigatória devido a risco (<18 meses)")
     # justificativa automática para itens não alterados
@@ -1797,6 +1887,186 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
         auxiliar3=item.auxiliar3,
         status=item.status,
         criado_em=item.criado_em,
+    )
+
+# --- Revisão em Massa ---
+class MassRevisionPayload(BaseModel):
+    ativos_ids: List[int]
+    incremento: Optional[str] = None  # Acréscimo | Decréscimo | Manter
+    nova_vida_util_anos: Optional[int] = None
+    nova_vida_util_meses: Optional[int] = None
+    nova_data_fim: Optional[date] = None
+    condicao_fisica: Optional[str] = None  # Bom | Regular | Ruim
+    motivo: Optional[str] = None
+    justificativa: Optional[str] = None
+
+class MassRevisionItemResult(BaseModel):
+    id: int
+    numero_imobilizado: str
+    changed: bool
+    error: Optional[str] = None
+    original_total_months: Optional[int] = None
+    revised_total_months: Optional[int] = None
+    original_end_date: Optional[date] = None
+    revised_end_date: Optional[date] = None
+    incremento: Optional[str] = None
+    motivo: Optional[str] = None
+
+class MassRevisionResponse(BaseModel):
+    total: int
+    updated: int
+    skipped: int
+    errors: List[str]
+    results: List[MassRevisionItemResult]
+
+@app.post("/revisoes/massa", response_model=MassRevisionResponse)
+def aplicar_revisao_massa(payload: MassRevisionPayload, current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not payload.ativos_ids:
+        raise HTTPException(status_code=400, detail="Lista de ativos vazia")
+
+    inc = payload.incremento
+    if inc is not None and inc not in {"Acréscimo", "Decréscimo", "Manter"}:
+        raise HTTPException(status_code=400, detail="Incremento inválido")
+
+    cf = payload.condicao_fisica
+    if cf is not None and cf not in {"Bom", "Regular", "Ruim"}:
+        raise HTTPException(status_code=400, detail="Condição física inválida")
+
+    # total de meses informado diretamente
+    meses_total_global: Optional[int] = None
+    if payload.nova_vida_util_anos is not None or payload.nova_vida_util_meses is not None:
+        anos = int(payload.nova_vida_util_anos or 0)
+        meses = int(payload.nova_vida_util_meses or 0)
+        meses_total_global = anos * 12 + meses
+        if meses_total_global <= 0 and inc != "Manter":
+            raise HTTPException(status_code=400, detail="Vida útil revisada deve ser maior que zero")
+
+    results: List[MassRevisionItemResult] = []
+    errors: List[str] = []
+    updated = 0
+    skipped = 0
+
+    now18m = _add_months(date.today(), 18)
+
+    for item_id in payload.ativos_ids:
+        item = db.query(RevisaoItemModel).filter(RevisaoItemModel.id == item_id).first()
+        if not item:
+            msg = f"Item {item_id} não encontrado"
+            errors.append(msg)
+            results.append(MassRevisionItemResult(id=item_id, numero_imobilizado=str(item_id), changed=False, error=msg))
+            skipped += 1
+            continue
+
+        # status bloqueado (se existir)
+        if (item.status or "").lower() == "travado":
+            msg = f"Item {item.id} está travado"
+            errors.append(msg)
+            results.append(MassRevisionItemResult(id=item.id, numero_imobilizado=item.numero_imobilizado, changed=False, error=msg))
+            skipped += 1
+            continue
+
+        original_end = item.data_fim_depreciacao
+        original_total = item.vida_util_periodos or ( _months_diff(item.data_inicio_depreciacao, item.data_fim_depreciacao) if item.data_fim_depreciacao else 0 )
+
+        vida_revisada: Optional[int] = None
+        nova_fim: Optional[date] = None
+
+        # Se nova data fim foi informada, calcular meses com base na data de início do próprio ativo
+        if payload.nova_data_fim is not None:
+            end = payload.nova_data_fim
+            start = item.data_inicio_depreciacao
+            vida_revisada = _months_diff(start, end)
+            nova_fim = end
+        elif meses_total_global is not None:
+            vida_revisada = meses_total_global
+            nova_fim = _add_months(item.data_inicio_depreciacao, vida_revisada)
+
+        # Coerência de incremento
+        revised_total = _months_diff(item.data_inicio_depreciacao, nova_fim) if nova_fim else None
+
+        try:
+            if inc == "Manter":
+                if revised_total is not None and original_total > 0 and revised_total != original_total:
+                    raise HTTPException(status_code=400, detail="Para 'Manter', não é permitido alterar a vida útil total")
+            elif inc == "Decréscimo":
+                if vida_revisada is None and nova_fim is None:
+                    raise HTTPException(status_code=400, detail="Para 'Decréscimo', informe a nova vida útil ou nova data fim")
+                if revised_total is not None and original_total > 0 and revised_total >= original_total:
+                    raise HTTPException(status_code=400, detail="Para 'Decréscimo', a vida útil total revisada deve ser menor que a original")
+            elif inc == "Acréscimo":
+                if vida_revisada is None and nova_fim is None:
+                    raise HTTPException(status_code=400, detail="Para 'Acréscimo', informe a nova vida útil ou nova data fim")
+                if revised_total is not None and original_total > 0 and revised_total <= original_total:
+                    raise HTTPException(status_code=400, detail="Para 'Acréscimo', a vida útil total revisada deve ser maior que a original")
+
+            # Validações gerais
+            if vida_revisada is not None and vida_revisada <= 0 and inc != "Manter":
+                raise HTTPException(status_code=400, detail="Vida útil revisada deve ser maior que zero")
+            if nova_fim and nova_fim < now18m and inc != "Manter" and not (payload.justificativa or "").strip():
+                raise HTTPException(status_code=400, detail="Justificativa obrigatória para vida útil com vencimento < 18 meses")
+
+            # Persistir alterações
+            if cf is not None:
+                item.condicao_fisica = cf
+            if inc is not None:
+                item.auxiliar2 = inc
+            if payload.motivo is not None:
+                item.auxiliar3 = payload.motivo
+
+            if vida_revisada is not None:
+                item.vida_util_revisada = vida_revisada
+                item.data_fim_revisada = nova_fim
+                original_periodos = item.vida_util_periodos or 0
+                item.alterado = (original_periodos == 0) or (vida_revisada != original_periodos)
+                item.status = "Revisado" if item.alterado else (item.status or "Pendente")
+            elif nova_fim is not None:
+                # vida não informada, só data fim revisada
+                item.data_fim_revisada = nova_fim
+
+            if inc == "Manter" and not (payload.justificativa or "").strip():
+                item.justificativa = item.justificativa or "Ativo revisado, sem alteração de vida útil."
+            elif payload.justificativa is not None:
+                item.justificativa = payload.justificativa
+
+            updated += 1
+            results.append(MassRevisionItemResult(
+                id=item.id,
+                numero_imobilizado=item.numero_imobilizado,
+                changed=bool(item.alterado),
+                original_total_months=original_total,
+                revised_total_months=revised_total,
+                original_end_date=original_end,
+                revised_end_date=item.data_fim_revisada,
+                incremento=item.auxiliar2,
+                motivo=item.auxiliar3,
+            ))
+        except HTTPException as ex:
+            msg = ex.detail
+            errors.append(f"Item {item.id}: {msg}")
+            results.append(MassRevisionItemResult(
+                id=item.id,
+                numero_imobilizado=item.numero_imobilizado,
+                changed=False,
+                error=msg,
+                original_total_months=original_total,
+                revised_total_months=revised_total,
+                original_end_date=original_end,
+                revised_end_date=nova_fim,
+                incremento=inc,
+                motivo=payload.motivo,
+            ))
+            skipped += 1
+
+    db.commit()
+    audit(db, usuario_id=current_user.id, acao="revisao_massa", entidade="revisao_item", entidade_id=None,
+          detalhes=f"itens={updated}/{len(payload.ativos_ids)} inc={inc} motivo={payload.motivo}")
+
+    return MassRevisionResponse(
+        total=len(payload.ativos_ids),
+        updated=updated,
+        skipped=skipped,
+        errors=errors,
+        results=results,
     )
 
 # -----------------------------

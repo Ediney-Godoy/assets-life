@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, Users2, UserCog, Layers, FolderKanban, Wallet, Network, Crosshair, CalendarDays } from 'lucide-react';
 import { getCompanies, getReviewPeriods, getReviewItems, getReviewDelegations } from '../apiClient';
 import Pie3D from '../components/charts/Pie3D';
@@ -11,8 +11,11 @@ export default function DashboardPage({ registrationsOnly }) {
   const navigate = useNavigate();
   const [companies, setCompanies] = React.useState([]);
   const [companyId, setCompanyId] = React.useState('');
-  const [metrics, setMetrics] = React.useState({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0 });
+  const [metrics, setMetrics] = React.useState({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
   const [chartData, setChartData] = React.useState([]);
+  const [justifChartData, setJustifChartData] = React.useState([]);
+  // Rotação automática dos gráficos (mantendo estilo 3D)
+  const [rotationIndex, setRotationIndex] = React.useState(0);
 
   React.useEffect(() => {
     if (registrationsOnly) return;
@@ -30,7 +33,8 @@ export default function DashboardPage({ registrationsOnly }) {
     if (registrationsOnly) return;
     if (!companyId) {
       setChartData([]);
-      setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0 });
+      setJustifChartData([]);
+      setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
       return;
     }
     const init = async () => {
@@ -49,11 +53,18 @@ export default function DashboardPage({ registrationsOnly }) {
           const totalItems = itemsArr.length;
           const delegatedIds = new Set(delegsArr.map((d) => d.ativo_id));
           const assignedItems = delegatedIds.size;
+          const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          // Alinhar definição de "Revisados" com a view: status 'Revisado' OU alterado OU justificativa/condição física
           const reviewedItems = itemsArr.filter((i) => {
-            const s = String(i.status || '').toLowerCase();
-            return s === 'revisado' || s === 'concluido';
+            const s = normalize(i.status);
+            const statusReviewed = (s === 'revisado' || s === 'revisada');
+            const adjusted = Boolean(i.alterado);
+            const hasJustification = Boolean(String(i.justificativa || '').trim());
+            const hasCondicao = Boolean(String(i.condicao_fisica || '').trim());
+            return statusReviewed || adjusted || hasJustification || hasCondicao;
           }).length;
           const reviewedPct = totalItems ? Number(((reviewedItems / totalItems) * 100).toFixed(1)) : 0;
+          const adjustedItems = itemsArr.filter((i) => Boolean(i.alterado)).length;
           // Ativos totalmente depreciados: contar somente ativos principais (sub_numero === '0') cujo
           // valor contábil esteja zerado no principal e em todas as incorporações (se houverem)
           const groups = itemsArr.reduce((acc, it) => {
@@ -68,7 +79,7 @@ export default function DashboardPage({ registrationsOnly }) {
             const allZero = list.every((x) => Number(x.valor_contabil || 0) === 0);
             if (hasMain && allZero) fullyDepreciated += 1;
           });
-          setMetrics({ totalItems, assignedItems, reviewedItems, reviewedPct, fullyDepreciated });
+          setMetrics({ totalItems, assignedItems, reviewedItems, reviewedPct, fullyDepreciated, adjustedItems });
 
           const byUser = {};
           delegsArr.forEach((d) => {
@@ -79,18 +90,55 @@ export default function DashboardPage({ registrationsOnly }) {
           const series = Object.entries(byUser).map(([name, count]) => ({ name, y: count }));
           series.push({ name: t('dashboard_unassigned'), y: unassigned });
           setChartData(series);
+
+          // Agrupar justificativas das revisões (top N e "Outras justificativas")
+          const justifs = itemsArr
+            .map((it) => String(it.justificativa || '').trim())
+            .filter((j) => j.length > 0);
+
+          if (justifs.length > 0) {
+            const countsMap = new Map();
+            justifs.forEach((j) => {
+              const key = j.toLowerCase();
+              const prev = countsMap.get(key);
+              if (prev) {
+                prev.count += 1;
+              } else {
+                countsMap.set(key, { label: j, count: 1 });
+              }
+            });
+            const entries = Array.from(countsMap.values()).sort((a, b) => b.count - a.count);
+            const TOP_N = 8;
+            const top = entries.slice(0, TOP_N).map((e) => ({ name: e.label, y: e.count }));
+            const others = entries.slice(TOP_N).reduce((acc, e) => acc + e.count, 0);
+            if (others > 0) top.push({ name: t('dashboard_others_justifications'), y: others });
+            setJustifChartData(top);
+          } else {
+            setJustifChartData([]);
+          }
+
         } else {
           setChartData([]);
-          setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0 });
+          setJustifChartData([]);
+          setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
         }
       } catch (err) {
         console.error(err);
         setChartData([]);
-        setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0 });
+        setJustifChartData([]);
+        setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
       }
     };
     init();
   }, [registrationsOnly, companyId]);
+
+  // Intervalo de 10 segundos para alternar os gráficos automaticamente
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      setRotationIndex((i) => (i + 1) % 3);
+    }, 15000);
+    return () => clearInterval(id);
+  }, []);
 
   const cards = [
     { title: t('companies_title'), subtitle: t('companies_subtitle'), icon: Building2, action: () => navigate('/companies') },
@@ -101,7 +149,7 @@ export default function DashboardPage({ registrationsOnly }) {
     { title: t('acc_accounts_title'), subtitle: t('acc_accounts_subtitle'), icon: Wallet, action: () => alert('Em breve') },
     { title: t('ug_title'), subtitle: t('ug_subtitle'), icon: Network, action: () => navigate('/ugs') },
     { title: t('cost_centers_title'), subtitle: t('cost_centers_subtitle'), icon: Crosshair, action: () => navigate('/cost-centers') },
-    { title: t('asset_species_title'), subtitle: t('asset_species_subtitle'), icon: CalendarDays, action: () => alert('Em breve') },
+    { title: t('asset_species_title'), subtitle: t('asset_species_subtitle'), icon: CalendarDays, action: () => navigate('/asset-species') },
   ];
 
   // Exibir cards SOMENTE em Cadastros; no Dashboard, manter foco em métricas/gráfico
@@ -111,6 +159,62 @@ export default function DashboardPage({ registrationsOnly }) {
   const metricColors = ['sky', 'violet', 'emerald', 'amber', 'rose'];
   const shortcutColors = ['blue', 'violet', 'emerald', 'amber', 'rose', 'indigo', 'cyan', 'teal', 'fuchsia'];
 
+  // Dados de evolução: revisados vs não revisados (3D Pie)
+  const evolutionData = React.useMemo(() => {
+    const reviewed = Number(metrics.reviewedItems || 0);
+    const total = Number(metrics.totalItems || 0);
+    const remaining = Math.max(0, total - reviewed);
+    return [
+      { name: t('dashboard_reviewed') || 'Revisados', y: reviewed },
+      { name: t('dashboard_remaining') || 'Restantes', y: remaining },
+    ];
+  }, [metrics, t]);
+
+  // Dados de ajustados: ajustados vs não ajustados (3D Pie)
+  const adjustedData = React.useMemo(() => {
+    const adjusted = Number(metrics.adjustedItems || 0);
+    const total = Number(metrics.totalItems || 0);
+    const notAdjusted = Math.max(0, total - adjusted);
+    return [
+      { name: t('dashboard_adjusted') || 'Ajustados', y: adjusted },
+      { name: t('dashboard_not_adjusted') || 'Não Ajustados', y: notAdjusted },
+    ];
+  }, [metrics, t]);
+
+  // Função util para selecionar qual gráfico mostrar por posição (esquerda/direita)
+  const renderRotatingPie = (slotOffset = 0) => {
+    const sequence = ['assignments', 'evolution', 'adjusted', 'justifications'];
+    const idx = (rotationIndex + slotOffset) % sequence.length;
+    const type = sequence[idx];
+    if (type === 'assignments') {
+      return chartData.length > 0 ? (
+        <Pie3D data={chartData} title={t('dashboard_chart_title')} />
+      ) : (
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+          <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
+        </div>
+      );
+    }
+    if (type === 'justifications') {
+      return justifChartData.length > 0 ? (
+        <Pie3D data={justifChartData} title={t('dashboard_chart_justifications_title')} />
+      ) : (
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+          <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
+        </div>
+      );
+    }
+    if (type === 'adjusted') {
+      return (
+        <Pie3D data={adjustedData} title={t('dashboard_chart_adjusted_title') || 'Itens Ajustados'} />
+      );
+    }
+    // evolution
+    return (
+      <Pie3D data={evolutionData} title={t('dashboard_chart_evolution_title') || 'Evolução da Revisão'} />
+    );
+  };
+
   return (
     <section>
       <h2 className="text-2xl font-semibold mb-6 text-slate-900 dark:text-slate-100">
@@ -119,6 +223,8 @@ export default function DashboardPage({ registrationsOnly }) {
 
       {!registrationsOnly && (
         <>
+          {/* Mantém layout original; abaixo ficam os gráficos lado a lado com rotação automática */}
+
           <div className="mb-4 max-w-md">
             <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1">{t('dashboard_company_label')}</label>
             <select
@@ -140,14 +246,33 @@ export default function DashboardPage({ registrationsOnly }) {
             <MetricCard color={metricColors[4]} label={t('dashboard_metric_fully_depreciated')} value={metrics.fullyDepreciated} />
           </div>
 
-          {/* Gráfico de Pizza 3D: Atribuídos por usuário e a atribuir */}
-          {chartData.length > 0 ? (
-            <Pie3D data={chartData} title={t('dashboard_chart_title')} />
-          ) : (
-            <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-6">
-              <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
-            </div>
-          )}
+          {/* Dois gráficos lado a lado com substituição a cada 10s */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`left-${rotationIndex}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.35 }}
+              >
+                {renderRotatingPie(0)}
+              </motion.div>
+            </AnimatePresence>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`right-${rotationIndex}`}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.35 }}
+              >
+                {renderRotatingPie(1)}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Mantém demais seções originais do Dashboard */}
         </>
       )}
 

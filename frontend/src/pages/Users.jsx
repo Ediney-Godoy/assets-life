@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { Plus, Save, Pencil, Trash2, Printer, FileText, FileDown } from 'lucide-react';
+import { Plus, Save, Pencil, Trash2, Printer, FileText, FileDown, Search, X } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -20,6 +20,7 @@ export default function UsersPage() {
   const [users, setUsers] = React.useState([]);
   const [companies, setCompanies] = React.useState([]);
   const [ugs, setUgs] = React.useState([]);
+  const [ccList, setCcList] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [query, setQuery] = React.useState('');
@@ -32,6 +33,14 @@ export default function UsersPage() {
   const [empError, setEmpError] = React.useState(null);
   const [empQuery, setEmpQuery] = React.useState('');
   const [empList, setEmpList] = React.useState([]);
+  // Busca de UG e Centro de Custos
+  const [ugModalOpen, setUgModalOpen] = React.useState(false);
+  const [ugQuery, setUgQuery] = React.useState('');
+  const [ccModalOpen, setCcModalOpen] = React.useState(false);
+  const [ccQuery, setCcQuery] = React.useState('');
+  // Empresa com modal de busca
+  const [companyModalOpen, setCompanyModalOpen] = React.useState(false);
+  const [companySearch, setCompanySearch] = React.useState('');
   const [form, setForm] = React.useState({
     codigo: '',
     nome_completo: '',
@@ -172,6 +181,76 @@ export default function UsersPage() {
     closeEmpSearch();
   };
 
+  // Busca de UG (modal)
+  const selectedUG = React.useMemo(() => ugs.find((u) => String(u.id) === String(form.ug_id)), [ugs, form.ug_id]);
+  const selectedCompany = React.useMemo(() => companies.find((c) => c.id === Number(form.empresa_id)), [companies, form.empresa_id]);
+  const selectedCC = React.useMemo(() => ccList.find((c) => String(c.id) === String(form.centro_custo_id)), [ccList, form.centro_custo_id]);
+  const openUgSearch = () => { setUgModalOpen(true); setUgQuery(''); };
+  const closeUgSearch = () => { setUgModalOpen(false); setUgQuery(''); };
+  const modalFilteredUgs = React.useMemo(() => {
+    const q = (ugQuery || '').trim().toLowerCase();
+    let list = ugs || [];
+    if (form.empresa_id) list = list.filter((u) => String(u.empresa_id) === String(form.empresa_id));
+    if (!q) return list.slice(0, 100);
+    return list
+      .filter((u) => (String(u.codigo || '').toLowerCase().includes(q) || String(u.nome || '').toLowerCase().includes(q)))
+      .slice(0, 100);
+  }, [ugQuery, ugs, form.empresa_id]);
+  const selectUG = (u) => {
+    setForm((f) => ({ ...f, ug_id: u.id }));
+    setErrors((prev) => ({ ...prev, ug_id: null }));
+    toast.success('UG selecionada');
+    closeUgSearch();
+  };
+
+  // Busca de Centro de Custos (modal)
+  const openCcSearch = async () => {
+    setCcModalOpen(true);
+    setCcQuery('');
+    try {
+      // Lazy load dos CCs conforme filtros atuais
+      const { getCostCenters } = await import('../apiClient');
+      const data = await getCostCenters({ empresa_id: form.empresa_id || undefined, ug_id: form.ug_id || undefined });
+      setCcList(data || []);
+    } catch (e) {
+      toast.error(e.message || 'Erro ao carregar Centros de Custos');
+    }
+  };
+  const closeCcSearch = () => { setCcModalOpen(false); setCcQuery(''); };
+  const modalFilteredCcs = React.useMemo(() => {
+    const q = (ccQuery || '').trim().toLowerCase();
+    let list = ccList || [];
+    if (form.empresa_id) list = list.filter((c) => String(c.empresa_id) === String(form.empresa_id));
+    if (form.ug_id) list = list.filter((c) => String(c.ug_id) === String(form.ug_id));
+    if (!q) return list.slice(0, 100);
+    return list
+      .filter((c) => (String(c.codigo || '').toLowerCase().includes(q) || String(c.nome || '').toLowerCase().includes(q)))
+      .slice(0, 100);
+  }, [ccQuery, ccList, form.empresa_id, form.ug_id]);
+  const selectCC = (c) => {
+    setForm((f) => ({ ...f, centro_custo_id: c.id }));
+    setErrors((prev) => ({ ...prev, centro_custo_id: null }));
+    toast.success('Centro de Custos selecionado');
+    closeCcSearch();
+  };
+
+  // Busca de Empresa (modal)
+  const modalFilteredCompanies = React.useMemo(() => {
+    const q = (companySearch || '').trim().toLowerCase();
+    let list = companies || [];
+    if (!q) return list.slice(0, 100);
+    return list
+      .filter((c) => String(c.name || '').toLowerCase().includes(q) || String(c.cnpj || '').toLowerCase().includes(q))
+      .slice(0, 100);
+  }, [companySearch, companies]);
+  const openCompanySearch = () => { setCompanyModalOpen(true); setCompanySearch(''); };
+  const closeCompanySearch = () => { setCompanyModalOpen(false); setCompanySearch(''); };
+  const selectCompany = (c) => {
+    setForm((f) => ({ ...f, empresa_id: String(c.id), ug_id: '', centro_custo_id: '' }));
+    setErrors((prev) => ({ ...prev, empresa_id: null }));
+    setCompanyModalOpen(false);
+  };
+
   const onSave = async () => {
     try {
       const v = validate();
@@ -295,25 +374,31 @@ export default function UsersPage() {
         {/* Coluna Esquerda: Formulário */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 1ª linha: Código e Status */}
             <Input label="Código" name="codigo" value={form.codigo || 'Automático'} readOnly />
             <Select label="Status" name="status" value={form.status} onChange={onChange}>
               <option value="Ativo">Ativo</option>
               <option value="Inativo">Inativo</option>
             </Select>
-            {/* Nome Completo vem da tabela de Colaboradores, via pesquisa */}
-            <div className="md:col-span-2 flex gap-2 items-end">
-              <div className="flex-1">
-                <Input label="Nome Completo (de Colaborador)" name="nome_completo" value={form.nome_completo} readOnly error={errors.nome_completo} />
-              </div>
-              <Button variant="secondary" onClick={openEmpSearch}>Buscar Colaborador</Button>
-            </div>
-            <Input label="E-mail" name="email" type="email" value={form.email} onChange={onChange} error={errors.email} autoComplete="off" />
 
-            {/* Senha: obrigatória na criação. Em edição, oculta com opção de alterar */}
+            {/* 2ª linha: Nome colaborador (lupa) e CPF */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input label="Nome colaborador" name="nome_completo" value={form.nome_completo} onChange={() => {}} readOnly error={errors.nome_completo} />
+              </div>
+              <Button variant="secondary" onClick={openEmpSearch} title="Pesquisar Colaborador" aria-label="Pesquisar Colaborador" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+            </div>
+            <Input label="CPF" name="cpf" value={form.cpf} onChange={onChange} error={errors.cpf} />
+
+            {/* 3ª linha: E-mail e Data de Nascimento */}
+            <Input label="E-mail" name="email" type="email" value={form.email} onChange={onChange} error={errors.email} autoComplete="off" />
+            <Input label="Data de Nascimento" name="data_nascimento" type="date" value={form.data_nascimento} onChange={onChange} />
+
+            {/* 4ª linha: Senha e Confirmação de senha */}
             {!editingId && (
               <>
                 <Input label="Senha" name="senha" type="password" value={form.senha} onChange={onChange} error={errors.senha} autoComplete="new-password" />
-                <Input label="Confirmação de Senha" name="confirmacao_senha" type="password" value={form.confirmacao_senha} onChange={onChange} error={errors.confirmacao_senha} autoComplete="new-password" />
+                <Input label="Confirmação de senha" name="confirmacao_senha" type="password" value={form.confirmacao_senha} onChange={onChange} error={errors.confirmacao_senha} autoComplete="new-password" />
               </>
             )}
             {editingId && (
@@ -326,22 +411,32 @@ export default function UsersPage() {
             {editingId && changePassword && (
               <>
                 <Input label="Nova Senha" name="senha" type="password" value={form.senha} onChange={onChange} error={errors.senha} autoComplete="new-password" />
-                <Input label="Confirmação de Senha" name="confirmacao_senha" type="password" value={form.confirmacao_senha} onChange={onChange} error={errors.confirmacao_senha} autoComplete="new-password" />
+                <Input label="Confirmação de senha" name="confirmacao_senha" type="password" value={form.confirmacao_senha} onChange={onChange} error={errors.confirmacao_senha} autoComplete="new-password" />
               </>
             )}
 
-            <Input label="CPF" name="cpf" value={form.cpf} onChange={onChange} error={errors.cpf} />
+            {/* 5ª linha: Nome de Usuário e Centro de Custos (lupa) */}
             <Input label="Nome de Usuário" name="nome_usuario" value={form.nome_usuario} onChange={onChange} error={errors.nome_usuario} autoComplete="off" />
-            <Input label="Data de Nascimento" name="data_nascimento" type="date" value={form.data_nascimento} onChange={onChange} />
-            <Select label="Empresa" name="empresa_id" value={form.empresa_id} onChange={onChange}>
-              <option value="">Selecione...</option>
-              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
-            <Select label="UG" name="ug_id" value={form.ug_id} onChange={onChange}>
-              <option value="">Selecione...</option>
-              {ugs.map((u) => <option key={u.id} value={u.id}>{u.codigo} - {u.nome}</option>)}
-            </Select>
-            <Input label="Centro de Custos (ID)" name="centro_custo_id" type="number" value={form.centro_custo_id} onChange={onChange} />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input label="Centro de Custos" name="cc_nome" value={selectedCC ? `${selectedCC.codigo} - ${selectedCC.nome}` : ''} onChange={() => {}} disabled />
+              </div>
+              <Button variant="secondary" onClick={openCcSearch} title="Pesquisar Centro de Custos" aria-label="Pesquisar Centro de Custos" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+            </div>
+
+            {/* 6ª linha: Empresa (lupa) e UG (lupa) */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input label="Empresa" name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} disabled error={errors.empresa_id} />
+              </div>
+              <Button variant="secondary" onClick={openCompanySearch} title="Pesquisar Empresa" aria-label="Pesquisar Empresa" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+            </div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input label="Unidade Gerencial (UG)" name="ug_nome" value={selectedUG ? `${selectedUG.codigo} - ${selectedUG.nome}` : ''} onChange={() => {}} disabled />
+              </div>
+              <Button variant="secondary" onClick={openUgSearch} title="Pesquisar UG" aria-label="Pesquisar UG" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+            </div>
           </div>
         </div>
 
@@ -416,6 +511,95 @@ export default function UsersPage() {
               {filteredEmployees.length === 0 && <p className="text-slate-500">Nenhum colaborador encontrado.</p>}
             </div>
           )}
+        </div>
+      </div>
+    )}
+    {ugModalOpen && (
+      <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-950 w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Buscar UG</h3>
+            <Button variant="secondary" onClick={closeUgSearch} title="Fechar" aria-label="Fechar" className="px-2 py-2"><X size={18} /></Button>
+          </div>
+          <input
+            className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="Digite código ou nome da UG..."
+            value={ugQuery}
+            onChange={(e) => setUgQuery(e.target.value)}
+            autoComplete="off"
+          />
+          <div className="mt-3 max-h-[360px] overflow-y-auto pr-1 divide-y divide-slate-200 dark:divide-slate-800">
+            {modalFilteredUgs.length === 0 ? (
+              <p className="text-slate-500">Nenhuma UG encontrada.</p>
+            ) : (
+              modalFilteredUgs.map((u) => (
+                <button key={u.id} onClick={() => selectUG(u)} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">{u.codigo} - {u.nome}</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-300">Empresa ID: {u.empresa_id}</div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    {ccModalOpen && (
+      <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-950 w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Buscar Centro de Custos</h3>
+            <Button variant="secondary" onClick={closeCcSearch} title="Fechar" aria-label="Fechar" className="px-2 py-2"><X size={18} /></Button>
+          </div>
+          <input
+            className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="Digite código ou nome do Centro de Custos..."
+            value={ccQuery}
+            onChange={(e) => setCcQuery(e.target.value)}
+            autoComplete="off"
+          />
+          <div className="mt-3 max-h-[360px] overflow-y-auto pr-1 divide-y divide-slate-200 dark:divide-slate-800">
+            {modalFilteredCcs.length === 0 ? (
+              <p className="text-slate-500">Nenhum Centro de Custos encontrado.</p>
+            ) : (
+              modalFilteredCcs.map((c) => (
+                <button key={c.id} onClick={() => selectCC(c)} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">{c.codigo} - {c.nome}</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-300">UG ID: {c.ug_id} | Empresa ID: {c.empresa_id}</div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Modal: Buscar Empresa */}
+    {companyModalOpen && (
+      <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-950 w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Buscar Empresa</h3>
+            <Button variant="secondary" onClick={closeCompanySearch} title="Fechar" aria-label="Fechar" className="px-2 py-2"><X size={18} /></Button>
+          </div>
+          <input
+            className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="Digite Nome ou CNPJ..."
+            value={companySearch}
+            onChange={(e) => setCompanySearch(e.target.value)}
+            autoComplete="off"
+          />
+          <div className="mt-3 max-h-[360px] overflow-y-auto pr-1 divide-y divide-slate-200 dark:divide-slate-800">
+            {modalFilteredCompanies.length === 0 ? (
+              <p className="text-slate-500">Nenhuma empresa encontrada.</p>
+            ) : (
+              modalFilteredCompanies.map((c) => (
+                <button key={c.id} onClick={() => selectCompany(c)} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">{c.name}</div>
+                  {c.cnpj ? <div className="text-xs text-slate-600 dark:text-slate-300">{c.cnpj}</div> : null}
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </div>
     )}
