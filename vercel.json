@@ -1,0 +1,11 @@
+{
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "frontend/dist" }
+    }
+  ],
+  "ignoreCommand": "echo Using monorepo root; Vercel will build frontend/",
+  "framework": null
+}
