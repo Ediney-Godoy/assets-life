@@ -86,7 +86,8 @@ async def allow_private_network(request: Request, call_next):
 # -----------------------------
 # Auth (JWT) e Segurança
 # -----------------------------
-SECRET_KEY = "dev-secret-key-change-in-prod"
+# Use chave vinda do ambiente em produção; mantém fallback dev para ambiente local
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
 ALGORITHM = "HS256"
 security = HTTPBearer()
 JWT_EXPIRE_MINUTES = 60 * 8  # 8 horas

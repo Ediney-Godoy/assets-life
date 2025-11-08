@@ -33,7 +33,8 @@ def get_db():
 
 # Segurança simples via Bearer JWT (consistente com relatorios_rvu)
 security = HTTPBearer()
-SECRET_KEY = "dev-secret-key-change-in-prod"
+import os
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
 ALGORITHM = "HS256"
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):

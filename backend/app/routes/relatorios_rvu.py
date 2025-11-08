@@ -28,7 +28,8 @@ def get_db():
         db.close()
 
 security = HTTPBearer()
-SECRET_KEY = "dev-secret-key-change-in-prod"
+import os
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
 ALGORITHM = "HS256"
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
