@@ -8,15 +8,15 @@ WORKDIR /app
 
 # Instala dependências
 RUN pip install --no-cache-dir --upgrade pip
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copia código do backend
-COPY backend/ /app/backend/
+# Copia código do backend (contexto: diretório backend)
+COPY . /app/
 
 # Porta padrão
 ENV PORT=8000
 EXPOSE 8000
 
-# Comando de inicialização
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Comando de inicialização (módulo app dentro de /app)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
