@@ -43,7 +43,7 @@ export default function MassRevisionView() {
     nova_vida_meses: '',
     nova_data_fim: '',
     motivo: '',
-    justificativa: '',
+    justificativa: 'A vida útil está correta',
   });
 
   React.useEffect(() => {
@@ -668,7 +668,7 @@ export default function MassRevisionView() {
                           ...prev,
                           incremento: novoInc,
                           motivo: '',
-                          justificativa: '',
+                          justificativa: novoInc === 'Manter' ? 'A vida útil está correta' : '',
                           nova_vida_anos: novoInc === 'Manter' ? '' : prev.nova_vida_anos,
                           nova_vida_meses: novoInc === 'Manter' ? '' : prev.nova_vida_meses,
                           nova_data_fim: novoInc === 'Manter' ? '' : prev.nova_data_fim,
@@ -801,7 +801,7 @@ export default function MassRevisionView() {
                   <button
                     type="button"
                     onClick={handleApply}
-                    disabled={selected.size === 0 || (form.incremento === 'Manter' && !(form.justificativa || '').trim())}
+                    disabled={selected.size === 0}
                     className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
                   >
                     {t('apply_mass_revision')}

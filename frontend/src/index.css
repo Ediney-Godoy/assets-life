@@ -6,7 +6,7 @@
 :root {
   color-scheme: light;
 }
-.dark :root {
+.dark:root {
   color-scheme: dark;
 }
 

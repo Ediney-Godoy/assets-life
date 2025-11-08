@@ -1,5 +1,47 @@
-const PRIMARY_BASE = (import.meta?.env?.VITE_API_URL) || 'http://localhost:8001';
-const BASE_CANDIDATES = [PRIMARY_BASE, 'http://127.0.0.1:8001'];
+const PRIMARY_BASE = (import.meta?.env?.VITE_API_URL) || 'http://localhost:8000';
+// Ajuste: quando acessando via IP da rede (ex.: 192.168.x.x), usar o mesmo host para o backend
+let HOST_BASE = null;
+let HOST_BASE_ALT_PORT = null;
+let ACTIVE_BASE = null;
+try {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    HOST_BASE = `http://${window.location.hostname}:8000`;
+    HOST_BASE_ALT_PORT = `http://${window.location.hostname}:8001`;
+  }
+} catch {}
+// Inclui fallback automático para porta 8001 (documentada no README) e loopback
+// Prioriza o mesmo host do frontend (HOST_BASE) para evitar bloqueios ao acessar via IP da rede
+const BASE_CANDIDATES = [
+  HOST_BASE,
+  PRIMARY_BASE,
+  'http://127.0.0.1:8000',
+  HOST_BASE_ALT_PORT,
+  'http://localhost:8001',
+  'http://127.0.0.1:8001'
+].filter(Boolean);
+
+async function resolveBase() {
+  // Se já temos uma base ativa, reutiliza
+  if (ACTIVE_BASE) return ACTIVE_BASE;
+  for (const base of BASE_CANDIDATES) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    try {
+      const res = await fetch(`${base}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        ACTIVE_BASE = base;
+        return base;
+      }
+    } catch {
+      clearTimeout(timeoutId);
+      // tenta próxima base
+      continue;
+    }
+  }
+  // Sem base validada; mantém ACTIVE_BASE nulo para tentativas no request()
+  return BASE_CANDIDATES[0];
+}
 
 function getToken() {
   try {
@@ -17,10 +59,20 @@ async function request(path, options = {}) {
     ...(token && !(options.headers || {}).Authorization ? { Authorization: `Bearer ${token}` } : {}),
   };
 
+  // Anexa contexto de empresa selecionada (segregação de dados)
+  try {
+    const empresaId = localStorage.getItem('assetlife_empresa');
+    if (empresaId && !headers['X-Company-Id']) {
+      headers['X-Company-Id'] = String(empresaId);
+    }
+  } catch {}
+
   let lastErr;
-  for (const base of BASE_CANDIDATES) {
+  // Tenta primeiro a base ativa (se houver), depois demais candidatas
+  const bases = ACTIVE_BASE ? [ACTIVE_BASE, ...BASE_CANDIDATES.filter(b => b !== ACTIVE_BASE)] : [...BASE_CANDIDATES];
+  for (const base of bases) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 5000);
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 20000);
     try {
       const res = await fetch(`${base}${path}`, {
         ...options,
@@ -30,15 +82,17 @@ async function request(path, options = {}) {
       clearTimeout(timeoutId);
       if (!res.ok) {
         const text = await res.text();
-        if (res.status === 401 && /Token inválido|Not authenticated/i.test(text)) {
+        if (res.status === 401 && /Token inválido|Not authenticated|Not Authorized|Unauthorized/i.test(text)) {
           try {
             localStorage.removeItem('assetlife_token');
             localStorage.removeItem('assetlife_permissoes');
             localStorage.removeItem('assetlife_user');
           } catch {}
+          // Redireciona sem propagar erro para evitar logs desnecessários
           if (path !== '/auth/login' && typeof window !== 'undefined') {
-            window.location.href = '/login';
+            try { window.location.href = '/login'; } catch {}
           }
+          return null;
         }
         // Para erros de cliente/negócio, não tenta próximo base
         if (res.status >= 400 && res.status < 500) {
@@ -47,23 +101,54 @@ async function request(path, options = {}) {
         lastErr = new Error(`HTTP ${res.status}: ${text}`);
         continue;
       }
+      // Marca base ativa caso ainda não esteja definida
+      if (!ACTIVE_BASE) ACTIVE_BASE = base;
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         return res.json();
       }
+      // Conteúdos binários (PDF/Excel)
+      if (
+        contentType.includes('application/pdf') ||
+        contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      ) {
+        return res.arrayBuffer();
+      }
       return res.text();
     } catch (err) {
       clearTimeout(timeoutId);
-      lastErr = err;
+      // Tratamento amigável para abort por timeout
+      if (err?.name === 'AbortError' || /aborted|AbortError/i.test(String(err?.message || ''))) {
+        lastErr = new Error('Tempo limite atingido. Ajuste os filtros ou tente novamente.');
+      } else {
+        lastErr = err;
+      }
       // tenta próximo base em caso de falhas de rede/timeout
       continue;
     }
+  }
+  // Mensagem amigável para erros genéricos de rede (ex.: CORS, servidor offline)
+  const msg = String(lastErr?.message || '');
+  if (/Failed to fetch|NetworkError|TypeError: Failed to fetch/i.test(msg)) {
+    throw new Error('Falha de conexão com a API. Verifique se o backend está ativo (porta 8000), o token de acesso e as permissões/CORS.');
   }
   throw lastErr || new Error('Falha ao conectar ao backend');
 }
 
 export async function getHealth(options = {}) {
-  return request('/health', { ...options, timeout: Math.max(options.timeout ?? 0, 6000) });
+  try {
+    const base = await resolveBase();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), Math.max(options.timeout ?? 0, 3000));
+    const res = await fetch(`${base}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    ACTIVE_BASE = base; // garante fixação
+    return res.json();
+  } catch {
+    // Não propaga erro do health; apenas indica offline
+    return null;
+  }
 }
 
 export async function getCompanies() {
@@ -86,6 +171,35 @@ export async function getEmployees() {
   return request('/colaboradores');
 }
 
+// Placeholder: lista de classes contábeis (integração futura)
+export async function getAccountingClasses() {
+  // Em falta de endpoint, retorna lista vazia para manter a tela funcional
+  return [];
+}
+
+// --- Relatórios RVU ---
+export async function getRelatoriosResumo(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  // Em datasets grandes a consulta pode demorar; ampliar timeout
+  return request(`/relatorios/rvu/resumo${q ? `?${q}` : ''}`, { timeout: 60000 });
+}
+
+export async function getRelatoriosExcel(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  const ab = await request(`/relatorios/rvu/excel${q ? `?${q}` : ''}`, { headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }, timeout: 30000 });
+  return new Uint8Array(ab);
+}
+
+export async function getRelatoriosPdf(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  const ab = await request(`/relatorios/rvu/pdf${q ? `?${q}` : ''}`, { headers: { Accept: 'application/pdf' }, timeout: 30000 });
+  return new Uint8Array(ab);
+}
+
+export async function listRelatoriosLog() {
+  return request('/relatorios/rvu/log');
+}
+
 export async function createEmployee(payload) {
   return request('/colaboradores', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -99,9 +213,13 @@ export async function deleteEmployee(id) {
 }
 
 // Unidades Gerenciais (UG)
-export async function getManagementUnits() {
+export async function getManagementUnits(empresaId) {
   // Pode ser volumoso em bases grandes; aumentar timeout para evitar abort precoce
-  return request('/unidades_gerenciais', { timeout: 12000 });
+  const opts = { timeout: 12000 };
+  if (empresaId) {
+    opts.headers = { 'X-Company-Id': String(empresaId) };
+  }
+  return request('/unidades_gerenciais', opts);
 }
 
 export async function getManagementUnit(id) {
@@ -120,9 +238,13 @@ export async function deleteManagementUnit(id) {
   return request(`/unidades_gerenciais/${id}`, { method: 'DELETE' });
 }
 
-export async function getUsers() {
+export async function getUsers(empresaId) {
   // Lista de usuários pode ter volume considerável; dar mais margem
-  return request('/usuarios', { timeout: 8000 });
+  const opts = { timeout: 8000 };
+  if (empresaId) {
+    opts.headers = { 'X-Company-Id': String(empresaId) };
+  }
+  return request('/usuarios', opts);
 }
 
 export async function createUser(payload) {
@@ -160,7 +282,8 @@ export async function closeReviewPeriod(id) {
 
 // Upload de base (.csv/.xlsx) para um período específico
 export async function uploadReviewBase(periodoId, file) {
-  const url = `${BASE_URL}/revisoes/upload_base/${periodoId}`;
+  const base = await resolveBase();
+  const url = `${base}/revisoes/upload_base/${periodoId}`;
   const form = new FormData();
   form.append('file', file);
   const controller = new AbortController();
@@ -170,6 +293,10 @@ export async function uploadReviewBase(periodoId, file) {
       method: 'POST',
       body: form,
       signal: controller.signal,
+      headers: (() => {
+        const t = getToken();
+        return t ? { Authorization: `Bearer ${t}` } : undefined;
+      })(),
       // Não definir Content-Type explicitamente para permitir boundary correto
     });
     clearTimeout(timeoutId);
@@ -280,6 +407,39 @@ export async function createPermissionGroup(payload) {
 
 export async function updatePermissionGroup(id, payload) {
   return request(`/permissoes/grupos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+// --- Supervisão RVU ---
+export async function listarSupervisaoRVU(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  // Em bases grandes, ampliar timeout para evitar abort precoce
+  return request(`/supervisao/rvu/listar${q ? `?${q}` : ''}`, { timeout: 60000 });
+}
+
+export async function comentarSupervisaoRVU(payload) {
+  return request('/supervisao/rvu/comentar', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function reverterSupervisaoRVU(payload) {
+  return request('/supervisao/rvu/reverter', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function aprovarSupervisaoRVU(payload) {
+  return request('/supervisao/rvu/aprovar', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function historicoSupervisaoRVU(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  // Histórico é informativo; dar mais tempo para bases grandes
+  return request(`/supervisao/rvu/historico${q ? `?${q}` : ''}`, { timeout: 60000 });
+}
+
+export async function listarComentariosRVU(ativoId) {
+  return request(`/supervisao/rvu/comentarios?ativo_id=${ativoId}`);
+}
+
+export async function responderComentarioRVU(payload) {
+  return request('/supervisao/rvu/comentarios/responder', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function deletePermissionGroup(id) {

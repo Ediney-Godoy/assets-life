@@ -9,6 +9,7 @@ from datetime import date
 import os
 
 from .database import SessionLocal, engine
+from .config import ALLOW_DDL
 from .models import Base as SA_Base, Company as CompanyModel
 from .models import Employee as EmployeeModel, Vinculo as VinculoEnum, Status as StatusEnum
 from .models import ManagementUnit as UGModel
@@ -32,8 +33,12 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
+from .routes.relatorios_rvu import router as relatorios_rvu_router
+from .routes.supervisao_rvu import router as supervisao_rvu_router
 
 app = FastAPI(title="Asset Life API", version="0.2.0")
+app.include_router(relatorios_rvu_router)
+app.include_router(supervisao_rvu_router)
 
 # CORS de desenvolvimento: amplia suporte para localhost, 127.0.0.1 e IPs de rede
 # Inclui origens comuns de Vite e permite configurar um origin adicional via env FRONTEND_ORIGIN
@@ -60,6 +65,23 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
+
+# Complemento CORS para "Private Network Access" (PNA) em navegadores modernos.
+# Alguns ambientes dev via IP (ex.: 192.168.x.x) disparam preflight com
+# "access-control-request-private-network: true" e exigem o cabeçalho abaixo.
+# Este middleware adiciona o cabeçalho sem interferir no CORSMiddleware padrão.
+from fastapi import Request
+
+@app.middleware("http")
+async def allow_private_network(request: Request, call_next):
+    response = await call_next(request)
+    try:
+        if request.headers.get("access-control-request-private-network") == "true":
+            response.headers["Access-Control-Allow-Private-Network"] = "true"
+    except Exception:
+        # Não falhar caso não seja possível ajustar o cabeçalho
+        pass
+    return response
 
 # -----------------------------
 # Auth (JWT) e Segurança
@@ -108,6 +130,18 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     if not user:
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
     return user
+
+def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int]:
+    # grupos do usuário
+    links = db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.usuario_id == current_user.id).all()
+    grupo_ids = [l.grupo_id for l in links]
+    # empresas vinculadas aos grupos
+    emp_links = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id.in_(grupo_ids)).all()
+    empresas_ids = sorted({e.empresa_id for e in emp_links})
+    # Fallback: empresa do próprio usuário
+    if not empresas_ids and current_user.empresa_id is not None:
+        empresas_ids = [current_user.empresa_id]
+    return empresas_ids
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)):
@@ -278,6 +312,11 @@ def auth_me_permissions(current_user: UsuarioModel = Depends(get_current_user), 
     # empresas liberadas
     emp_links = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id.in_(grupo_ids)).all()
     empresas_ids = sorted({e.empresa_id for e in emp_links})
+    # Fallbacks
+    if not empresas_ids and current_user.empresa_id is not None:
+        empresas_ids = [current_user.empresa_id]
+    if not rotas:
+        rotas = ["/dashboard"]
     return {
         "usuario_id": current_user.id,
         "grupos": [{"id": g.id, "nome": g.nome} for g in grupos],
@@ -290,12 +329,13 @@ def auth_me_permissions(current_user: UsuarioModel = Depends(get_current_user), 
 @app.on_event("startup")
 def on_startup():
     # Ensure tables exist for development environments
-    try:
-        SA_Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        import traceback
-        print("DB init error:", e)
-        traceback.print_exc()
+    if ALLOW_DDL:
+        try:
+            SA_Base.metadata.create_all(bind=engine)
+        except Exception as e:
+            import traceback
+            print("DB init error:", e)
+            traceback.print_exc()
 
     # Seed default transactions if none exist or missing
     try:
@@ -422,14 +462,20 @@ class CompanyUpdate(BaseModel):
 
 # Companies CRUD (DB)
 @app.get("/companies", response_model=List[Company])
-def list_companies(db: Session = Depends(get_db)):
-    return db.query(CompanyModel).all()
+def list_companies(current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    allowed = get_allowed_company_ids(db, current_user)
+    if not allowed:
+        return []
+    return db.query(CompanyModel).filter(CompanyModel.id.in_(allowed)).all()
 
 @app.get("/companies/{company_id}", response_model=Company)
-def get_company(company_id: int, db: Session = Depends(get_db)):
+def get_company(company_id: int, current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
     c = db.query(CompanyModel).filter(CompanyModel.id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
+    allowed = set(get_allowed_company_ids(db, current_user))
+    if c.id not in allowed:
+        raise HTTPException(status_code=403, detail="Acesso negado à empresa solicitada")
     return c
 
 @app.post("/companies", response_model=Company)
@@ -524,8 +570,16 @@ class ColaboradorUpdate(BaseModel):
 
 # CRUD de Colaboradores
 @app.get("/colaboradores", response_model=List[Colaborador])
-def list_colaboradores(db: Session = Depends(get_db)):
-    return db.query(EmployeeModel).all()
+def list_colaboradores(request: Request, db: Session = Depends(get_db)):
+    empresa_hdr = request.headers.get("X-Company-Id")
+    q = db.query(EmployeeModel)
+    if empresa_hdr:
+        try:
+            empresa_id = int(empresa_hdr)
+            q = q.filter(EmployeeModel.empresa_id == empresa_id)
+        except ValueError:
+            pass
+    return q.all()
 
 @app.get("/colaboradores/{colab_id}", response_model=Colaborador)
 def get_colaborador(colab_id: int, db: Session = Depends(get_db)):
@@ -625,8 +679,16 @@ VALID_LEVELS = {"CEO", "Diretoria", "Gerência Geral", "Gerência", "Coordenaç�
 VALID_TYPES = {"Administrativa", "Produtiva", "Apoio", "Auxiliares"}
 
 @app.get("/unidades_gerenciais", response_model=List[UG])
-def list_ugs(db: Session = Depends(get_db)):
-    return db.query(UGModel).order_by(UGModel.codigo).all()
+def list_ugs(request: Request, db: Session = Depends(get_db)):
+    empresa_hdr = request.headers.get("X-Company-Id")
+    q = db.query(UGModel)
+    if empresa_hdr:
+        try:
+            empresa_id = int(empresa_hdr)
+            q = q.filter(UGModel.empresa_id == empresa_id)
+        except ValueError:
+            pass
+    return q.order_by(UGModel.codigo).all()
 
 @app.get("/unidades_gerenciais/{ug_id}", response_model=UG)
 def get_ug(ug_id: int, db: Session = Depends(get_db)):
@@ -742,10 +804,18 @@ def list_centros_custos(
     ug_id: Optional[int] = None,
     nome: Optional[str] = None,
     status: Optional[str] = None,
+    current_user: UsuarioModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     q = db.query(CentroCustoModel)
+    # limitar às empresas permitidas do usuário
+    allowed = get_allowed_company_ids(db, current_user)
+    if allowed:
+        q = q.filter(CentroCustoModel.empresa_id.in_(allowed))
     if empresa_id:
+        # bloquear acesso explícito a empresa não permitida
+        if allowed and empresa_id not in allowed:
+            raise HTTPException(status_code=403, detail="Acesso negado aos Centros de Custos da empresa informada")
         q = q.filter(CentroCustoModel.empresa_id == empresa_id)
     if ug_id:
         q = q.filter(CentroCustoModel.ug_id == ug_id)
@@ -875,8 +945,16 @@ def _generate_user_codigo(db: Session) -> str:
 
 
 @app.get("/usuarios", response_model=List[Usuario])
-def list_usuarios(db: Session = Depends(get_db)):
-    return db.query(UsuarioModel).order_by(UsuarioModel.id).all()
+def list_usuarios(request: Request, db: Session = Depends(get_db)):
+    empresa_hdr = request.headers.get("X-Company-Id")
+    q = db.query(UsuarioModel)
+    if empresa_hdr:
+        try:
+            empresa_id = int(empresa_hdr)
+            q = q.filter(UsuarioModel.empresa_id == empresa_id)
+        except ValueError:
+            pass
+    return q.order_by(UsuarioModel.id).all()
 
 
 @app.get("/usuarios/{user_id}", response_model=Usuario)
@@ -1843,7 +1921,7 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
             raise HTTPException(status_code=400, detail="Justificativa obrigatória devido a risco (<18 meses)")
     # justificativa automática para itens não alterados
     if vida_revisada is None and not justificativa:
-        item.justificativa = item.justificativa or "Ativo revisado, sem alteração de vida útil."
+        item.justificativa = item.justificativa or "A vida útil está correta"
     elif justificativa is not None:
         item.justificativa = justificativa
 
@@ -1857,6 +1935,50 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
     # Registrar autor se fornecido
     if payload.revisor_id is not None:
         item.criado_por = payload.revisor_id
+
+    # Aprovação automática: incremento 'Manter' e vida útil restante > 18 meses
+    try:
+        inc_for_auto = data.get("incremento") if "incremento" in data else None
+        effective_end = item.data_fim_revisada or item.data_fim_depreciacao
+        # Apenas se período não estiver encerrado
+        if inc_for_auto == "Manter" and effective_end and effective_end >= now18m and getattr(periodo, 'status', None) != 'Encerrado':
+            item.status = 'Aprovado'
+            # Primeiro commit da aprovação para garantir persistência mesmo se tabelas auxiliares não existirem
+            db.commit()
+            db.refresh(item)
+            # Registrar histórico e auditoria (best-effort)
+            try:
+                revisada_total_hist = int(item.vida_util_revisada or (item.vida_util_periodos or 0))
+                db.execute(sa.text(
+                    """
+                    INSERT INTO revisoes_historico (ativo_id, revisor_id, vida_util_revisada, acao, status)
+                    VALUES (:ativo_id, :revisor_id, :vida_util_revisada, 'aprovado', 'aprovado')
+                    """
+                ), {
+                    'ativo_id': item.id,
+                    'revisor_id': payload.revisor_id,
+                    'vida_util_revisada': revisada_total_hist,
+                })
+                db.execute(sa.text(
+                    """
+                    INSERT INTO auditoria_rvu (usuario_id, acao, entidade, entidade_id, detalhes)
+                    VALUES (:usuario_id, 'auto_aprovar', 'revisao_item', :entidade_id, :detalhes)
+                    """
+                ), {
+                    'usuario_id': payload.revisor_id,
+                    'entidade_id': item.id,
+                    'detalhes': 'Aprovacao automática: incremento=Manter e vida útil > 18 meses'
+                })
+                db.commit()
+            except Exception:
+                # Em caso de falha nas tabelas auxiliares, reverter apenas a transação auxiliar
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+    except Exception:
+        # Não bloquear atualização por falha na lógica opcional de aprovação automática
+        pass
 
     db.commit()
     db.refresh(item)
@@ -2024,9 +2146,16 @@ def aplicar_revisao_massa(payload: MassRevisionPayload, current_user: UsuarioMod
                 item.data_fim_revisada = nova_fim
 
             if inc == "Manter" and not (payload.justificativa or "").strip():
-                item.justificativa = item.justificativa or "Ativo revisado, sem alteração de vida útil."
+                item.justificativa = item.justificativa or "A vida útil está correta"
             elif payload.justificativa is not None:
                 item.justificativa = payload.justificativa
+
+            # Aprovação automática para itens 'Manter' com vida útil restante > 18 meses
+            if inc == "Manter":
+                effective_end = item.data_fim_revisada or item.data_fim_depreciacao
+                per = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == item.periodo_id).first()
+                if effective_end and effective_end >= now18m and getattr(per, 'status', None) != 'Encerrado':
+                    item.status = 'Aprovado'
 
             updated += 1
             results.append(MassRevisionItemResult(

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Table from '../components/ui/Table';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { getReviewPeriods, getReviewItems, updateReviewItem, getManagementUnits, getCostCenters } from '../apiClient';
+import { getReviewPeriods, getReviewItems, updateReviewItem, getManagementUnits, getCostCenters, listarComentariosRVU, responderComentarioRVU } from '../apiClient';
 
 export default function RevisaoVidasUteis() {
   const { t } = useTranslation();
@@ -22,8 +22,13 @@ export default function RevisaoVidasUteis() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [editingItem, setEditingItem] = React.useState(null);
-  const [editForm, setEditForm] = React.useState({ revisada_anos: '', revisada_meses: '', nova_data_fim: '', condicao_fisica: '', incremento: 'Manter', motivo: '', justificativa: '' });
+  const [editForm, setEditForm] = React.useState({ revisada_anos: '', revisada_meses: '', nova_data_fim: '', condicao_fisica: '', incremento: 'Manter', motivo: '', justificativa: 'A vida útil está correta' });
   const [activeTab, setActiveTab] = React.useState('pendentes'); // 'pendentes' | 'revisados'
+  // Comentários supervisor -> revisor
+  const [commentsItem, setCommentsItem] = React.useState(null);
+  const [commentsList, setCommentsList] = React.useState([]);
+  const [replyText, setReplyText] = React.useState('');
+  const [commentsCount, setCommentsCount] = React.useState(() => new Map());
 
   React.useEffect(() => {
     const run = async () => {
@@ -73,6 +78,11 @@ export default function RevisaoVidasUteis() {
     };
     loadItems();
   }, [periodoId]);
+
+  const getUserId = React.useCallback(() => { try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null')?.id || null; } catch { return null; } }, []);
+
+  const periodoSelecionado = React.useMemo(() => periodos.find((p) => p.id === periodoId) || null, [periodoId, periodos]);
+  const periodoEncerrado = periodoSelecionado?.status === 'Encerrado';
 
   // Helpers para datas e ordenação por próximos 18 meses
   const parseDate = (str) => {
@@ -215,6 +225,13 @@ export default function RevisaoVidasUteis() {
       },
     },
     { key: 'alterado', header: t('col_changed'), render: (v) => (v ? t('yes') : t('no')) },
+    { key: 'comentarios', header: '💬', render: (_v, row) => (
+      <button
+        className="px-2 py-1 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+        title="Ver comentários do supervisor"
+        onClick={(e) => { e.stopPropagation(); openComments(row); }}
+      >{commentsCount.get(row.id) ?? 0}</button>
+    )},
   ];
 
   // Mapas auxiliares para CC -> UG
@@ -332,8 +349,38 @@ export default function RevisaoVidasUteis() {
       condicao_fisica: row.condicao_fisica ?? '',
       incremento: row.auxiliar2 ?? 'Manter',
       motivo: row.auxiliar3 ?? '',
-      justificativa: row.justificativa ?? '',
+      justificativa: (row.auxiliar2 ?? 'Manter') === 'Manter' ? (row.justificativa ?? 'A vida útil está correta') : (row.justificativa ?? ''),
     });
+  };
+
+  const openComments = async (row) => {
+    try {
+      const list = await listarComentariosRVU(row.id);
+      const arr = Array.isArray(list) ? list : [];
+      setCommentsList(arr);
+      setCommentsItem(row);
+      setReplyText('');
+      setCommentsCount((prev) => new Map(prev).set(row.id, arr.length));
+    } catch (err) {
+      setCommentsList([]);
+      setCommentsItem(row);
+    }
+  };
+
+  const sendReply = async (c) => {
+    const revisorId = getUserId();
+    if (!revisorId) { setError(t('error_missing_user') || 'Usuário não identificado'); return; }
+    if (!replyText.trim()) { setError(t('error_reply_required') || 'Resposta obrigatória'); return; }
+    try {
+      await responderComentarioRVU({ comentario_id: c.id, revisor_id: revisorId, resposta: replyText.trim(), periodo_id: periodoId });
+      const refreshed = await listarComentariosRVU(commentsItem.id);
+      const arr = Array.isArray(refreshed) ? refreshed : [];
+      setCommentsList(arr);
+      setCommentsCount((prev) => new Map(prev).set(commentsItem.id, arr.length));
+      setReplyText('');
+    } catch (err) {
+      setError(String(err?.message || err));
+    }
   };
 
   const handleSave = async () => {
@@ -535,6 +582,45 @@ export default function RevisaoVidasUteis() {
         </div>
       </div>
 
+      {/* Modal de comentários supervisor -> revisor */}
+      {commentsItem && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onClick={() => setCommentsItem(null)}>
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg w-full max-w-xl p-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Comentários do supervisor</h3>
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {commentsList.map((c) => (
+                <div key={c.id} className="p-2 rounded border border-slate-200 dark:border-slate-800">
+                  <div className="text-xs text-slate-500">{new Date(c.data_comentario).toLocaleString('pt-BR')} • Supervisor: {c.supervisor_id}</div>
+                  <div className="text-sm mb-1">{c.comentario}</div>
+                  <div className="text-xs">Status: {c.status} • Tipo: {c.tipo}</div>
+                  {c.resposta ? (
+                    <div className="mt-1 pl-2 border-l-2 border-slate-300">
+                      <div className="text-xs text-slate-500">Resposta ({new Date(c.data_resposta).toLocaleString('pt-BR')} • {c.respondido_por})</div>
+                      <div className="text-sm">{c.resposta}</div>
+                    </div>
+                  ) : (
+                    !periodoEncerrado && (
+                      <div className="mt-2">
+                        <label className="block text-sm mb-1">Responder</label>
+                        <textarea className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2" value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Escreva sua resposta" />
+                        <div className="mt-2 flex gap-2">
+                          <button className="px-3 py-1 rounded border" onClick={() => setCommentsItem(null)}>Fechar</button>
+                          <button className="px-3 py-1 rounded bg-blue-600 text-white" onClick={() => sendReply(c)}>Responder</button>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              ))}
+              {commentsList.length === 0 && <div className="text-xs text-slate-500">Sem comentários.</div>}
+            </div>
+            {periodoEncerrado && (
+              <div className="mt-2 text-xs text-amber-700">⚠️ Período encerrado: respostas bloqueadas.</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {editingItem && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg w-full max-w-2xl p-4">
@@ -565,7 +651,7 @@ export default function RevisaoVidasUteis() {
                       ...prev,
                       incremento: novoInc,
                       motivo: '',
-                      justificativa: '',
+                      justificativa: novoInc === 'Manter' ? 'A vida útil está correta' : '',
                       revisada_anos: novoInc === 'Manter' ? '' : prev.revisada_anos,
                       revisada_meses: novoInc === 'Manter' ? '' : prev.revisada_meses,
                       nova_data_fim: novoInc === 'Manter' ? '' : prev.nova_data_fim,

@@ -10,8 +10,16 @@ export function ThemeProvider({ children }) {
 
   React.useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
+    const body = document.body;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      body.classList.add('dark');
+      root.setAttribute('data-theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      body.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+    }
     localStorage.setItem('assetlife_theme', theme);
   }, [theme]);
 

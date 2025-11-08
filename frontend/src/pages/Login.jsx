@@ -32,10 +32,18 @@ export default function LoginPage() {
       try {
         const perms = await authMePermissions();
         try { localStorage.setItem('assetlife_permissoes', JSON.stringify(perms)); } catch {}
-        const rotas = perms?.rotas || [];
-        const target = rotas.includes('/dashboard') ? '/dashboard' : (rotas[0] || '/dashboard');
-        navigate(target, { replace: true });
+        const empresas = Array.isArray(perms?.empresas_ids) ? perms.empresas_ids : [];
+        // Seleção automática se o usuário tiver uma única empresa
+        if (empresas.length === 1) {
+          try { localStorage.setItem('assetlife_empresa', String(empresas[0])); } catch {}
+          navigate('/dashboard', { replace: true });
+        } else {
+          // Limpa seleção e força fluxo de seleção de empresa
+          try { localStorage.removeItem('assetlife_empresa'); } catch {}
+          navigate('/select-company', { replace: true });
+        }
       } catch {
+        // Em caso de falha ao obter permissões, segue para dashboard padrão
         navigate('/dashboard', { replace: true });
       }
     } catch (err) {

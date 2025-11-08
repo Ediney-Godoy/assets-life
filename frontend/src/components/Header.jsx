@@ -1,8 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
+import { Building2, LogOut } from 'lucide-react';
 
-export default function Header({ backendStatus, language, onLanguageChange, onLogout }) {
+export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany }) {
   const { t } = useTranslation();
   const [user, setUser] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch { return null; }
@@ -38,18 +39,31 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
           <option value="pt">{t('lang_pt')}</option>
           <option value="es">{t('lang_es')}</option>
         </select>
-        <ThemeToggle />
         {user && (
           <div className="flex items-center gap-2 ml-3">
             <div className="hidden sm:block text-sm text-slate-700 dark:text-slate-300 max-w-[220px] truncate" title={`${user.nome} • ${user.email || ''}`}>
               {user.nome}
             </div>
+            <ThemeToggle />
+            {onChangeCompany && (
+              <button
+                type="button"
+                onClick={onChangeCompany}
+                className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                title={t('change_company') || 'Trocar de Empresa'}
+                aria-label={t('change_company') || 'Trocar de Empresa'}
+              >
+                <Building2 size={18} className="text-slate-700 dark:text-slate-200" />
+              </button>
+            )}
             <button
               type="button"
               onClick={onLogout}
-              className="px-2 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+              title={t('logout') || 'Sair'}
+              aria-label={t('logout') || 'Sair'}
             >
-              {t('logout') || 'Sair'}
+              <LogOut size={18} className="text-slate-700 dark:text-slate-200" />
             </button>
           </div>
         )}

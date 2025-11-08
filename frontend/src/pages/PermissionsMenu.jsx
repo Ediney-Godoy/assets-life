@@ -8,10 +8,16 @@ export default function PermissionsMenu() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  // Tradução com fallback robusto (se i18n retornar a própria chave)
+  const titleKey = t('permissions_groups_title');
+  const subtitleKey = t('permissions_groups_subtitle');
+  const title = titleKey === 'permissions_groups_title' ? 'Grupos de permissões' : titleKey;
+  const subtitle = subtitleKey === 'permissions_groups_subtitle' ? 'Gerencie grupos e permissões de acesso' : subtitleKey;
+
   const cards = [
     {
-      title: t('permissions_groups_title') || 'Grupos de permissões',
-      subtitle: t('permissions_groups_subtitle') || 'Gerencie grupos e permissões de acesso',
+      title,
+      subtitle,
       icon: Shield,
       action: () => navigate('/permissions/groups'),
     },
@@ -30,7 +36,7 @@ export default function PermissionsMenu() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.03 }}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/40"
           >
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">

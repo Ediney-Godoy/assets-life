@@ -3,19 +3,16 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   server: {
-    host: 'localhost',
-    port: 5175,
-    strictPort: true,
+    // Allow external access and align with preview server args
+    host: true,
+    port: 5180,
+    strictPort: false,
     open: false,
+    // Reduce noisy overlay and align HMR client port
     hmr: {
       protocol: 'ws',
-      host: 'localhost',
-      overlay: true,
-    },
-    watch: {
-      usePolling: true,
-      interval: 100,
+      overlay: false,
     },
   },
-  plugins: [react()]
+  plugins: [react()],
 });

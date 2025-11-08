@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield } from 'lucide-react';
+import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck } from 'lucide-react';
 import { getRole, getVisibleMenuForRole } from '../permissions';
 
 export default function Sidebar() {
@@ -26,6 +26,7 @@ export default function Sidebar() {
     { to: '/dashboard', label: t('nav_dashboard'), icon: LayoutDashboard },
     { to: '/cadastros', label: t('nav_registrations'), icon: SquareStack },
     { to: '/reviews', label: t('nav_reviews'), icon: ClipboardList },
+    { to: '/supervisao-rvu', label: t('nav_supervisao') || 'Supervisão', icon: UserCheck },
     { to: '/reports', label: t('nav_reports'), icon: BarChart3 },
     { to: '/permissions', label: t('nav_permissions'), icon: Shield },
   ];
@@ -33,14 +34,14 @@ export default function Sidebar() {
   // Definir conjunto de rotas permitidas
   const allowed = (() => {
     const hasRoutes = Array.isArray(visible) && visible.length > 0 && visible.every((v) => v.startsWith('/'));
-    const base = hasRoutes ? visible : getVisibleMenuForRole(role);
+    const base = hasRoutes ? visible : ['/dashboard'];
     const set = new Set(base);
     if (!set.has('/dashboard')) set.add('/dashboard');
     return set;
   })();
 
   const isRouteVisible = (route, parent) => {
-    if (!allowed || allowed.size === 0) return true;
+    if (!allowed) return false;
     return allowed.has(route) || (parent ? allowed.has(parent) : false);
   };
 

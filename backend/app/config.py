@@ -34,3 +34,7 @@ if not DATABASE_URL:
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
     DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# Controle de DDL (CREATE/ALTER). Em ambientes sem privilégio de escrita de schema,
+# mantenha como False para evitar falhas durante startup/rotas.
+ALLOW_DDL = os.getenv("ALLOW_DDL", "false").strip().lower() in {"1", "true", "yes", "on"}

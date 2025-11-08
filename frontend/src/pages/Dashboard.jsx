@@ -5,6 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, Users2, UserCog, Layers, FolderKanban, Wallet, Network, Crosshair, CalendarDays } from 'lucide-react';
 import { getCompanies, getReviewPeriods, getReviewItems, getReviewDelegations } from '../apiClient';
 import Pie3D from '../components/charts/Pie3D';
+import BarChart from '../components/charts/BarChart';
+import LineChart from '../components/charts/LineChart';
+import AreaChart from '../components/charts/AreaChart';
+import DonutChart from '../components/charts/DonutChart';
 
 export default function DashboardPage({ registrationsOnly }) {
   const { t } = useTranslation();
@@ -14,7 +18,7 @@ export default function DashboardPage({ registrationsOnly }) {
   const [metrics, setMetrics] = React.useState({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
   const [chartData, setChartData] = React.useState([]);
   const [justifChartData, setJustifChartData] = React.useState([]);
-  // Rotação automática dos gráficos (mantendo estilo 3D)
+  // Rotação automática dos gráficos (variando tipos: barras, donut, área, pizza 3D)
   const [rotationIndex, setRotationIndex] = React.useState(0);
 
   React.useEffect(() => {
@@ -182,13 +186,14 @@ export default function DashboardPage({ registrationsOnly }) {
   }, [metrics, t]);
 
   // Função util para selecionar qual gráfico mostrar por posição (esquerda/direita)
-  const renderRotatingPie = (slotOffset = 0) => {
+  const renderRotatingChart = (slotOffset = 0) => {
     const sequence = ['assignments', 'evolution', 'adjusted', 'justifications'];
     const idx = (rotationIndex + slotOffset) % sequence.length;
     const type = sequence[idx];
+    
     if (type === 'assignments') {
       return chartData.length > 0 ? (
-        <Pie3D data={chartData} title={t('dashboard_chart_title')} />
+        <BarChart data={chartData} title={t('dashboard_chart_title')} horizontal={true} />
       ) : (
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
@@ -197,7 +202,12 @@ export default function DashboardPage({ registrationsOnly }) {
     }
     if (type === 'justifications') {
       return justifChartData.length > 0 ? (
-        <Pie3D data={justifChartData} title={t('dashboard_chart_justifications_title')} />
+        <BarChart
+          data={justifChartData}
+          title={t('dashboard_chart_justifications_title')}
+          horizontal={true}
+          showPercent={true}
+        />
       ) : (
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
@@ -211,7 +221,7 @@ export default function DashboardPage({ registrationsOnly }) {
     }
     // evolution
     return (
-      <Pie3D data={evolutionData} title={t('dashboard_chart_evolution_title') || 'Evolução da Revisão'} />
+      <AreaChart data={evolutionData} title={t('dashboard_chart_evolution_title') || 'Evolução da Revisão'} />
     );
   };
 
@@ -225,10 +235,10 @@ export default function DashboardPage({ registrationsOnly }) {
         <>
           {/* Mantém layout original; abaixo ficam os gráficos lado a lado com rotação automática */}
 
-          <div className="mb-4 max-w-md">
-            <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1">{t('dashboard_company_label')}</label>
+          <div className="mb-4 max-w-md flex items-center gap-2">
+            <span className="text-sm text-slate-700 dark:text-slate-300">Empresa</span>
             <select
-              className="w-full h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+              className="flex-1 h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
               value={companyId}
               onChange={(e) => setCompanyId(e.target.value)}
             >
@@ -246,7 +256,7 @@ export default function DashboardPage({ registrationsOnly }) {
             <MetricCard color={metricColors[4]} label={t('dashboard_metric_fully_depreciated')} value={metrics.fullyDepreciated} />
           </div>
 
-          {/* Dois gráficos lado a lado com substituição a cada 10s */}
+          {/* Dois gráficos lado a lado com substituição a cada 15s - tipos variados */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <AnimatePresence mode="wait">
               <motion.div
@@ -256,7 +266,7 @@ export default function DashboardPage({ registrationsOnly }) {
                 exit={{ opacity: 0, x: 10 }}
                 transition={{ duration: 0.35 }}
               >
-                {renderRotatingPie(0)}
+                {renderRotatingChart(0)}
               </motion.div>
             </AnimatePresence>
             <AnimatePresence mode="wait">
@@ -267,7 +277,7 @@ export default function DashboardPage({ registrationsOnly }) {
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.35 }}
               >
-                {renderRotatingPie(1)}
+                {renderRotatingChart(1)}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -277,7 +287,7 @@ export default function DashboardPage({ registrationsOnly }) {
       )}
 
       {visibleCards.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
           {visibleCards.map((c, idx) => (
             <motion.button
               key={idx}

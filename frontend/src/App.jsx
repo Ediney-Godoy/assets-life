@@ -11,6 +11,8 @@ import Header from './components/Header';
 import DynamicTabs from './components/DynamicTabs';
 import DashboardPage from './pages/Dashboard';
 import CompaniesPage from './pages/Companies';
+import RelatoriosRVUView from './pages/RelatoriosRVUView';
+import SupervisaoRVUView from './pages/SupervisaoRVUView';
 import EmployeesPage from './pages/Employees';
 import ManagementUnitsPage from './pages/ManagementUnits';
 import TabsDemo from './pages/TabsDemo';
@@ -32,6 +34,7 @@ import ForgotPasswordPage from './pages/ForgotPassword';
 import ResetPasswordPage from './pages/ResetPassword';
 import FirstAccessPage from './pages/FirstAccess';
 import { clearToken, getHealth } from './apiClient';
+import SelectCompanyPage from './pages/SelectCompany';
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -64,6 +67,24 @@ export default function App() {
   const authRoutes = ['/login', '/forgot-password', '/reset-password', '/first-access'];
   const isAuthRoute = authRoutes.some((p) => location.pathname.startsWith(p));
 
+  function RequireCompany({ children }) {
+    try {
+      const raw = localStorage.getItem('assetlife_permissoes');
+      const perms = raw ? JSON.parse(raw) : null;
+      const empresaIds = Array.isArray(perms?.empresas_ids) ? perms.empresas_ids : [];
+      const selected = localStorage.getItem('assetlife_empresa');
+      // Se há mais de uma empresa e nenhuma selecionada, redireciona para seleção
+      if (empresaIds.length > 1 && !selected) {
+        return <Navigate to="/select-company" replace />;
+      }
+      // Se há exatamente uma, garante seleção
+      if (empresaIds.length === 1 && !selected) {
+        try { localStorage.setItem('assetlife_empresa', String(empresaIds[0])); } catch {}
+      }
+    } catch {}
+    return children;
+  }
+
   const handleLogout = () => {
     try { localStorage.removeItem('assetlife_user'); } catch {}
     clearToken();
@@ -85,7 +106,11 @@ export default function App() {
         '/reviews/massa': '/revisoes-massa',
       };
       const alt = altMap[route];
-      const ok = allowed.size === 0 || allowed.has(route) || (alt ? allowed.has(alt) : false);
+      const ok = (
+        allowed.size === 0
+          ? route === '/dashboard'
+          : allowed.has(route) || (alt ? allowed.has(alt) : false)
+      );
       if (!ok) return <Navigate to="/dashboard" replace state={{ denied: route }} />;
     } catch {}
     return children;
@@ -97,9 +122,9 @@ export default function App() {
         {!isAuthRoute && <Sidebar />}
         <div className="flex-1 flex flex-col">
           {!isAuthRoute && (
-            <Header backendStatus={backendStatus} language={i18n.language} onLanguageChange={changeLanguage} onLogout={handleLogout} />
+            <Header backendStatus={backendStatus} language={i18n.language} onLanguageChange={changeLanguage} onLogout={handleLogout} onChangeCompany={() => navigate('/select-company')} />
           )}
-          <main className="container-page">
+          <main className="container-page scrollbar-stable">
             {!isAuthRoute && <DynamicTabs initialTabs={initialTabs} hideBody />}
             <Routes>
               {/* Auth routes */}
@@ -108,11 +133,16 @@ export default function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/first-access" element={<RequireAuth><FirstAccessPage /></RequireAuth>} />
 
+              {/* Company selection */}
+              <Route path="/select-company" element={<RequireAuth><SelectCompanyPage /></RequireAuth>} />
+
               {/* Protected routes */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<RequireAuth><DashboardPage t={t} /></RequireAuth>} />
-              <Route path="/cadastros" element={<RequireAuth><DashboardPage t={t} registrationsOnly /></RequireAuth>} />
-              <Route path="/companies" element={<RequireAuth><CompaniesPage /></RequireAuth>} />
+              <Route path="/dashboard" element={<RequireAuth><RequireCompany><DashboardPage t={t} /></RequireCompany></RequireAuth>} />
+              <Route path="/cadastros" element={<RequireAuth><RequireCompany><DashboardPage t={t} registrationsOnly /></RequireCompany></RequireAuth>} />
+              <Route path="/companies" element={<RequireAuth><RequireCompany><CompaniesPage /></RequireCompany></RequireAuth>} />
+              <Route path="/relatorios-rvu" element={<RequireAuth><RequireCompany><RelatoriosRVUView /></RequireCompany></RequireAuth>} />
+              <Route path="/supervisao-rvu" element={<RequireAuth><RequirePermission route="/supervisao/rvu"><SupervisaoRVUView /></RequirePermission></RequireAuth>} />
               <Route path="/employees" element={<RequireAuth><EmployeesPage /></RequireAuth>} />
               <Route path="/ugs" element={<RequireAuth><ManagementUnitsPage /></RequireAuth>} />
               <Route path="/tabs-demo" element={<RequireAuth><TabsDemo /></RequireAuth>} />
@@ -123,13 +153,13 @@ export default function App() {
               <Route path="/reviews/delegacao" element={<RequireAuth><RequirePermission route="/reviews/delegacao"><DelegacaoPage /></RequirePermission></RequireAuth>} />
               <Route path="/reviews/vidas-uteis" element={<RequireAuth><RequirePermission route="/reviews/vidas-uteis"><RevisaoVidasUteis /></RequirePermission></RequireAuth>} />
               <Route path="/reviews/massa" element={<RequireAuth><RequirePermission route="/reviews/massa"><MassRevisionView /></RequirePermission></RequireAuth>} />
-              <Route path="/revisoes-massa" element={<RequireAuth><RequirePermission route="/revisoes-massa"><MassRevisionView /></RequirePermission></RequireAuth>} />
-              <Route path="/cost-centers" element={<RequireAuth><CostCentersPage /></RequireAuth>} />
-              <Route path="/reports" element={<RequireAuth><ReportsMenu /></RequireAuth>} />
-              <Route path="/reports/vida-util" element={<RequireAuth><ReportUsefulLifePage /></RequireAuth>} />
-              <Route path="/permissions" element={<RequireAuth><PermissionsMenu /></RequireAuth>} />
-              <Route path="/permissions/groups" element={<RequireAuth><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireAuth>} />
-              <Route path="/users" element={<RequireAuth><UsersPage /></RequireAuth>} />
+              <Route path="/revisoes-massa" element={<RequireAuth><RequireCompany><RequirePermission route="/revisoes-massa"><MassRevisionView /></RequirePermission></RequireCompany></RequireAuth>} />
+              <Route path="/cost-centers" element={<RequireAuth><RequireCompany><CostCentersPage /></RequireCompany></RequireAuth>} />
+              <Route path="/reports" element={<RequireAuth><RequireCompany><ReportsMenu /></RequireCompany></RequireAuth>} />
+              <Route path="/reports/vida-util" element={<RequireAuth><RequireCompany><ReportUsefulLifePage /></RequireCompany></RequireAuth>} />
+              <Route path="/permissions" element={<RequireAuth><RequireCompany><PermissionsMenu /></RequireCompany></RequireAuth>} />
+              <Route path="/permissions/groups" element={<RequireAuth><RequireCompany><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireCompany></RequireAuth>} />
+              <Route path="/users" element={<RequireAuth><RequireCompany><UsersPage /></RequireCompany></RequireAuth>} />
             </Routes>
             <Toaster position="top-right" toastOptions={{
               style: { background: '#111827', color: '#F9FAFB' },
