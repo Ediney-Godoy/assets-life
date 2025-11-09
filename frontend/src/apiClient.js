@@ -11,9 +11,10 @@ try {
 } catch {}
 // Inclui fallback automático para porta 8001 (documentada no README) e loopback
 // Prioriza o mesmo host do frontend (HOST_BASE) para evitar bloqueios ao acessar via IP da rede
+// Priorizar sempre a base definida via ambiente (produção) para evitar 404/CORS no domínio do frontend
 const BASE_CANDIDATES = [
-  HOST_BASE,
   PRIMARY_BASE,
+  HOST_BASE,
   'http://127.0.0.1:8000',
   HOST_BASE_ALT_PORT,
   'http://localhost:8001',
