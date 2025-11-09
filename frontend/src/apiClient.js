@@ -493,7 +493,9 @@ export async function clonePermissionGroup(grupoId, payload) {
 
 // Auth (opcional)
 export async function login(payload) {
-  return request('/auth/login', { method: 'POST', body: JSON.stringify(payload) });
+  // Em produção (Render free), a instância pode ter cold start (>50s).
+  // Aumenta o timeout para evitar abort prematuro na primeira chamada.
+  return request('/auth/login', { method: 'POST', body: JSON.stringify(payload), timeout: 60000 });
 }
 
 export async function authMe(token) {
