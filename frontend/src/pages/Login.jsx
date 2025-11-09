@@ -19,7 +19,10 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const resp = await login({ identificador: identifier, senha: password });
+      const id = String(identifier || '').trim();
+      const isEmail = /@/.test(id);
+      const payload = isEmail ? { email: id, senha: password } : { usuario: id, senha: password };
+      const resp = await login(payload);
       const token = resp?.access_token;
       if (!token) throw new Error('No token');
       saveToken(token);
