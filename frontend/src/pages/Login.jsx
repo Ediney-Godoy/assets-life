@@ -21,7 +21,8 @@ export default function LoginPage() {
     try {
       const id = String(identifier || '').trim();
       const isEmail = /@/.test(id);
-      const payload = isEmail ? { email: id, senha: password } : { usuario: id, senha: password };
+      // Backend espera { email, senha } OU { identificador, senha }
+      const payload = isEmail ? { email: id, senha: password } : { identificador: id, senha: password };
       const resp = await login(payload);
       const token = resp?.access_token;
       if (!token) throw new Error('No token');
