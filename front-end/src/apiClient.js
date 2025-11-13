@@ -38,6 +38,7 @@ async function resolveBase() {
       clearTimeout(timeoutId);
       if (res.ok) {
         ACTIVE_BASE = base;
+        try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
         return base;
       }
     } catch {
@@ -113,7 +114,10 @@ async function request(path, options = {}) {
         continue;
       }
       // Marca base ativa caso ainda não esteja definida
-      if (!ACTIVE_BASE) ACTIVE_BASE = base;
+      if (!ACTIVE_BASE) {
+        ACTIVE_BASE = base;
+        try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
+      }
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         return res.json();
