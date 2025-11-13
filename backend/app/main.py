@@ -60,7 +60,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     # Permite origens de redes privadas comuns além de localhost/127.0.0.1
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$",
+    # e amplia para subdomínios em vercel.app em produção
+    allow_origin_regex=r"^https?://((localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?|([a-z0-9-]+\.)?vercel\.app)(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
@@ -373,6 +374,23 @@ def on_startup():
             db.close()
         except Exception:
             pass
+
+    # Opcional: seed do usuário administrador na primeira subida
+    # Ative definindo a variável de ambiente AUTO_SEED_ADMIN=true
+    try:
+        auto_seed = os.getenv("AUTO_SEED_ADMIN", "").lower() in {"1", "true", "yes"}
+        if auto_seed:
+            # Import relativo ao pacote backend/scripts
+            try:
+                from ..scripts.seed_admin import ensure_admin
+            except Exception:
+                # Fallback: import absoluto quando o pacote raiz está no PYTHONPATH
+                from scripts.seed_admin import ensure_admin  # type: ignore
+            ensure_admin()
+    except Exception as e:
+        import traceback
+        print("Seed admin error:", e)
+        traceback.print_exc()
 
 @app.get("/health")
 def health():

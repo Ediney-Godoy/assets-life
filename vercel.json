@@ -1,13 +1,13 @@
 {
   "builds": [
     {
-      "src": "frontend/package.json",
+      "src": "front-end/package.json",
       "use": "@vercel/static-build",
       "config": { "distDir": "dist", "buildCommand": "npm run build" }
     }
   ],
   "framework": null,
-  "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
