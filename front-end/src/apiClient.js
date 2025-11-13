@@ -1,4 +1,9 @@
 const PRIMARY_BASE = (import.meta?.env?.VITE_API_URL) || 'http://localhost:8000';
+// Em produção (build do Vite em Vercel), use somente a base definida via ambiente
+// para evitar qualquer tentativa de recurso http (Mixed Content) ou hosts/ports locais.
+const IS_PROD = (() => {
+  try { return !!(import.meta?.env?.PROD); } catch { return false; }
+})();
 // Ajuste: quando acessando via IP da rede (ex.: 192.168.x.x), usar o mesmo host para o backend
 let HOST_BASE = null;
 let HOST_BASE_ALT_PORT = null;
@@ -12,14 +17,16 @@ try {
 // Inclui fallback automático para porta 8001 (documentada no README) e loopback
 // Prioriza o mesmo host do frontend (HOST_BASE) para evitar bloqueios ao acessar via IP da rede
 // Priorizar sempre a base definida via ambiente (produção) para evitar 404/CORS no domínio do frontend
-const BASE_CANDIDATES = [
-  PRIMARY_BASE,
-  HOST_BASE,
-  'http://127.0.0.1:8000',
-  HOST_BASE_ALT_PORT,
-  'http://localhost:8001',
-  'http://127.0.0.1:8001'
-].filter(Boolean);
+const BASE_CANDIDATES = IS_PROD
+  ? [PRIMARY_BASE]
+  : [
+      PRIMARY_BASE,
+      HOST_BASE,
+      'http://127.0.0.1:8000',
+      HOST_BASE_ALT_PORT,
+      'http://localhost:8001',
+      'http://127.0.0.1:8001'
+    ].filter(Boolean);
 
 // Em contextos HTTPS (Vercel), bloqueia fallbacks http para evitar Mixed Content
 const IS_HTTPS = (() => {
