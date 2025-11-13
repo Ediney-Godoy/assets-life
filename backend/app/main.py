@@ -412,6 +412,14 @@ def health():
 def root():
     return {"message": "Asset Life API"}
 
+# Healthcheck simples para validação pelo frontend/build e monitores
+@app.get("/health")
+def health():
+    try:
+        return {"ok": True, "version": app.version}
+    except Exception:
+        return {"ok": True}
+
 # -----------------------------
 # Util: Auditoria
 # -----------------------------
