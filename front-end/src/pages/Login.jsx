@@ -14,7 +14,9 @@ export default function LoginPage() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    console.log('[Login] onSubmit chamado');
     if (!identifier || !password) {
+      console.log('[Login] Campos vazios, abortando');
       toast.error(t('login_fill_required'));
       return;
     }
@@ -24,10 +26,14 @@ export default function LoginPage() {
       const isEmail = /@/.test(id);
       // Backend espera { email, senha } OU { identificador, senha }
       const payload = isEmail ? { email: id, senha: password } : { identificador: id, senha: password };
+      console.log('[Login] Chamando login() com payload:', { ...payload, senha: '***' });
       const resp = await login(payload);
+      console.log('[Login] Resposta recebida:', resp ? 'OK' : 'null/undefined');
       const token = resp?.access_token;
+      console.log('[Login] Token recebido:', token ? 'SIM' : 'NÃO');
       if (!token) throw new Error('No token');
       saveToken(token);
+      console.log('[Login] Token salvo no localStorage');
       // carregar permissões e redirecionar
       // carregar dados do usuário logado
       try {
@@ -52,8 +58,13 @@ export default function LoginPage() {
         navigate('/dashboard', { replace: true });
       }
     } catch (err) {
+      console.error('[Login] Erro capturado:', err);
+      console.error('[Login] Erro message:', err?.message);
+      console.error('[Login] Erro stack:', err?.stack);
       const detail = extractError(err);
       const msg = String(err?.message || '').trim();
+      console.log('[Login] Detail extraído:', detail);
+      console.log('[Login] Mensagem final:', msg);
       // Em caso de erro de rede/CORS, mostre mensagem específica
       if (/Falha de conexão com a API/i.test(msg)) {
         toast.error(msg);
@@ -62,6 +73,7 @@ export default function LoginPage() {
       }
     } finally {
       setLoading(false);
+      console.log('[Login] Finalizando, loading = false');
     }
   };
 

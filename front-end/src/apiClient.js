@@ -102,20 +102,30 @@ if (IS_HTTPS && SAFE_CANDIDATES.length === 0 && PRIMARY_BASE && /^https:\/\//i.t
 }
 
 async function resolveBase() {
+  console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
   // Se já temos uma base ativa, reutiliza
-  if (ACTIVE_BASE) return ACTIVE_BASE;
+  if (ACTIVE_BASE) {
+    console.log('[apiClient] Usando ACTIVE_BASE existente:', ACTIVE_BASE);
+    return ACTIVE_BASE;
+  }
   
+  console.log('[apiClient] resolveBase() - SAFE_CANDIDATES.length:', SAFE_CANDIDATES.length);
   // Se SAFE_CANDIDATES está vazio mas temos PRIMARY_BASE HTTPS, usar ela diretamente
   if (SAFE_CANDIDATES.length === 0) {
+    console.log('[apiClient] resolveBase() - SAFE_CANDIDATES vazio, verificando PRIMARY_BASE HTTPS');
     if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
       ACTIVE_BASE = PRIMARY_BASE;
+      console.log('[apiClient] resolveBase() - Usando PRIMARY_BASE HTTPS:', PRIMARY_BASE);
       try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
       return PRIMARY_BASE;
     }
     // Se não há candidatos seguros, retorna null para evitar loop
+    console.log('[apiClient] resolveBase() - Nenhuma base disponível, retornando null');
     return null;
   }
+  console.log('[apiClient] resolveBase() - Testando SAFE_CANDIDATES:', SAFE_CANDIDATES);
   for (const base of SAFE_CANDIDATES) {
+    console.log('[apiClient] resolveBase() - Testando base:', base);
     if (!base) continue; // Pula valores nulos/undefined
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -151,12 +161,15 @@ function getToken() {
 }
 
 async function request(path, options = {}) {
+  console.log('[apiClient] request() chamado:', { path, method: options.method || 'GET' });
   const token = getToken();
+  console.log('[apiClient] Token presente:', token ? 'SIM' : 'NÃO');
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
     ...(token && !(options.headers || {}).Authorization ? { Authorization: `Bearer ${token}` } : {}),
   };
+  console.log('[apiClient] Headers preparados:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : undefined });
 
   // Anexa contexto de empresa selecionada (segregação de dados)
   try {
@@ -171,7 +184,9 @@ async function request(path, options = {}) {
   let lastErr;
   // Tenta primeiro a base ativa (se houver), depois demais candidatas
   // Resolve uma base válida antes de tentar, reduzindo tentativas bloqueadas por Mixed Content
+  console.log('[apiClient] Resolvendo base...');
   const initialBase = await resolveBase();
+  console.log('[apiClient] Base inicial resolvida:', initialBase);
   
   // Se não conseguiu resolver e estamos em HTTPS, tenta PRIMARY_BASE diretamente
   let bases = [];
@@ -183,24 +198,33 @@ async function request(path, options = {}) {
   } else {
     bases = [...SAFE_CANDIDATES].filter(Boolean);
   }
+  console.log('[apiClient] Bases candidatas:', bases);
+  console.log('[apiClient] IS_HTTPS:', IS_HTTPS);
+  console.log('[apiClient] PRIMARY_BASE:', PRIMARY_BASE);
+  console.log('[apiClient] SAFE_CANDIDATES:', SAFE_CANDIDATES);
   
   // Se ainda não há bases, retorna erro imediatamente
   if (bases.length === 0) {
     const errorMsg = IS_HTTPS
       ? 'VITE_API_URL não está configurada. Configure a variável na Vercel e faça redeploy.'
       : 'Nenhuma URL de API configurada. Configure VITE_API_URL.';
+    console.error('[apiClient] Nenhuma base disponível!', { IS_HTTPS, PRIMARY_BASE, SAFE_CANDIDATES });
     throw new Error(errorMsg);
   }
   for (const base of bases) {
+    const url = `${base}${path}`;
+    console.log('[apiClient] Tentando requisição para:', url);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 20000);
     try {
-      const res = await fetch(`${base}${path}`, {
+      console.log('[apiClient] Fetch iniciado:', { url, method: options.method || 'GET' });
+      const res = await fetch(url, {
         ...options,
         signal: controller.signal,
         headers,
       });
       clearTimeout(timeoutId);
+      console.log('[apiClient] Resposta recebida:', { status: res.status, statusText: res.statusText, ok: res.ok });
       if (!res.ok) {
         const text = await res.text();
         // Tratamento especial para 401: só limpa token se for realmente um erro de token inválido
@@ -247,8 +271,11 @@ async function request(path, options = {}) {
         try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
       }
       const contentType = res.headers.get('content-type') || '';
+      console.log('[apiClient] Content-Type:', contentType);
       if (contentType.includes('application/json')) {
-        return res.json();
+        const json = await res.json();
+        console.log('[apiClient] JSON retornado:', json);
+        return json;
       }
       // Conteúdos binários (PDF/Excel)
       if (
@@ -260,19 +287,26 @@ async function request(path, options = {}) {
       return res.text();
     } catch (err) {
       clearTimeout(timeoutId);
+      console.error('[apiClient] Erro na requisição:', err);
+      console.error('[apiClient] Erro name:', err?.name);
+      console.error('[apiClient] Erro message:', err?.message);
       // Tratamento amigável para abort por timeout
       if (err?.name === 'AbortError' || /aborted|AbortError/i.test(String(err?.message || ''))) {
+        console.log('[apiClient] Timeout detectado');
         lastErr = new Error('Tempo limite atingido. Ajuste os filtros ou tente novamente.');
       } else {
         lastErr = err;
       }
       // tenta próximo base em caso de falhas de rede/timeout
+      console.log('[apiClient] Tentando próxima base...');
       continue;
     }
   }
   // Mensagem amigável para erros genéricos de rede (ex.: CORS, servidor offline)
   const msg = String(lastErr?.message || '');
+  console.error('[apiClient] Todas as bases falharam. Último erro:', lastErr);
   if (/Failed to fetch|NetworkError|TypeError: Failed to fetch/i.test(msg)) {
+    console.error('[apiClient] Erro de rede detectado');
     throw new Error('Falha de conexão com a API. Verifique se o backend está ativo (porta 8000), o token de acesso e as permissões/CORS.');
   }
   throw lastErr || new Error('Falha ao conectar ao backend');
@@ -642,9 +676,17 @@ export async function clonePermissionGroup(grupoId, payload) {
 
 // Auth (opcional)
 export async function login(payload) {
+  console.log('[apiClient] login() chamado com payload:', { ...payload, senha: '***' });
   // Em produção (Render free), a instância pode ter cold start (>50s).
   // Aumenta o timeout para evitar abort prematuro na primeira chamada.
-  return request('/auth/login', { method: 'POST', body: JSON.stringify(payload), timeout: 60000 });
+  try {
+    const result = await request('/auth/login', { method: 'POST', body: JSON.stringify(payload), timeout: 60000 });
+    console.log('[apiClient] login() retornou:', result ? 'OK' : 'null/undefined');
+    return result;
+  } catch (err) {
+    console.error('[apiClient] login() erro:', err);
+    throw err;
+  }
 }
 
 export async function authMe(token) {
