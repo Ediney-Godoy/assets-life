@@ -1,5 +1,7 @@
 // Em produção, VITE_API_URL é obrigatória (deve ser HTTPS)
-const PRIMARY_BASE = import.meta?.env?.VITE_API_URL || 'http://localhost:8000';
+// Remove barra no final se houver
+const rawBase = import.meta?.env?.VITE_API_URL || 'http://localhost:8000';
+const PRIMARY_BASE = typeof rawBase === 'string' ? rawBase.replace(/\/+$/, '') : rawBase;
 // Em produção (build do Vite em Vercel), use somente a base definida via ambiente
 // para evitar qualquer tentativa de recurso http (Mixed Content) ou hosts/ports locais.
 const IS_PROD = (() => {
@@ -58,6 +60,12 @@ const SAFE_CANDIDATES = IS_HTTPS
       return /^https:\/\//i.test(String(b));
     })
   : BASE_CANDIDATES;
+
+// Fallback de emergência: se estiver em HTTPS e SAFE_CANDIDATES estiver vazio,
+// mas PRIMARY_BASE for HTTPS, usar ela mesmo que não esteja na lista
+if (IS_HTTPS && SAFE_CANDIDATES.length === 0 && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
+  SAFE_CANDIDATES.push(PRIMARY_BASE);
+}
 
 // DEBUG: Log candidates
 if (typeof window !== 'undefined') {
