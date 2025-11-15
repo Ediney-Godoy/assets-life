@@ -1,4 +1,5 @@
-const PRIMARY_BASE = (import.meta?.env?.VITE_API_URL) || 'http://localhost:8000';
+// Em produção, VITE_API_URL é obrigatória (deve ser HTTPS)
+const PRIMARY_BASE = import.meta?.env?.VITE_API_URL || 'http://localhost:8000';
 // Em produção (build do Vite em Vercel), use somente a base definida via ambiente
 // para evitar qualquer tentativa de recurso http (Mixed Content) ou hosts/ports locais.
 const IS_PROD = (() => {
@@ -39,7 +40,24 @@ const BASE_CANDIDATES = IS_PROD
 const IS_HTTPS = (() => {
   try { return typeof window !== 'undefined' && window.location?.protocol === 'https:'; } catch { return false; }
 })();
-const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//i.test(String(b)));
+
+// Se estiver em HTTPS e PRIMARY_BASE for HTTPS, usar apenas ela
+// Se estiver em HTTPS mas PRIMARY_BASE for HTTP, tentar usar PRIMARY_BASE mesmo assim (pode ser proxy)
+// Mas filtrar outras URLs HTTP
+const SAFE_CANDIDATES = IS_HTTPS
+  ? BASE_CANDIDATES.filter((b) => {
+      // Se PRIMARY_BASE for HTTPS, usar apenas ela
+      if (b === PRIMARY_BASE && /^https:\/\//i.test(String(b))) {
+        return true;
+      }
+      // Se PRIMARY_BASE for HTTP mas for a única opção, permitir (pode ser proxy reverso)
+      if (b === PRIMARY_BASE && BASE_CANDIDATES.length === 1) {
+        return true;
+      }
+      // Outras URLs devem ser HTTPS
+      return /^https:\/\//i.test(String(b));
+    })
+  : BASE_CANDIDATES;
 
 // DEBUG: Log candidates
 if (typeof window !== 'undefined') {
