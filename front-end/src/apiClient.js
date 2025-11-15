@@ -1,15 +1,4 @@
 // Em produção, VITE_API_URL é obrigatória (deve ser HTTPS)
-// DEBUG: Log completo do ambiente para diagnóstico
-if (typeof window !== 'undefined') {
-  console.log('[API Client DEBUG] import.meta.env:', {
-    VITE_API_URL: import.meta?.env?.VITE_API_URL,
-    MODE: import.meta?.env?.MODE,
-    PROD: import.meta?.env?.PROD,
-    DEV: import.meta?.env?.DEV,
-    allKeys: Object.keys(import.meta?.env || {})
-  });
-}
-
 // Remove barra no final se houver
 let rawBase = import.meta?.env?.VITE_API_URL;
 
@@ -20,14 +9,7 @@ if (!rawBase && typeof window !== 'undefined') {
   const isProduction = isHttps && !hostname.includes('localhost') && !hostname.includes('127.0.0.1');
   
   if (isProduction) {
-    // Em produção sem VITE_API_URL, mostrar erro claro
-    console.error('[API Client ERROR] VITE_API_URL não está configurada!');
-    console.error('[API Client ERROR] Valor lido:', import.meta?.env?.VITE_API_URL);
-    console.error('[API Client ERROR] Todas as variáveis VITE_*:', 
-      Object.keys(import.meta?.env || {}).filter(k => k.startsWith('VITE_')));
-    console.error('[API Client ERROR] Configure VITE_API_URL na Vercel com a URL HTTPS do seu backend Koyeb.');
-    console.error('[API Client ERROR] IMPORTANTE: A variável deve estar configurada ANTES do build!');
-    // Não definir fallback HTTP em produção HTTPS - vai causar Mixed Content
+    // Em produção sem VITE_API_URL, não definir fallback HTTP (causaria Mixed Content)
     rawBase = null;
   } else {
     // Desenvolvimento: usar localhost
@@ -53,12 +35,6 @@ const IS_PROD = (() => {
   } catch { return false; }
 })();
 
-// DEBUG: Log para diagnosticar problemas de configuração
-if (typeof window !== 'undefined') {
-  console.log('[API Client Debug] PRIMARY_BASE:', PRIMARY_BASE);
-  console.log('[API Client Debug] IS_PROD:', IS_PROD);
-  console.log('[API Client Debug] VITE_API_URL:', import.meta?.env?.VITE_API_URL);
-}
 // Ajuste: quando acessando via IP da rede (ex.: 192.168.x.x), usar o mesmo host para o backend
 let HOST_BASE = null;
 let HOST_BASE_ALT_PORT = null;
@@ -123,22 +99,6 @@ const SAFE_CANDIDATES = IS_HTTPS
 // mas PRIMARY_BASE for HTTPS, usar ela mesmo que não esteja na lista
 if (IS_HTTPS && SAFE_CANDIDATES.length === 0 && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
   SAFE_CANDIDATES.push(PRIMARY_BASE);
-  console.log('[API Client Debug] Adicionando PRIMARY_BASE como fallback de emergência:', PRIMARY_BASE);
-}
-
-// DEBUG: Log candidates
-if (typeof window !== 'undefined') {
-  console.log('[API Client Debug] IS_HTTPS:', IS_HTTPS);
-  console.log('[API Client Debug] BASE_CANDIDATES:', BASE_CANDIDATES);
-  console.log('[API Client Debug] SAFE_CANDIDATES:', SAFE_CANDIDATES);
-  if (SAFE_CANDIDATES.length === 0) {
-    console.error('[API Client ERROR] SAFE_CANDIDATES está vazio! Nenhuma URL válida para produção.');
-    console.error('[API Client ERROR] VITE_API_URL:', import.meta?.env?.VITE_API_URL || 'NÃO CONFIGURADA');
-    console.error('[API Client ERROR] AÇÃO NECESSÁRIA:');
-    console.error('[API Client ERROR] 1. Vá em Vercel > Settings > Environment Variables');
-    console.error('[API Client ERROR] 2. Adicione: VITE_API_URL = https://seu-backend.koyeb.app');
-    console.error('[API Client ERROR] 3. Faça redeploy do projeto');
-  }
 }
 
 async function resolveBase() {
@@ -148,17 +108,13 @@ async function resolveBase() {
   // Se SAFE_CANDIDATES está vazio mas temos PRIMARY_BASE HTTPS, usar ela diretamente
   if (SAFE_CANDIDATES.length === 0) {
     if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
-      console.log('[API Client Debug] Usando PRIMARY_BASE como fallback:', PRIMARY_BASE);
       ACTIVE_BASE = PRIMARY_BASE;
       try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
       return PRIMARY_BASE;
     }
     // Se não há candidatos seguros, retorna null para evitar loop
-    console.warn('[API Client WARN] Nenhuma URL segura disponível');
     return null;
   }
-  
-  console.log('[API Client Debug] Resolvendo base URL...');
   for (const base of SAFE_CANDIDATES) {
     if (!base) continue; // Pula valores nulos/undefined
     const controller = new AbortController();
@@ -228,12 +184,11 @@ async function request(path, options = {}) {
     bases = [...SAFE_CANDIDATES].filter(Boolean);
   }
   
-  // Se ainda não há bases, retorna erro imediatamente com mensagem clara
+  // Se ainda não há bases, retorna erro imediatamente
   if (bases.length === 0) {
     const errorMsg = IS_HTTPS
-      ? 'VITE_API_URL não está configurada na Vercel. Configure a variável de ambiente com a URL HTTPS do seu backend (ex: https://seu-backend.koyeb.app) e faça redeploy.'
+      ? 'VITE_API_URL não está configurada. Configure a variável na Vercel e faça redeploy.'
       : 'Nenhuma URL de API configurada. Configure VITE_API_URL.';
-    console.error('[API Client ERROR]', errorMsg);
     throw new Error(errorMsg);
   }
   for (const base of bases) {
