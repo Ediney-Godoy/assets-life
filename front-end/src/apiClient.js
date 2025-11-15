@@ -1,4 +1,15 @@
 // Em produção, VITE_API_URL é obrigatória (deve ser HTTPS)
+// DEBUG: Log completo do ambiente para diagnóstico
+if (typeof window !== 'undefined') {
+  console.log('[API Client DEBUG] import.meta.env:', {
+    VITE_API_URL: import.meta?.env?.VITE_API_URL,
+    MODE: import.meta?.env?.MODE,
+    PROD: import.meta?.env?.PROD,
+    DEV: import.meta?.env?.DEV,
+    allKeys: Object.keys(import.meta?.env || {})
+  });
+}
+
 // Remove barra no final se houver
 let rawBase = import.meta?.env?.VITE_API_URL;
 
@@ -11,7 +22,11 @@ if (!rawBase && typeof window !== 'undefined') {
   if (isProduction) {
     // Em produção sem VITE_API_URL, mostrar erro claro
     console.error('[API Client ERROR] VITE_API_URL não está configurada!');
+    console.error('[API Client ERROR] Valor lido:', import.meta?.env?.VITE_API_URL);
+    console.error('[API Client ERROR] Todas as variáveis VITE_*:', 
+      Object.keys(import.meta?.env || {}).filter(k => k.startsWith('VITE_')));
     console.error('[API Client ERROR] Configure VITE_API_URL na Vercel com a URL HTTPS do seu backend Koyeb.');
+    console.error('[API Client ERROR] IMPORTANTE: A variável deve estar configurada ANTES do build!');
     // Não definir fallback HTTP em produção HTTPS - vai causar Mixed Content
     rawBase = null;
   } else {
