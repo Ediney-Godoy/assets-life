@@ -81,8 +81,23 @@ if (typeof window !== 'undefined') {
 async function resolveBase() {
   // Se já temos uma base ativa, reutiliza
   if (ACTIVE_BASE) return ACTIVE_BASE;
+  
+  // Se SAFE_CANDIDATES está vazio mas temos PRIMARY_BASE HTTPS, usar ela diretamente
+  if (SAFE_CANDIDATES.length === 0) {
+    if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
+      console.log('[API Client Debug] Usando PRIMARY_BASE como fallback:', PRIMARY_BASE);
+      ACTIVE_BASE = PRIMARY_BASE;
+      try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
+      return PRIMARY_BASE;
+    }
+    // Se não há candidatos seguros, retorna null para evitar loop
+    console.warn('[API Client WARN] Nenhuma URL segura disponível');
+    return null;
+  }
+  
   console.log('[API Client Debug] Resolvendo base URL...');
   for (const base of SAFE_CANDIDATES) {
+    if (!base) continue; // Pula valores nulos/undefined
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
     try {
@@ -99,8 +114,13 @@ async function resolveBase() {
       continue;
     }
   }
-  // Sem base validada; mantém ACTIVE_BASE nulo para tentativas no request()
-  return SAFE_CANDIDATES[0];
+  // Sem base validada; retorna a primeira candidata ou PRIMARY_BASE como fallback
+  const fallback = SAFE_CANDIDATES[0] || (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE)) ? PRIMARY_BASE : null);
+  if (fallback) {
+    ACTIVE_BASE = fallback;
+    try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
+  }
+  return fallback;
 }
 
 function getToken() {
@@ -133,7 +153,22 @@ async function request(path, options = {}) {
   // Tenta primeiro a base ativa (se houver), depois demais candidatas
   // Resolve uma base válida antes de tentar, reduzindo tentativas bloqueadas por Mixed Content
   const initialBase = await resolveBase();
-  const bases = initialBase ? [initialBase, ...SAFE_CANDIDATES.filter(b => b !== initialBase)] : [...SAFE_CANDIDATES];
+  
+  // Se não conseguiu resolver e estamos em HTTPS, tenta PRIMARY_BASE diretamente
+  let bases = [];
+  if (initialBase) {
+    bases = [initialBase, ...SAFE_CANDIDATES.filter(b => b && b !== initialBase)];
+  } else if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
+    // Fallback de emergência: usar PRIMARY_BASE diretamente
+    bases = [PRIMARY_BASE];
+  } else {
+    bases = [...SAFE_CANDIDATES].filter(Boolean);
+  }
+  
+  // Se ainda não há bases, retorna erro imediatamente
+  if (bases.length === 0) {
+    throw new Error('Nenhuma URL de API configurada. Configure VITE_API_URL na Vercel.');
+  }
   for (const base of bases) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 20000);
@@ -205,6 +240,10 @@ async function request(path, options = {}) {
 export async function getHealth(options = {}) {
   try {
     const base = await resolveBase();
+    if (!base) {
+      // Se não conseguiu resolver base, retorna null silenciosamente
+      return null;
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), Math.max(options.timeout ?? 0, 3000));
     const res = await fetch(`${base}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -350,6 +389,9 @@ export async function closeReviewPeriod(id) {
 // Upload de base (.csv/.xlsx) para um período específico
 export async function uploadReviewBase(periodoId, file) {
   const base = await resolveBase();
+  if (!base) {
+    throw new Error('Nenhuma URL de API configurada. Configure VITE_API_URL na Vercel.');
+  }
   const url = `${base}/revisoes/upload_base/${periodoId}`;
   const form = new FormData();
   form.append('file', file);
