@@ -203,17 +203,24 @@ async function request(path, options = {}) {
       clearTimeout(timeoutId);
       if (!res.ok) {
         const text = await res.text();
-        if (res.status === 401 && /Token inválido|Not authenticated|Not Authorized|Unauthorized/i.test(text)) {
-          try {
-            localStorage.removeItem('assetlife_token');
-            localStorage.removeItem('assetlife_permissoes');
-            localStorage.removeItem('assetlife_user');
-          } catch {}
-          // Redireciona sem propagar erro para evitar logs desnecessários
-          if (path !== '/auth/login' && typeof window !== 'undefined') {
-            try { window.location.href = '/login'; } catch {}
+        // Só limpa token se for realmente um erro de autenticação (não erro de validação de negócio)
+        if (res.status === 401) {
+          // Verifica se é realmente um erro de token inválido, não um erro de validação
+          const isTokenError = /Token inválido|Not authenticated|Not Authorized|Unauthorized|Token expired|Invalid token/i.test(text);
+          if (isTokenError) {
+            try {
+              localStorage.removeItem('assetlife_token');
+              localStorage.removeItem('assetlife_permissoes');
+              localStorage.removeItem('assetlife_user');
+            } catch {}
+            // Redireciona sem propagar erro para evitar logs desnecessários
+            if (path !== '/auth/login' && typeof window !== 'undefined') {
+              try { window.location.href = '/login'; } catch {}
+            }
+            return null;
           }
-          return null;
+          // Se for 401 mas não for erro de token, pode ser erro de validação/negócio
+          // Nesse caso, propaga o erro normalmente
         }
         // Para erros de cliente/negócio, não tenta próximo base
         if (res.status >= 400 && res.status < 500) {

@@ -266,9 +266,20 @@ export default function UsersPage() {
         setForm((f) => ({ ...f, codigo: created?.codigo || '' }));
       }
       resetForm();
-      load();
+      // Recarregar dados, mas não falhar se houver erro de autenticação
+      try {
+        await load();
+      } catch (loadErr) {
+        // Se houver erro ao recarregar, apenas loga mas não interrompe o fluxo
+        console.warn('Erro ao recarregar dados após salvar:', loadErr);
+        // Se for erro de autenticação, o apiClient já trata
+      }
     } catch (err) {
-      toast.error(err.message || 'Erro no backend');
+      const msg = err?.message || 'Erro no backend';
+      // Se for erro de autenticação, não mostra toast adicional (já foi tratado)
+      if (!/401|Unauthorized|Token/i.test(msg)) {
+        toast.error(msg);
+      }
     }
   };
 

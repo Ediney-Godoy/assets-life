@@ -58,6 +58,13 @@ export default function App() {
   useEffect(() => {
     setBackendStatus('checking');
     checkBackend();
+    
+    // Verificação periódica do backend a cada 30 segundos
+    const interval = setInterval(() => {
+      checkBackend();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const initialTabs = useMemo(() => [
