@@ -18,9 +18,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create revisoes_itens table matching app.models.RevisaoItem
-    op.create_table(
-        'revisoes_itens',
+    # Verificar se a tabela já existe
+    connection = op.get_bind()
+    result = connection.execute(sa.text("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'revisoes_itens'
+        )
+    """))
+    table_exists = result.scalar()
+    
+    if not table_exists:
+        # Create revisoes_itens table matching app.models.RevisaoItem
+        op.create_table(
+            'revisoes_itens',
         sa.Column('id', sa.Integer(), primary_key=True, nullable=False),
         sa.Column('periodo_id', sa.Integer(), sa.ForeignKey('revisoes_periodos.id'), nullable=False),
 
@@ -48,11 +60,11 @@ def upgrade() -> None:
 
         sa.Column('status', sa.String(length=20), nullable=False, server_default='Pendente'),
         sa.Column('criado_em', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-    )
+        )
 
-    # Indexes for faster lookup
-    op.create_index(op.f('ix_revisoes_itens_id'), 'revisoes_itens', ['id'], unique=False)
-    op.create_index(op.f('ix_revisoes_itens_periodo_id'), 'revisoes_itens', ['periodo_id'], unique=False)
+        # Indexes for faster lookup
+        op.create_index(op.f('ix_revisoes_itens_id'), 'revisoes_itens', ['id'], unique=False)
+        op.create_index(op.f('ix_revisoes_itens_periodo_id'), 'revisoes_itens', ['periodo_id'], unique=False)
 
 
 def downgrade() -> None:

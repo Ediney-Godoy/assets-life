@@ -60,8 +60,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     # Permite origens de redes privadas comuns além de localhost/127.0.0.1
-    # e amplia para subdomínios em vercel.app em produção
-    allow_origin_regex=r"^https?://((localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?|([a-z0-9-]+\.)?vercel\.app)(:\d+)?$",
+    # e amplia para subdomínios em vercel.app, koyeb.app, fly.dev, etc em produção
+    allow_origin_regex=r"^https?://((localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?|([a-z0-9-]+\.)?(vercel\.app|koyeb\.app|fly\.dev|run\.app|cloudfunctions\.net))(:443)?$",
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,

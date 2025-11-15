@@ -18,10 +18,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # add empresa_id column (non-nullable) with FK to companies.id
-    op.add_column('revisoes_periodos', sa.Column('empresa_id', sa.Integer(), nullable=False))
-    op.create_foreign_key('fk_revisoes_periodos_empresa', 'revisoes_periodos', 'companies', ['empresa_id'], ['id'])
-    op.create_index(op.f('ix_revisoes_periodos_empresa_id'), 'revisoes_periodos', ['empresa_id'], unique=False)
+    # Verificar se a coluna já existe
+    connection = op.get_bind()
+    result = connection.execute(sa.text("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'revisoes_periodos'
+            AND column_name = 'empresa_id'
+        )
+    """))
+    column_exists = result.scalar()
+    
+    if not column_exists:
+        # add empresa_id column (non-nullable) with FK to companies.id
+        op.add_column('revisoes_periodos', sa.Column('empresa_id', sa.Integer(), nullable=False))
+        op.create_foreign_key('fk_revisoes_periodos_empresa', 'revisoes_periodos', 'companies', ['empresa_id'], ['id'])
+        op.create_index(op.f('ix_revisoes_periodos_empresa_id'), 'revisoes_periodos', ['empresa_id'], unique=False)
 
 
 def downgrade() -> None:

@@ -29,6 +29,8 @@ backend/*.pyc
 **/*.pyc
 
 # Env files
+.env
+.env.local
 backend/.env
 frontend/.env
 
