@@ -4,6 +4,13 @@ const PRIMARY_BASE = (import.meta?.env?.VITE_API_URL) || 'http://localhost:8000'
 const IS_PROD = (() => {
   try { return !!(import.meta?.env?.PROD); } catch { return false; }
 })();
+
+// DEBUG: Log para diagnosticar problemas de configuração
+if (typeof window !== 'undefined') {
+  console.log('[API Client Debug] PRIMARY_BASE:', PRIMARY_BASE);
+  console.log('[API Client Debug] IS_PROD:', IS_PROD);
+  console.log('[API Client Debug] VITE_API_URL:', import.meta?.env?.VITE_API_URL);
+}
 // Ajuste: quando acessando via IP da rede (ex.: 192.168.x.x), usar o mesmo host para o backend
 let HOST_BASE = null;
 let HOST_BASE_ALT_PORT = null;
@@ -34,9 +41,21 @@ const IS_HTTPS = (() => {
 })();
 const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//i.test(String(b)));
 
+// DEBUG: Log candidates
+if (typeof window !== 'undefined') {
+  console.log('[API Client Debug] IS_HTTPS:', IS_HTTPS);
+  console.log('[API Client Debug] BASE_CANDIDATES:', BASE_CANDIDATES);
+  console.log('[API Client Debug] SAFE_CANDIDATES:', SAFE_CANDIDATES);
+  if (SAFE_CANDIDATES.length === 0) {
+    console.error('[API Client ERROR] SAFE_CANDIDATES está vazio! Nenhuma URL válida para produção.');
+    console.error('[API Client ERROR] Verifique se VITE_API_URL está configurada na Vercel com uma URL HTTPS.');
+  }
+}
+
 async function resolveBase() {
   // Se já temos uma base ativa, reutiliza
   if (ACTIVE_BASE) return ACTIVE_BASE;
+  console.log('[API Client Debug] Resolvendo base URL...');
   for (const base of SAFE_CANDIDATES) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
