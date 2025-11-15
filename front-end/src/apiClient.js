@@ -203,24 +203,36 @@ async function request(path, options = {}) {
       clearTimeout(timeoutId);
       if (!res.ok) {
         const text = await res.text();
-        // Só limpa token se for realmente um erro de autenticação (não erro de validação de negócio)
+        // Tratamento especial para 401: só limpa token se for realmente um erro de token inválido
+        // No login, 401 com "Credenciais inválidas" deve ser propagado normalmente
         if (res.status === 401) {
-          // Verifica se é realmente um erro de token inválido, não um erro de validação
-          const isTokenError = /Token inválido|Not authenticated|Not Authorized|Unauthorized|Token expired|Invalid token/i.test(text);
-          if (isTokenError) {
+          const isLoginPath = path === '/auth/login';
+          // Tenta parsear JSON para verificar o detail
+          let detail = '';
+          try {
+            const json = JSON.parse(text);
+            detail = json?.detail || '';
+          } catch {
+            detail = text;
+          }
+          
+          // Verifica se é realmente um erro de token inválido (não erro de credenciais no login)
+          const isTokenError = /Token inválido|Not authenticated|Not Authorized|Unauthorized|Token expired|Invalid token|Usuário não encontrado/i.test(detail);
+          
+          // Se for erro de token E não for o endpoint de login, limpa token e redireciona
+          if (isTokenError && !isLoginPath) {
             try {
               localStorage.removeItem('assetlife_token');
               localStorage.removeItem('assetlife_permissoes');
               localStorage.removeItem('assetlife_user');
             } catch {}
             // Redireciona sem propagar erro para evitar logs desnecessários
-            if (path !== '/auth/login' && typeof window !== 'undefined') {
+            if (typeof window !== 'undefined') {
               try { window.location.href = '/login'; } catch {}
             }
             return null;
           }
-          // Se for 401 mas não for erro de token, pode ser erro de validação/negócio
-          // Nesse caso, propaga o erro normalmente
+          // Se for login ou erro de credenciais, propaga o erro normalmente
         }
         // Para erros de cliente/negócio, não tenta próximo base
         if (res.status >= 400 && res.status < 500) {
