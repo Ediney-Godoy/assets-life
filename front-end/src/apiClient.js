@@ -1,11 +1,41 @@
 // Em produção, VITE_API_URL é obrigatória (deve ser HTTPS)
 // Remove barra no final se houver
-const rawBase = import.meta?.env?.VITE_API_URL || 'http://localhost:8000';
-const PRIMARY_BASE = typeof rawBase === 'string' ? rawBase.replace(/\/+$/, '') : rawBase;
-// Em produção (build do Vite em Vercel), use somente a base definida via ambiente
-// para evitar qualquer tentativa de recurso http (Mixed Content) ou hosts/ports locais.
+let rawBase = import.meta?.env?.VITE_API_URL;
+
+// Se não estiver definida e estiver em produção HTTPS, tentar inferir ou usar fallback
+if (!rawBase && typeof window !== 'undefined') {
+  const isHttps = window.location?.protocol === 'https:';
+  const hostname = window.location?.hostname || '';
+  const isProduction = isHttps && !hostname.includes('localhost') && !hostname.includes('127.0.0.1');
+  
+  if (isProduction) {
+    // Em produção sem VITE_API_URL, mostrar erro claro
+    console.error('[API Client ERROR] VITE_API_URL não está configurada!');
+    console.error('[API Client ERROR] Configure VITE_API_URL na Vercel com a URL HTTPS do seu backend Koyeb.');
+    // Não definir fallback HTTP em produção HTTPS - vai causar Mixed Content
+    rawBase = null;
+  } else {
+    // Desenvolvimento: usar localhost
+    rawBase = 'http://localhost:8000';
+  }
+}
+
+const PRIMARY_BASE = rawBase && typeof rawBase === 'string' ? rawBase.replace(/\/+$/, '') : (rawBase || 'http://localhost:8000');
+
+// Detecção de produção: verifica PROD do Vite OU se está em domínio Vercel/HTTPS
 const IS_PROD = (() => {
-  try { return !!(import.meta?.env?.PROD); } catch { return false; }
+  try {
+    if (import.meta?.env?.PROD) return true;
+    // Se estiver em HTTPS e não for localhost, considerar produção
+    if (typeof window !== 'undefined') {
+      const hostname = window.location?.hostname || '';
+      const isHttps = window.location?.protocol === 'https:';
+      if (isHttps && !hostname.includes('localhost') && !hostname.includes('127.0.0.1')) {
+        return true;
+      }
+    }
+    return false;
+  } catch { return false; }
 })();
 
 // DEBUG: Log para diagnosticar problemas de configuração
@@ -24,40 +54,53 @@ try {
     HOST_BASE_ALT_PORT = `http://${window.location.hostname}:8001`;
   }
 } catch {}
-// Inclui fallback automático para porta 8001 (documentada no README) e loopback
-// Prioriza o mesmo host do frontend (HOST_BASE) para evitar bloqueios ao acessar via IP da rede
-// Priorizar sempre a base definida via ambiente (produção) para evitar 404/CORS no domínio do frontend
-const BASE_CANDIDATES = IS_PROD
-  ? [PRIMARY_BASE]
-  : [
-      PRIMARY_BASE,
-      HOST_BASE,
-      'http://127.0.0.1:8000',
-      HOST_BASE_ALT_PORT,
-      'http://localhost:8001',
-      'http://127.0.0.1:8001'
-    ].filter(Boolean);
-
-// Em contextos HTTPS (Vercel), bloqueia fallbacks http para evitar Mixed Content
-const IS_HTTPS = (() => {
+// Em produção ou HTTPS, usar apenas PRIMARY_BASE se for HTTPS
+// Em desenvolvimento, incluir fallbacks locais
+const IS_HTTPS_CHECK = (() => {
   try { return typeof window !== 'undefined' && window.location?.protocol === 'https:'; } catch { return false; }
 })();
 
-// Se estiver em HTTPS e PRIMARY_BASE for HTTPS, usar apenas ela
-// Se estiver em HTTPS mas PRIMARY_BASE for HTTP, tentar usar PRIMARY_BASE mesmo assim (pode ser proxy)
-// Mas filtrar outras URLs HTTP
+const BASE_CANDIDATES = (() => {
+  // Se PRIMARY_BASE for HTTPS, usar apenas ela (produção)
+  if (PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
+    return [PRIMARY_BASE];
+  }
+  // Se estiver em HTTPS mas PRIMARY_BASE for HTTP ou null, não usar (Mixed Content)
+  if (IS_HTTPS_CHECK) {
+    // Em HTTPS, só aceitar HTTPS ou nada
+    if (PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
+      return [PRIMARY_BASE];
+    }
+    // Se não há PRIMARY_BASE HTTPS, retornar vazio (vai dar erro claro)
+    return [];
+  }
+  // Desenvolvimento: incluir fallbacks locais
+  return [
+    PRIMARY_BASE,
+    HOST_BASE,
+    'http://127.0.0.1:8000',
+    HOST_BASE_ALT_PORT,
+    'http://localhost:8001',
+    'http://127.0.0.1:8001'
+  ].filter(Boolean);
+})();
+
+// Em contextos HTTPS (Vercel), bloqueia fallbacks http para evitar Mixed Content
+const IS_HTTPS = IS_HTTPS_CHECK;
+
+// Filtrar candidatos seguros para HTTPS
 const SAFE_CANDIDATES = IS_HTTPS
   ? BASE_CANDIDATES.filter((b) => {
-      // Se PRIMARY_BASE for HTTPS, usar apenas ela
-      if (b === PRIMARY_BASE && /^https:\/\//i.test(String(b))) {
+      // URLs HTTPS são sempre seguras
+      if (/^https:\/\//i.test(String(b))) {
         return true;
       }
       // Se PRIMARY_BASE for HTTP mas for a única opção, permitir (pode ser proxy reverso)
       if (b === PRIMARY_BASE && BASE_CANDIDATES.length === 1) {
         return true;
       }
-      // Outras URLs devem ser HTTPS
-      return /^https:\/\//i.test(String(b));
+      // Outras URLs HTTP são bloqueadas em HTTPS
+      return false;
     })
   : BASE_CANDIDATES;
 
@@ -65,6 +108,7 @@ const SAFE_CANDIDATES = IS_HTTPS
 // mas PRIMARY_BASE for HTTPS, usar ela mesmo que não esteja na lista
 if (IS_HTTPS && SAFE_CANDIDATES.length === 0 && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
   SAFE_CANDIDATES.push(PRIMARY_BASE);
+  console.log('[API Client Debug] Adicionando PRIMARY_BASE como fallback de emergência:', PRIMARY_BASE);
 }
 
 // DEBUG: Log candidates
@@ -74,7 +118,11 @@ if (typeof window !== 'undefined') {
   console.log('[API Client Debug] SAFE_CANDIDATES:', SAFE_CANDIDATES);
   if (SAFE_CANDIDATES.length === 0) {
     console.error('[API Client ERROR] SAFE_CANDIDATES está vazio! Nenhuma URL válida para produção.');
-    console.error('[API Client ERROR] Verifique se VITE_API_URL está configurada na Vercel com uma URL HTTPS.');
+    console.error('[API Client ERROR] VITE_API_URL:', import.meta?.env?.VITE_API_URL || 'NÃO CONFIGURADA');
+    console.error('[API Client ERROR] AÇÃO NECESSÁRIA:');
+    console.error('[API Client ERROR] 1. Vá em Vercel > Settings > Environment Variables');
+    console.error('[API Client ERROR] 2. Adicione: VITE_API_URL = https://seu-backend.koyeb.app');
+    console.error('[API Client ERROR] 3. Faça redeploy do projeto');
   }
 }
 
@@ -165,9 +213,13 @@ async function request(path, options = {}) {
     bases = [...SAFE_CANDIDATES].filter(Boolean);
   }
   
-  // Se ainda não há bases, retorna erro imediatamente
+  // Se ainda não há bases, retorna erro imediatamente com mensagem clara
   if (bases.length === 0) {
-    throw new Error('Nenhuma URL de API configurada. Configure VITE_API_URL na Vercel.');
+    const errorMsg = IS_HTTPS
+      ? 'VITE_API_URL não está configurada na Vercel. Configure a variável de ambiente com a URL HTTPS do seu backend (ex: https://seu-backend.koyeb.app) e faça redeploy.'
+      : 'Nenhuma URL de API configurada. Configure VITE_API_URL.';
+    console.error('[API Client ERROR]', errorMsg);
+    throw new Error(errorMsg);
   }
   for (const base of bases) {
     const controller = new AbortController();
