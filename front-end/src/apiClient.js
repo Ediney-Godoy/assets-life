@@ -2,22 +2,45 @@
 // Remove barra no final se houver
 let rawBase = import.meta?.env?.VITE_API_URL;
 
+// Log para debug
+console.log('[apiClient] VITE_API_URL do import.meta.env:', rawBase);
+console.log('[apiClient] import.meta.env completo:', import.meta?.env);
+
 // Se não estiver definida e estiver em produção HTTPS, tentar inferir ou usar fallback
 if (!rawBase && typeof window !== 'undefined') {
   const isHttps = window.location?.protocol === 'https:';
   const hostname = window.location?.hostname || '';
   const isProduction = isHttps && !hostname.includes('localhost') && !hostname.includes('127.0.0.1');
   
+  console.log('[apiClient] rawBase vazio, verificando ambiente:', { isHttps, hostname, isProduction });
+  
   if (isProduction) {
     // Em produção sem VITE_API_URL, não definir fallback HTTP (causaria Mixed Content)
     rawBase = null;
+    console.warn('[apiClient] VITE_API_URL não definida em produção! Configure a variável de ambiente.');
   } else {
     // Desenvolvimento: usar localhost
     rawBase = 'http://localhost:8000';
+    console.log('[apiClient] Usando fallback de desenvolvimento:', rawBase);
+  }
+}
+
+// Se rawBase ainda estiver vazio, tentar usar a URL do Koyeb diretamente (fallback para produção)
+if (!rawBase && typeof window !== 'undefined') {
+  const isHttps = window.location?.protocol === 'https:';
+  const hostname = window.location?.hostname || '';
+  const isProduction = isHttps && !hostname.includes('localhost') && !hostname.includes('127.0.0.1');
+  
+  // Se estiver em produção e a variável não foi definida, usar a URL do Koyeb como fallback
+  if (isProduction) {
+    rawBase = 'https://brief-grete-assetlife-f50c6bd0.koyeb.app';
+    console.warn('[apiClient] VITE_API_URL não encontrada no build, usando fallback do Koyeb:', rawBase);
+    console.warn('[apiClient] IMPORTANTE: Configure VITE_API_URL na Vercel para evitar este fallback!');
   }
 }
 
 const PRIMARY_BASE = rawBase && typeof rawBase === 'string' ? rawBase.replace(/\/+$/, '') : (rawBase || 'http://localhost:8000');
+console.log('[apiClient] PRIMARY_BASE final:', PRIMARY_BASE);
 
 // Detecção de produção: verifica PROD do Vite OU se está em domínio Vercel/HTTPS
 const IS_PROD = (() => {
