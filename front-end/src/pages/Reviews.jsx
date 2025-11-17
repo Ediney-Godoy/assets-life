@@ -315,8 +315,8 @@ export default function ReviewsPage() {
             <Button variant="secondary" title={t('edit') || 'Editar'} aria-label={t('edit') || 'Editar'} disabled={!editingId} onClick={() => editingId && onEdit(periods.find((x) => x.id === editingId))} className="px-2 py-2"><Pencil size={18} /></Button>
             <Button variant="danger" title={t('delete') || 'Excluir'} aria-label={t('delete') || 'Excluir'} disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="px-2 py-2"><Trash2 size={18} /></Button>
             <Button variant="secondary" title={t('print') || 'Imprimir'} aria-label={t('print') || 'Imprimir'} onClick={() => window.print()} className="px-2 py-2"><Printer size={18} /></Button>
-            <Button variant="secondary" title={t('export_excel') || 'Exportar Excel'} aria-label={t('export_excel') || 'Exportar Excel'} onClick={() => toast(t('coming_soon') || 'Em breve.')} className="px-2 py-2"><FileDown size={18} /></Button>
-            <Button variant="secondary" title={t('export_pdf') || 'Exportar PDF'} aria-label={t('export_pdf') || 'Exportar PDF'} onClick={() => toast(t('coming_soon') || 'Em breve.')} className="px-2 py-2"><FileText size={18} /></Button>
+            <Button variant="secondary" title={t('export_excel') || 'Exportar Excel'} aria-label={t('export_excel') || 'Exportar Excel'} onClick={() => toast(t('coming_soon') || 'Em breve.')} className="px-2 py-2"><img src="/Excel.svg" alt="Excel" className="h-5 w-5" /></Button>
+            <Button variant="secondary" title={t('export_pdf') || 'Exportar PDF'} aria-label={t('export_pdf') || 'Exportar PDF'} onClick={() => toast(t('coming_soon') || 'Em breve.')} className="px-2 py-2"><img src="/Pdf.svg" alt="PDF" className="h-5 w-5" /></Button>
           </div>
         </div>
 
