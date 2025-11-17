@@ -97,8 +97,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-surface-muted dark:bg-darksurface-muted p-4">
       <div className="w-full max-w-md bg-gray-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
         <div className="text-center mb-6">
-          <img src="/brand.svg" alt="Asset Life" className="mx-auto h-12 mb-2" />
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">Asset Life</div>
+          <img src="/Icone_Assets_Life_SVG.svg" alt="Vida útil do ativo" className="mx-auto h-12 mb-2" />
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">Vida útil do ativo</div>
           <div className="text-slate-600 dark:text-slate-400 text-sm">{t('login_welcome')}</div>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
