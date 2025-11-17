@@ -97,6 +97,44 @@ function getToken() {
   }
 }
 
+// Helper para retry com exponential backoff
+async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 2000) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const msg = String(err?.message || '');
+
+      // Não faz retry para erros de cliente (400-499), exceto timeout
+      const isTimeout = /Tempo limite atingido|aborted|AbortError/i.test(msg);
+      const isNetworkError = /Falha de conexão|Failed to fetch|NetworkError/i.test(msg);
+      const isClientError = /HTTP 4\d\d/.test(msg);
+
+      if (isClientError && !isTimeout) {
+        throw err; // Propaga erros 4xx imediatamente (credenciais inválidas, etc)
+      }
+
+      // Se é o último retry, propaga o erro
+      if (attempt === maxRetries) {
+        throw err;
+      }
+
+      // Só faz retry para erros de rede/timeout
+      if (isTimeout || isNetworkError) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(`[apiClient] Tentativa ${attempt + 1} falhou. Aguardando ${delay}ms antes de tentar novamente...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        // Para outros erros, não faz retry
+        throw err;
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function request(path, options = {}) {
   console.log('[apiClient] request() chamado:', { path, method: options.method || 'GET' });
   const token = getToken();
@@ -124,7 +162,7 @@ async function request(path, options = {}) {
   console.log('[apiClient] Resolvendo base...');
   const initialBase = await resolveBase();
   console.log('[apiClient] Base inicial resolvida:', initialBase);
-  
+
   // Se não conseguiu resolver e estamos em HTTPS, tenta PRIMARY_BASE diretamente
   let bases = [];
   if (initialBase) {
@@ -139,7 +177,7 @@ async function request(path, options = {}) {
   console.log('[apiClient] IS_HTTPS:', IS_HTTPS);
   console.log('[apiClient] PRIMARY_BASE:', PRIMARY_BASE);
   console.log('[apiClient] SAFE_CANDIDATES:', SAFE_CANDIDATES);
-  
+
   // Se ainda não há bases, retorna erro imediatamente
   if (bases.length === 0) {
     const errorMsg = IS_HTTPS
@@ -176,10 +214,10 @@ async function request(path, options = {}) {
           } catch {
             detail = text;
           }
-          
+
           // Verifica se é realmente um erro de token inválido (não erro de credenciais no login)
           const isTokenError = /Token inválido|Not authenticated|Not Authorized|Unauthorized|Token expired|Invalid token|Usuário não encontrado/i.test(detail);
-          
+
           // Se for erro de token E não for o endpoint de login, limpa token e redireciona
           if (isTokenError && !isLoginPath) {
             try {
@@ -617,10 +655,14 @@ export async function clonePermissionGroup(grupoId, payload) {
 // Auth (opcional)
 export async function login(payload) {
   console.log('[apiClient] login() chamado com payload:', { ...payload, senha: '***' });
-  // Em produção (Render free), a instância pode ter cold start (>50s).
-  // Aumenta o timeout para evitar abort prematuro na primeira chamada.
+  // Em produção (Koyeb free), a instância pode ter cold start e levar >90s para acordar.
+  // Usa retry logic com exponential backoff para lidar com cold start.
   try {
-    const result = await request('/auth/login', { method: 'POST', body: JSON.stringify(payload), timeout: 60000 });
+    const result = await retryWithBackoff(
+      () => request('/auth/login', { method: 'POST', body: JSON.stringify(payload), timeout: 120000 }),
+      3, // máximo de 3 retries
+      3000 // delay inicial de 3s
+    );
     console.log('[apiClient] login() retornou:', result ? 'OK' : 'null/undefined');
     return result;
   } catch (err) {
