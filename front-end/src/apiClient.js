@@ -1,48 +1,13 @@
-// Em produção, VITE_API_URL é obrigatória (deve ser HTTPS)
-// Remove barra no final se houver
+// Base primária vinda do ambiente (sem barra final); em dev, fallback localhost:8000
 let rawBase = import.meta?.env?.VITE_API_URL;
-
-// Log para debug
-console.log('[apiClient] VITE_API_URL do import.meta.env:', rawBase);
-console.log('[apiClient] import.meta.env completo:', import.meta?.env);
-
-// Se não estiver definida e estiver em produção HTTPS, tentar inferir ou usar fallback
+if (rawBase && typeof rawBase === 'string') rawBase = rawBase.replace(/\/+$/, '');
 if (!rawBase && typeof window !== 'undefined') {
   const isHttps = window.location?.protocol === 'https:';
   const hostname = window.location?.hostname || '';
   const isProduction = isHttps && !hostname.includes('localhost') && !hostname.includes('127.0.0.1');
-  
-  console.log('[apiClient] rawBase vazio, verificando ambiente:', { isHttps, hostname, isProduction });
-  
-  if (isProduction) {
-    // Em produção sem VITE_API_URL, não definir fallback HTTP (causaria Mixed Content)
-    rawBase = null;
-    console.warn('[apiClient] VITE_API_URL não definida em produção! Configure a variável de ambiente.');
-  } else {
-    // Desenvolvimento: usar localhost
-    rawBase = 'http://localhost:8000';
-    console.log('[apiClient] Usando fallback de desenvolvimento:', rawBase);
-  }
+  if (!isProduction) rawBase = 'http://localhost:8000';
 }
-
-// Se rawBase ainda estiver vazio, tentar usar a URL do Koyeb diretamente (fallback para produção)
-if (!rawBase && typeof window !== 'undefined') {
-  const isHttps = window.location?.protocol === 'https:';
-  const hostname = window.location?.hostname || '';
-  const isProduction = isHttps && !hostname.includes('localhost') && !hostname.includes('127.0.0.1');
-  
-  // Se estiver em produção e a variável não foi definida, usar a URL do Koyeb como fallback
-  if (isProduction) {
-    rawBase = 'https://brief-grete-assetlife-f50c6bd0.koyeb.app';
-    console.warn('[apiClient] VITE_API_URL não encontrada no build, usando fallback do Koyeb:', rawBase);
-    console.warn('[apiClient] IMPORTANTE: Configure VITE_API_URL na Vercel para evitar este fallback!');
-  }
-}
-
-const PRIMARY_BASE = rawBase && typeof rawBase === 'string' ? rawBase.replace(/\/+$/, '') : (rawBase || 'http://localhost:8000');
-console.log('[apiClient] PRIMARY_BASE final:', PRIMARY_BASE);
-
-// Detecção de produção: verifica PROD do Vite OU se está em domínio Vercel/HTTPS
+const PRIMARY_BASE = rawBase || null;
 const IS_PROD = (() => {
   try {
     if (import.meta?.env?.PROD) return true;
@@ -68,61 +33,9 @@ try {
     HOST_BASE_ALT_PORT = `http://${window.location.hostname}:8001`;
   }
 } catch {}
-// Em produção ou HTTPS, usar apenas PRIMARY_BASE se for HTTPS
-// Em desenvolvimento, incluir fallbacks locais
-const IS_HTTPS_CHECK = (() => {
-  try { return typeof window !== 'undefined' && window.location?.protocol === 'https:'; } catch { return false; }
-})();
-
-const BASE_CANDIDATES = (() => {
-  // Se PRIMARY_BASE for HTTPS, usar apenas ela (produção)
-  if (PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
-    return [PRIMARY_BASE];
-  }
-  // Se estiver em HTTPS mas PRIMARY_BASE for HTTP ou null, não usar (Mixed Content)
-  if (IS_HTTPS_CHECK) {
-    // Em HTTPS, só aceitar HTTPS ou nada
-    if (PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
-      return [PRIMARY_BASE];
-    }
-    // Se não há PRIMARY_BASE HTTPS, retornar vazio (vai dar erro claro)
-    return [];
-  }
-  // Desenvolvimento: incluir fallbacks locais
-  return [
-    PRIMARY_BASE,
-    HOST_BASE,
-    'http://127.0.0.1:8000',
-    HOST_BASE_ALT_PORT,
-    'http://localhost:8001',
-    'http://127.0.0.1:8001'
-  ].filter(Boolean);
-})();
-
-// Em contextos HTTPS (Vercel), bloqueia fallbacks http para evitar Mixed Content
-const IS_HTTPS = IS_HTTPS_CHECK;
-
-// Filtrar candidatos seguros para HTTPS
-const SAFE_CANDIDATES = IS_HTTPS
-  ? BASE_CANDIDATES.filter((b) => {
-      // URLs HTTPS são sempre seguras
-      if (/^https:\/\//i.test(String(b))) {
-        return true;
-      }
-      // Se PRIMARY_BASE for HTTP mas for a única opção, permitir (pode ser proxy reverso)
-      if (b === PRIMARY_BASE && BASE_CANDIDATES.length === 1) {
-        return true;
-      }
-      // Outras URLs HTTP são bloqueadas em HTTPS
-      return false;
-    })
-  : BASE_CANDIDATES;
-
-// Fallback de emergência: se estiver em HTTPS e SAFE_CANDIDATES estiver vazio,
-// mas PRIMARY_BASE for HTTPS, usar ela mesmo que não esteja na lista
-if (IS_HTTPS && SAFE_CANDIDATES.length === 0 && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
-  SAFE_CANDIDATES.push(PRIMARY_BASE);
-}
+const IS_HTTPS = (() => { try { return typeof window !== 'undefined' && window.location?.protocol === 'https:'; } catch { return false; }})();
+const BASE_CANDIDATES = [PRIMARY_BASE, HOST_BASE, 'http://127.0.0.1:8000'].filter(Boolean);
+const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//i.test(String(b)));
 
 async function resolveBase() {
   console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
@@ -329,8 +242,7 @@ async function request(path, options = {}) {
   const msg = String(lastErr?.message || '');
   console.error('[apiClient] Todas as bases falharam. Último erro:', lastErr);
   if (/Failed to fetch|NetworkError|TypeError: Failed to fetch/i.test(msg)) {
-    console.error('[apiClient] Erro de rede detectado');
-    throw new Error('Falha de conexão com a API. Verifique se o backend está ativo (porta 8000), o token de acesso e as permissões/CORS.');
+    throw new Error('Falha de conexão com a API. Verifique a base configurada, token de acesso e permissões/CORS.');
   }
   throw lastErr || new Error('Falha ao conectar ao backend');
 }
@@ -569,7 +481,7 @@ export async function getCostCenters(filters = {}) {
   if (filters.status) qs.set('status', filters.status);
   const path = qs.toString() ? `/centros_custos?${qs.toString()}` : '/centros_custos';
   // Em bases com muitos CCs, 5s pode não bastar
-  return request(path, { timeout: 12000 });
+  return request(path, { timeout: 12000, cache: 'no-store' });
 }
 
 export async function getCostCenter(id) {
@@ -578,6 +490,10 @@ export async function getCostCenter(id) {
 
 export async function createCostCenter(payload) {
   return request('/centros_custos', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateCostCenter(id, payload) {
+  return request(`/centros_custos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 // -----------------------------

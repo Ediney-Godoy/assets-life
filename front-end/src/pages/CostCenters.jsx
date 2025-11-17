@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Plus, Save, Pencil, Trash2, Printer, FileText, FileDown, Search, X } from 'lucide-react';
+import { Plus, Save, Pencil, Trash2, Printer, FileText, Search, X, FileSpreadsheet } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -11,6 +11,8 @@ import { Tabs, TabPanel } from '../components/ui/Tabs';
 import {
   getCostCenters,
   createCostCenter,
+  updateCostCenter,
+  getCostCenter,
   getCompanies,
   getManagementUnits,
   getEmployees,
@@ -27,6 +29,7 @@ export default function CostCentersPage() {
 
   const [activeTab, setActiveTab] = React.useState('cc');
   const [editingId, setEditingId] = React.useState(null);
+  const [isNew, setIsNew] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
@@ -108,12 +111,14 @@ export default function CostCentersPage() {
 
   const onNew = () => {
     setEditingId(null);
+    setIsNew(true);
     setForm({ nome: '', empresa_id: '', ug_id: '', responsavel_id: '', observacoes: '', status: 'Ativo' });
     setErrors({});
   };
 
   const onEdit = (row) => {
     setEditingId(row.id);
+    setIsNew(false);
     setForm({
       nome: row.nome || '',
       empresa_id: row.empresa_id || '',
@@ -164,12 +169,35 @@ export default function CostCentersPage() {
         observacoes: form.observacoes || '',
         status: form.status || 'Ativo',
       };
-      const created = await createCostCenter(payload);
-      toast.success(`Centro de Custos criado: ${created.codigo}`);
-      setEditingId(created.id);
-      setForm((f) => ({ ...f, codigo: created.codigo }));
-      setFilters((flt) => ({ ...flt })); // força reload sem alterar filtros
-      load();
+
+      if (!isNew && editingId) {
+        await updateCostCenter(editingId, payload);
+        const updated = await getCostCenter(editingId);
+        // Atualiza estado local imediatamente
+        setCenters((list) => list.map((c) => (c.id === editingId ? { ...c, ...updated } : c)));
+        setForm({
+          nome: updated.nome || '',
+          empresa_id: updated.empresa_id || '',
+          ug_id: updated.ug_id || '',
+          responsavel_id: updated.responsavel_id || '',
+          observacoes: updated.observacoes || '',
+          status: updated.status || 'Ativo',
+        });
+        toast.success(t('updated_successfully') || 'Atualizado com sucesso');
+        // Recarrega para sincronizar com o servidor (sem depender de cache)
+        setFilters((flt) => ({ ...flt }));
+        load();
+      } else if (isNew) {
+        const created = await createCostCenter(payload);
+        toast.success(`Centro de Custos criado: ${created.codigo}`);
+        setEditingId(created.id);
+        setIsNew(false);
+        setForm((f) => ({ ...f, codigo: created.codigo }));
+        setFilters((flt) => ({ ...flt })); // força reload sem alterar filtros
+        load();
+      } else {
+        toast.error(t('select_record_or_new') || 'Selecione um registro ou clique em Novo');
+      }
     } catch (err) {
       toast.error(err.message || 'Erro ao salvar');
     }
@@ -216,13 +244,17 @@ export default function CostCentersPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('cost_centers_title') || 'Centros de Custos'}</h2>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" title={t('new')} aria-label={t('new')} onClick={onNew} className="px-2 py-2"><Plus size={18} /></Button>
-          <Button variant="primary" title={t('save')} aria-label={t('save')} onClick={onSave} className="px-2 py-2 bg-blue-600 text-white hover:bg-blue-500"><Save size={18} /></Button>
-          <Button variant="secondary" title={t('edit')} aria-label={t('edit')} disabled={!editingId} onClick={() => editingId && onEdit(centers.find((x) => x.id === editingId))} className="px-2 py-2"><Pencil size={18} /></Button>
-          <Button variant="danger" title={t('delete')} aria-label={t('delete')} disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="px-2 py-2"><Trash2 size={18} /></Button>
-          <Button variant="secondary" title={t('print')} aria-label={t('print')} onClick={() => window.print()} className="px-2 py-2"><Printer size={18} /></Button>
-          <Button variant="secondary" title={t('export_pdf')} aria-label={t('export_pdf')} onClick={() => toast(t('export_pdf'))} className="px-2 py-2"><FileText size={18} /></Button>
-          <Button variant="secondary" title={t('export_excel')} aria-label={t('export_excel')} onClick={() => toast(t('export_excel'))} className="px-2 py-2"><FileDown size={18} /></Button>
+          <Button variant="soft" title={t('new')} aria-label={t('new')} onClick={onNew} className="p-0 h-10 w-10 justify-center"><Plus size={18} /></Button>
+          <Button variant="soft-blue" title={t('save')} aria-label={t('save')} onClick={onSave} disabled={!isNew && !editingId} className="p-0 h-10 w-10 justify-center"><Save size={18} className="text-blue-700" /></Button>
+          <Button variant="soft" title={t('edit')} aria-label={t('edit')} disabled={!editingId} onClick={() => editingId && onEdit(centers.find((x) => x.id === editingId))} className="p-0 h-10 w-10 justify-center"><Pencil size={18} /></Button>
+          <Button variant="danger" title={t('delete')} aria-label={t('delete')} disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="p-0 h-10 w-10 justify-center"><Trash2 size={18} /></Button>
+          <Button variant="soft" title={t('print')} aria-label={t('print')} onClick={() => window.print()} className="p-0 h-10 w-10 justify-center"><Printer size={18} /></Button>
+          <Button variant="soft-red" title={t('export_pdf')} aria-label={t('export_pdf')} onClick={() => toast(t('export_pdf'))} className="p-0 h-10 w-10 justify-center">
+            <img src="/Pdf.svg" alt="PDF" className="h-5 w-5" />
+          </Button>
+          <Button variant="soft-green" title={t('export_excel')} aria-label={t('export_excel')} onClick={() => toast(t('export_excel'))} className="p-0 h-10 w-10 justify-center">
+            <img src="/Excel.svg" alt="Excel" className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
