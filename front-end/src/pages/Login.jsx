@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -21,6 +22,13 @@ export default function LoginPage() {
       return;
     }
     setLoading(true);
+    setLoadingMessage(t('login_signing_in'));
+
+    // Após 10 segundos, mostra mensagem sobre cold start
+    const coldStartTimer = setTimeout(() => {
+      setLoadingMessage('Aguarde, o servidor está iniciando... Isso pode levar até 2 minutos no plano gratuito.');
+    }, 10000);
+
     try {
       const id = String(identifier || '').trim();
       const isEmail = /@/.test(id);
@@ -28,12 +36,14 @@ export default function LoginPage() {
       const payload = isEmail ? { email: id, senha: password } : { identificador: id, senha: password };
       console.log('[Login] Chamando login() com payload:', { ...payload, senha: '***' });
       const resp = await login(payload);
+      clearTimeout(coldStartTimer);
       console.log('[Login] Resposta recebida:', resp ? 'OK' : 'null/undefined');
       const token = resp?.access_token;
       console.log('[Login] Token recebido:', token ? 'SIM' : 'NÃO');
       if (!token) throw new Error('No token');
       saveToken(token);
       console.log('[Login] Token salvo no localStorage');
+      setLoadingMessage('Carregando dados...');
       // carregar permissões e redirecionar
       // carregar dados do usuário logado
       try {
@@ -58,6 +68,7 @@ export default function LoginPage() {
         navigate('/dashboard', { replace: true });
       }
     } catch (err) {
+      clearTimeout(coldStartTimer);
       console.error('[Login] Erro capturado:', err);
       console.error('[Login] Erro message:', err?.message);
       console.error('[Login] Erro stack:', err?.stack);
@@ -67,12 +78,15 @@ export default function LoginPage() {
       console.log('[Login] Mensagem final:', msg);
       // Em caso de erro de rede/CORS, mostre mensagem específica
       if (/Falha de conexão com a API/i.test(msg)) {
-        toast.error(msg);
+        toast.error('Não foi possível conectar ao servidor. Por favor, tente novamente em alguns minutos.');
+      } else if (/Tempo limite atingido/i.test(msg)) {
+        toast.error('O servidor está demorando muito para responder. Por favor, tente novamente.');
       } else {
         toast.error(detail || t('login_invalid_credentials'));
       }
     } finally {
       setLoading(false);
+      setLoadingMessage('');
       console.log('[Login] Finalizando, loading = false');
     }
   };
@@ -119,9 +133,14 @@ export default function LoginPage() {
         </div>
       </div>
           <button type="submit" disabled={loading} className="w-full py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 disabled:opacity-60">
-            {loading ? t('login_signing_in') : t('login_sign_in')}
+            {loading ? loadingMessage || t('login_signing_in') : t('login_sign_in')}
           </button>
         </form>
+        {loading && loadingMessage && (
+          <div className="mt-3 text-xs text-center text-slate-600 dark:text-slate-400">
+            {loadingMessage}
+          </div>
+        )}
         <div className="flex items-center justify-between mt-4 text-sm">
           <Link to="/forgot-password" className="text-slate-700 dark:text-slate-300 hover:underline">{t('login_forgot_password')}</Link>
           <div className="space-x-2">
