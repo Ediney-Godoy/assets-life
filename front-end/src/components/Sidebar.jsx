@@ -48,9 +48,9 @@ export default function Sidebar() {
   const sections = menu.filter((section) => isRouteVisible(section.to));
 
   return (
-    <aside className="w-60 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-3">
-      <div className="flex items-center justify-center px-2 pb-3">
-        <img src="/brand.svg" alt="Logo" className="h-10" />
+    <aside className="w-16 sm:w-20 md:w-52 lg:w-60 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-2 md:p-3">
+      <div className="flex items-center justify-center px-1 md:px-2 pb-2 md:pb-3">
+        <img src="/brand.svg" alt="Logo" className="h-8 md:h-10" />
       </div>
       <nav className="flex flex-col gap-1">
         {sections.map((section) => {
@@ -60,12 +60,12 @@ export default function Sidebar() {
             <NavLink
               key={section.to}
               to={section.to}
-              className={({ isActive }) => `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+              className={({ isActive }) => `flex items-center justify-center md:justify-start gap-0 md:gap-3 px-2 md:px-3 py-2 rounded-md text-sm transition-colors ${
                 isActive || isSectionActive ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100' :
                 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'} `}
             >
               <Icon size={18} />
-              <span>{section.label}</span>
+              <span className="hidden md:inline">{section.label}</span>
             </NavLink>
           );
         })}
