@@ -383,7 +383,7 @@ export default function UsersPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
         {/* Coluna Esquerda: Formulário */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-w-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -395,8 +395,8 @@ export default function UsersPage() {
             </Select>
 
             {/* 2ª linha: Nome colaborador (lupa) e CPF */}
-            <div className="flex items-end gap-2 min-w-0">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input label="Nome colaborador" name="nome_completo" value={form.nome_completo} onChange={() => {}} readOnly error={errors.nome_completo} />
               </div>
               <Button variant="secondary" onClick={openEmpSearch} title="Pesquisar Colaborador" aria-label="Pesquisar Colaborador" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
@@ -430,22 +430,22 @@ export default function UsersPage() {
 
             {/* 5ª linha: Nome de Usuário e Centro de Custos (lupa) */}
             <Input label="Nome de Usuário" name="nome_usuario" value={form.nome_usuario} onChange={onChange} error={errors.nome_usuario} autoComplete="off" />
-            <div className="flex items-end gap-2 min-w-0">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input label="Centro de Custos" name="cc_nome" value={selectedCC ? `${selectedCC.codigo} - ${selectedCC.nome}` : ''} onChange={() => {}} disabled />
               </div>
               <Button variant="secondary" onClick={openCcSearch} title="Pesquisar Centro de Custos" aria-label="Pesquisar Centro de Custos" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
             </div>
 
             {/* 6ª linha: Empresa (lupa) e UG (lupa) */}
-            <div className="flex items-end gap-2 min-w-0">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input label="Empresa" name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} disabled error={errors.empresa_id} />
               </div>
               <Button variant="secondary" onClick={openCompanySearch} title="Pesquisar Empresa" aria-label="Pesquisar Empresa" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
             </div>
-            <div className="flex items-end gap-2 min-w-0">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input label="Unidade Gerencial (UG)" name="ug_nome" value={selectedUG ? `${selectedUG.codigo} - ${selectedUG.nome}` : ''} onChange={() => {}} disabled />
               </div>
               <Button variant="secondary" onClick={openUgSearch} title="Pesquisar UG" aria-label="Pesquisar UG" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
