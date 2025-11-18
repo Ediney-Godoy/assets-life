@@ -49,9 +49,8 @@ export default function Sidebar() {
 
   return (
     <aside className="w-60 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-3">
-      <div className="flex items-center gap-2 px-2 pb-3">
-        <img src="/Icone_Assets_Life_SVG.svg" alt="Logo" className="h-6 w-6" />
-        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Vida útil do ativo</span>
+      <div className="flex items-center justify-center px-2 pb-3">
+        <img src="/brand.svg" alt="Logo" className="h-10" />
       </div>
       <nav className="flex flex-col gap-1">
         {sections.map((section) => {

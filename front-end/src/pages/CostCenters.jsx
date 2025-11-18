@@ -244,17 +244,13 @@ export default function CostCentersPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('cost_centers_title') || 'Centros de Custos'}</h2>
         <div className="flex items-center gap-2">
-          <Button variant="soft" title={t('new')} aria-label={t('new')} onClick={onNew} className="p-0 h-10 w-10 justify-center"><Plus size={18} /></Button>
-          <Button variant="soft-blue" title={t('save')} aria-label={t('save')} onClick={onSave} disabled={!isNew && !editingId} className="p-0 h-10 w-10 justify-center"><Save size={18} className="text-blue-700" /></Button>
-          <Button variant="soft" title={t('edit')} aria-label={t('edit')} disabled={!editingId} onClick={() => editingId && onEdit(centers.find((x) => x.id === editingId))} className="p-0 h-10 w-10 justify-center"><Pencil size={18} /></Button>
-          <Button variant="danger" title={t('delete')} aria-label={t('delete')} disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="p-0 h-10 w-10 justify-center"><Trash2 size={18} /></Button>
-          <Button variant="soft" title={t('print')} aria-label={t('print')} onClick={() => window.print()} className="p-0 h-10 w-10 justify-center"><Printer size={18} /></Button>
-          <Button variant="soft-red" title={t('export_pdf')} aria-label={t('export_pdf')} onClick={() => toast(t('export_pdf'))} className="p-0 h-10 w-10 justify-center">
-            <img src="/Pdf.svg" alt="PDF" className="h-5 w-5" />
-          </Button>
-          <Button variant="soft-green" title={t('export_excel')} aria-label={t('export_excel')} onClick={() => toast(t('export_excel'))} className="p-0 h-10 w-10 justify-center">
-            <img src="/Excel.svg" alt="Excel" className="h-5 w-5" />
-          </Button>
+          <Button variant="secondary" title={t('new')} aria-label={t('new')} onClick={onNew} className="px-2 py-2"><Plus size={18} /></Button>
+          <Button variant="primary" title={t('save')} aria-label={t('save')} onClick={onSave} className="px-2 py-2"><Save size={18} /></Button>
+          <Button variant="secondary" title={t('edit')} aria-label={t('edit')} disabled={!editingId} onClick={() => editingId && onEdit(centers.find((x) => x.id === editingId))} className="px-2 py-2"><Pencil size={18} /></Button>
+          <Button variant="danger" title={t('delete')} aria-label={t('delete')} disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="px-2 py-2"><Trash2 size={18} /></Button>
+          <Button variant="secondary" title={t('print')} aria-label={t('print')} onClick={() => window.print()} className="px-2 py-2"><Printer size={18} /></Button>
+          <Button variant="secondary" title={t('export_pdf')} aria-label={t('export_pdf')} onClick={() => toast(t('export_pdf'))} className="px-2 py-2"><img src="/Pdf.svg" alt="PDF" className="h-5 w-5" /></Button>
+          <Button variant="secondary" title={t('export_excel')} aria-label={t('export_excel')} onClick={() => toast(t('export_excel'))} className="px-2 py-2"><img src="/Excel.svg" alt="Excel" className="h-5 w-5" /></Button>
         </div>
       </div>
 
