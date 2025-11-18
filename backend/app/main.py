@@ -35,6 +35,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
 from .routes.relatorios_rvu import router as relatorios_rvu_router
 from .routes.supervisao_rvu import router as supervisao_rvu_router
+from .keep_alive import start_keep_alive, stop_keep_alive
 
 app = FastAPI(title="Asset Life API", version="0.2.0")
 app.include_router(relatorios_rvu_router)
@@ -392,6 +393,36 @@ def on_startup():
         print("Seed admin error:", e)
         traceback.print_exc()
 
+    # Inicia o keep-alive worker para prevenir hibernação do servidor
+    try:
+        import asyncio
+        # Verifica se o keep-alive está habilitado via env (padrão: habilitado)
+        keep_alive_enabled = os.getenv("KEEP_ALIVE_ENABLED", "true").lower() in {"1", "true", "yes"}
+        # Intervalo em segundos entre pings (padrão: 300s = 5min)
+        keep_alive_interval = int(os.getenv("KEEP_ALIVE_INTERVAL", "300"))
+
+        if keep_alive_enabled:
+            # Cria uma task assíncrona para iniciar o worker
+            asyncio.create_task(start_keep_alive(enabled=True, interval_seconds=keep_alive_interval))
+            print(f"Keep-alive worker habilitado (intervalo: {keep_alive_interval}s)")
+        else:
+            print("Keep-alive worker desabilitado via KEEP_ALIVE_ENABLED=false")
+    except Exception as e:
+        import traceback
+        print("Keep-alive startup error:", e)
+        traceback.print_exc()
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    """Executado quando o servidor é desligado."""
+    try:
+        await stop_keep_alive()
+        print("Keep-alive worker parado com sucesso")
+    except Exception as e:
+        import traceback
+        print("Keep-alive shutdown error:", e)
+        traceback.print_exc()
+
 @app.get("/health")
 def health():
     # Checagem real de conectividade com o banco
@@ -412,13 +443,7 @@ def health():
 def root():
     return {"message": "Asset Life API"}
 
-# Healthcheck simples para validação pelo frontend/build e monitores
-@app.get("/health")
-def health():
-    try:
-        return {"ok": True, "version": app.version}
-    except Exception:
-        return {"ok": True}
+# Endpoint /health já definido acima com verificação de banco de dados
 
 # -----------------------------
 # Util: Auditoria
