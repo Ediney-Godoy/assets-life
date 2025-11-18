@@ -371,7 +371,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Usuários</h2>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" title="Novo" aria-label="Novo" onClick={onNew} className="px-2 py-2"><Plus size={18} /></Button>
+          <Button variant="secondary" title="Novo" aria-label="Novo" onClick={onNew} className="px-2 py-2"><Plus size={18} /> Novo</Button>
           <Button variant="primary" title="Salvar" aria-label="Salvar" onClick={onSave} className="px-2 py-2"><Save size={18} /> Salvar</Button>
           <Button variant="secondary" title="Editar" aria-label="Editar" disabled={!editingId} onClick={() => editingId && onEdit(users.find((x) => x.id === editingId))} className="px-2 py-2"><Pencil size={18} /></Button>
           <Button variant="danger" title="Excluir" aria-label="Excluir" disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="px-2 py-2"><Trash2 size={18} /></Button>

@@ -309,7 +309,7 @@ export default function ReviewsPage() {
       <div className="flex items-center justify-between mb-4 px-4">
           <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('review_period_open_title') || 'Abertura de Período de Revisão de Vidas Úteis'}</h2>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" title={t('new') || '+ Novo'} aria-label={t('new') || 'Novo'} onClick={onNew} className="px-2 py-2"><Plus size={18} /></Button>
+            <Button variant="secondary" title={t('new') || '+ Novo'} aria-label={t('new') || 'Novo'} onClick={onNew} className="px-2 py-2"><Plus size={18} /> {t('new') || 'Novo'}</Button>
             <Button variant="primary" title={t('save') || 'Salvar'} aria-label={t('save') || 'Salvar'} onClick={onSave} className="px-2 py-2"><Save size={18} /> {t('save') || 'Salvar'}</Button>
             <Button variant="secondary" title={t('nav_review_delegations') || 'Delegação'} aria-label={t('nav_review_delegations') || 'Delegação'} onClick={() => navigate('/reviews/delegacao')} className="px-3 py-2"><FileText size={18} /></Button>
             <Button variant="secondary" title={t('edit') || 'Editar'} aria-label={t('edit') || 'Editar'} disabled={!editingId} onClick={() => editingId && onEdit(periods.find((x) => x.id === editingId))} className="px-2 py-2"><Pencil size={18} /></Button>
