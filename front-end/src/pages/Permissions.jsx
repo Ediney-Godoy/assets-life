@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { Plus, Save, Pencil, Trash2, Search, Copy } from 'lucide-react';
+import { Plus, Save, Pencil, Trash2, Search, Printer } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
+import ActionToolbar from '../components/ActionToolbar';
 import { Tabs, TabPanel } from '../components/ui/Tabs';
 import {
   getPermissionGroups,
@@ -271,12 +272,16 @@ export default function PermissionsPage() {
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('nav_permissions') || 'Permissões'}</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" title={t('new') || 'Novo'} aria-label={t('new') || 'Novo'} onClick={onNew} className="px-2 py-2"><Plus size={18} /></Button>
-          <Button variant="primary" title={t('save') || 'Salvar'} aria-label={t('save') || 'Salvar'} onClick={onSave} className="px-2 py-2"><Save size={18} /></Button>
-          <Button variant="secondary" title="Clonar" aria-label="Clonar" disabled={!editingId} onClick={() => setShowClone((s) => !s)} className="px-2 py-2"><Copy size={18} /></Button>
-          <Button variant="danger" title={t('delete') || 'Excluir'} aria-label={t('delete') || 'Excluir'} disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="px-2 py-2"><Trash2 size={18} /></Button>
-        </div>
+        <ActionToolbar
+          onNew={onNew}
+          onSave={onSave}
+          onEdit={() => editingId && onEdit(groups.find((x) => x.id === editingId))}
+          onDelete={() => editingId && onDelete(editingId)}
+          onPrint={() => window.print()}
+          onExportPdf={() => toast(t('coming_soon') || 'Em breve.')}
+          onExportExcel={() => toast(t('coming_soon') || 'Em breve.')}
+          canEditDelete={!!editingId}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

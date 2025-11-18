@@ -5,6 +5,7 @@ import { Plus, Save, Pencil, Trash2, Printer, FileText, FileDown, Search, X } fr
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
+import ActionToolbar from '../components/ActionToolbar';
 import {
   getUsers,
   createUser,
@@ -370,15 +371,16 @@ export default function UsersPage() {
       {/* Barra de ferramentas */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Usuários</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" title="Novo" aria-label="Novo" onClick={onNew} className="px-2 py-2"><Plus size={18} /> Novo</Button>
-          <Button variant="primary" title="Salvar" aria-label="Salvar" onClick={onSave} className="px-2 py-2"><Save size={18} /> Salvar</Button>
-          <Button variant="secondary" title="Editar" aria-label="Editar" disabled={!editingId} onClick={() => editingId && onEdit(users.find((x) => x.id === editingId))} className="px-2 py-2"><Pencil size={18} /></Button>
-          <Button variant="danger" title="Excluir" aria-label="Excluir" disabled={!editingId} onClick={() => editingId && onDelete(editingId)} className="px-2 py-2"><Trash2 size={18} /></Button>
-          <Button variant="secondary" title="Imprimir" aria-label="Imprimir" onClick={() => window.print()} className="px-2 py-2"><Printer size={18} /></Button>
-          <Button variant="secondary" title="Exportar PDF" aria-label="Exportar PDF" onClick={printPDF} className="px-2 py-2"><img src="/Pdf.svg" alt="PDF" className="h-5 w-5" /></Button>
-          <Button variant="secondary" title="Exportar Excel" aria-label="Exportar Excel" onClick={exportCSV} className="px-2 py-2"><img src="/Excel.svg" alt="Excel" className="h-5 w-5" /></Button>
-        </div>
+        <ActionToolbar
+          onNew={onNew}
+          onSave={onSave}
+          onEdit={() => editingId && onEdit(users.find((x) => x.id === editingId))}
+          onDelete={() => editingId && onDelete(editingId)}
+          onPrint={() => window.print()}
+          onExportPdf={printPDF}
+          onExportExcel={exportCSV}
+          canEditDelete={!!editingId}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
