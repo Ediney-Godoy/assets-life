@@ -369,7 +369,7 @@ export default function UsersPage() {
   return (
     <section>
       {/* Barra de ferramentas */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Usuários</h2>
         <ActionToolbar
           onNew={onNew}
@@ -383,10 +383,10 @@ export default function UsersPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* Coluna Esquerda: Formulário */}
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-w-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* 1ª linha: Código e Status */}
             <Input label="Código" name="codigo" value={form.codigo || 'Automático'} readOnly />
             <Select label="Status" name="status" value={form.status} onChange={onChange}>
@@ -395,11 +395,11 @@ export default function UsersPage() {
             </Select>
 
             {/* 2ª linha: Nome colaborador (lupa) e CPF */}
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2 min-w-0">
               <div className="flex-1">
                 <Input label="Nome colaborador" name="nome_completo" value={form.nome_completo} onChange={() => {}} readOnly error={errors.nome_completo} />
               </div>
-              <Button variant="secondary" onClick={openEmpSearch} title="Pesquisar Colaborador" aria-label="Pesquisar Colaborador" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+              <Button variant="secondary" onClick={openEmpSearch} title="Pesquisar Colaborador" aria-label="Pesquisar Colaborador" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
             </div>
             <Input label="CPF" name="cpf" value={form.cpf} onChange={onChange} error={errors.cpf} />
 
@@ -430,34 +430,34 @@ export default function UsersPage() {
 
             {/* 5ª linha: Nome de Usuário e Centro de Custos (lupa) */}
             <Input label="Nome de Usuário" name="nome_usuario" value={form.nome_usuario} onChange={onChange} error={errors.nome_usuario} autoComplete="off" />
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2 min-w-0">
               <div className="flex-1">
                 <Input label="Centro de Custos" name="cc_nome" value={selectedCC ? `${selectedCC.codigo} - ${selectedCC.nome}` : ''} onChange={() => {}} disabled />
               </div>
-              <Button variant="secondary" onClick={openCcSearch} title="Pesquisar Centro de Custos" aria-label="Pesquisar Centro de Custos" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+              <Button variant="secondary" onClick={openCcSearch} title="Pesquisar Centro de Custos" aria-label="Pesquisar Centro de Custos" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
             </div>
 
             {/* 6ª linha: Empresa (lupa) e UG (lupa) */}
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2 min-w-0">
               <div className="flex-1">
                 <Input label="Empresa" name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} disabled error={errors.empresa_id} />
               </div>
-              <Button variant="secondary" onClick={openCompanySearch} title="Pesquisar Empresa" aria-label="Pesquisar Empresa" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+              <Button variant="secondary" onClick={openCompanySearch} title="Pesquisar Empresa" aria-label="Pesquisar Empresa" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
             </div>
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2 min-w-0">
               <div className="flex-1">
                 <Input label="Unidade Gerencial (UG)" name="ug_nome" value={selectedUG ? `${selectedUG.codigo} - ${selectedUG.nome}` : ''} onChange={() => {}} disabled />
               </div>
-              <Button variant="secondary" onClick={openUgSearch} title="Pesquisar UG" aria-label="Pesquisar UG" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+              <Button variant="secondary" onClick={openUgSearch} title="Pesquisar UG" aria-label="Pesquisar UG" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
             </div>
           </div>
         </div>
 
         {/* Coluna Direita: ListView */}
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-w-0">
           <div className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Lista de Usuários</div>
           <div className="flex items-center gap-2 mb-3">
-            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1" placeholder="Pesquisar por nome, e-mail ou usuário" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
+            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1 min-w-0" placeholder="Pesquisar por nome, e-mail ou usuário" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
           </div>
 
           {loading && <p className="text-slate-500">Checando backend...</p>}
