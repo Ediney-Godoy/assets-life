@@ -160,6 +160,8 @@
   "reviews_menu_mass_subtitle": "Aplicar ajustes em lote com justificativas",
   "reviews_menu_supervision_title": "Supervisão",
   "reviews_menu_supervision_subtitle": "Aprovar e acompanhar revisões de vida útil",
+  "reviews_menu_monitoring_title": "Acompanhamento",
+  "reviews_menu_monitoring_subtitle": "Relatórios e histórico das revisões de vida útil",
 
   "review_title": "Revisão de Vidas Úteis",
   "review_subtitle": "Analisar, revisar e ajustar vidas úteis dos ativos fixos.",

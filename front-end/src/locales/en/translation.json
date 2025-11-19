@@ -153,6 +153,8 @@
   "reviews_menu_mass_subtitle": "Apply batch adjustments with justifications",
   "reviews_menu_supervision_title": "Supervision",
   "reviews_menu_supervision_subtitle": "Approve and track useful life reviews",
+  "reviews_menu_monitoring_title": "Monitoring",
+  "reviews_menu_monitoring_subtitle": "Reports and history of useful life reviews",
 
   "review_title": "Useful Lives Review",
   "review_subtitle": "Analyze, review and adjust useful lives of fixed assets.",

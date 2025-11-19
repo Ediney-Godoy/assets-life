@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, FileText, Clock, ListChecks, UserCheck } from 'lucide-react';
+import { ClipboardList, FileText, Clock, ListChecks, UserCheck, BarChart3 } from 'lucide-react';
 
 export default function ReviewsMenu() {
   const { t } = useTranslation();
@@ -109,6 +109,26 @@ export default function ReviewsMenu() {
               <div className="flex-1">
                 <div className="font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_useful_lives_title')}</div>
                 <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_useful_lives_subtitle')}</div>
+              </div>
+            </div>
+          </button>
+        )}
+
+        {hasPerm('/relatorios-rvu') && (
+          <button
+            type="button"
+            onClick={() => navigate('/relatorios-rvu')}
+            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-fuchsia-50/60 dark:bg-fuchsia-900/20 border-fuchsia-100 dark:border-fuchsia-900/30 hover:border-fuchsia-200 dark:hover:border-fuchsia-800"
+            aria-label={t('reviews_menu_monitoring_title')}
+            title={t('reviews_menu_monitoring_title')}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-700 dark:text-fuchsia-300">
+                <BarChart3 size={22} />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_monitoring_title')}</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_monitoring_subtitle')}</div>
               </div>
             </div>
           </button>

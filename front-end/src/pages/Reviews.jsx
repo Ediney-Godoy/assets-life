@@ -305,6 +305,29 @@ export default function ReviewsPage() {
       .slice(0, 100);
   }, [ugQuery, ugs, form.empresa_id]);
 
+  const modalFilteredEmployees = React.useMemo(() => {
+    const q = (respQuery || '').trim().toLowerCase();
+    let list = employees || [];
+    if (form.empresa_id) list = list.filter((e) => String(e.empresa_id) === String(form.empresa_id));
+    list = list.filter((e) => String(e.status || '').toLowerCase() === 'ativo');
+    if (!q) return list.slice(0, 100);
+    const qDigits = q.replace(/\D/g, '');
+    return list
+      .filter((e) => {
+        const nome = String(e.full_name || '').toLowerCase();
+        const email = String(e.email_corporativo || '').toLowerCase();
+        const cpf = String(e.cpf || '').replace(/\D/g, '');
+        const matricula = String(e.matricula || '').toLowerCase();
+        return (
+          nome.includes(q) ||
+          email.includes(q) ||
+          matricula.includes(q) ||
+          (qDigits && cpf.includes(qDigits))
+        );
+      })
+      .slice(0, 100);
+  }, [respQuery, employees, form.empresa_id]);
+
   return (
     <section>
       <div className="flex items-center justify-between mb-4 px-4">
@@ -351,7 +374,7 @@ export default function ReviewsPage() {
               <div className="min-w-0">
                 <Input className="w-full" label={t('review_responsible') || 'Responsável pela Revisão'} name="responsavel_nome" value={selectedResponsavel ? selectedResponsavel.nome_completo : ''} onChange={() => {}} error={errors.responsavel_id} disabled />
               </div>
-              <Button variant="secondary" onClick={() => setRespModalOpen(true)} disabled={disabled} title={t('search_employee') || 'Buscar Colaborador'} aria-label={t('search_employee') || 'Buscar Colaborador'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
+              <Button variant="secondary" onClick={() => setRespModalOpen(true)} disabled={disabled || !form.empresa_id} title={t('search_employee') || 'Buscar Colaborador'} aria-label={t('search_employee') || 'Buscar Colaborador'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
             <Input type="date" label={t('open_date') || 'Data de Abertura'} name="data_abertura" value={form.data_abertura} onChange={onChange} error={errors.data_abertura} disabled={disabled} />
             <Input type="date" label={t('start_new_useful_life') || 'Início Nova Vida Útil'} name="data_inicio_nova_vida_util" value={form.data_inicio_nova_vida_util} onChange={onChange} error={errors.data_inicio_nova_vida_util} disabled={disabled} />
@@ -510,7 +533,7 @@ export default function ReviewsPage() {
         </div>
       )}
  
-       {uploadModalOpen && (
+        {uploadModalOpen && (
          <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => setUploadModalOpen(false)} />
           <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -520,6 +543,18 @@ export default function ReviewsPage() {
                 <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setUploadModalOpen(false)}><X size={18} /></button>
               </div>
               <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <a
+                    href="/Base%20de%20dados.xlsx"
+                    download
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <FileDown size={18} /> {t('download_template') || 'Baixar planilha modelo'}
+                  </a>
+                  <div className="text-xs text-slate-600 dark:text-slate-300">
+                    {t('upload_template_hint') || 'Use esta planilha; a ordem das colunas está definida nela.'}
+                  </div>
+                </div>
                 <div
                   className={`border-2 border-dashed rounded-lg p-6 text-center ${uploadDragActive ? 'border-blue-400 bg-blue-50 dark:bg-slate-900/40' : 'border-slate-300 dark:border-slate-700'}`}
                   onDragOver={(e) => { e.preventDefault(); setUploadDragActive(true); }}
