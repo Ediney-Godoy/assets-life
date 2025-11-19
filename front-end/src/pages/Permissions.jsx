@@ -125,6 +125,18 @@ export default function PermissionsPage() {
         const created = await createPermissionGroup({ nome: form.nome.trim(), descricao: form.descricao || '' });
         setEditingId(created.id);
         toast.success(t('created_successfully') || 'Criado com sucesso');
+
+        // Vincular transações padrão de Revisões automaticamente
+        try {
+          const tx = transactions.length ? transactions : (await getTransactions()) || [];
+          const requiredRoutes = new Set(['/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis']);
+          const toLink = tx.filter((tr) => requiredRoutes.has(String(tr.rota || '')));
+          for (const tr of toLink) {
+            try { await addGroupTransaction(created.id, tr.id); } catch {}
+          }
+          const gt = await listGroupTransactions(created.id);
+          setGroupTransactions(Array.isArray(gt) ? gt : []);
+        } catch {}
       } else {
         await updatePermissionGroup(editingId, { nome: form.nome.trim(), descricao: form.descricao || '' });
         toast.success(t('updated_successfully') || 'Atualizado com sucesso');

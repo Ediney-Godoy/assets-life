@@ -27,6 +27,12 @@ export default function ReviewsMenu() {
     if (path === '/supervisao/rvu' && allowed.has('/supervisao-rvu')) return true;
     // compatibilidade: Relatórios RVU
     if (path === '/relatorios-rvu' && allowed.has('/relatorios/rvu')) return true;
+    // compatibilidade: Revisão de Vidas Úteis
+    if (path === '/reviews/vidas-uteis') {
+      if (allowed.has('/revisoes/vidas-uteis')) return true;
+      if (allowed.has('/revisao/vidas-uteis')) return true;
+      if (allowed.has('/reviews/rvu')) return true;
+    }
     return false;
   };
 

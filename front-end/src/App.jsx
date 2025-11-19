@@ -109,15 +109,16 @@ export default function App() {
       const raw = localStorage.getItem('assetlife_permissoes');
       const rotas = raw ? JSON.parse(raw)?.rotas : [];
       const allowed = new Set(Array.isArray(rotas) ? rotas : []);
-      const altMap = {
-        '/reviews/massa': '/revisoes-massa',
-        '/relatorios-rvu': '/relatorios/rvu',
+      const altList = {
+        '/reviews/massa': ['/revisoes-massa'],
+        '/relatorios-rvu': ['/relatorios/rvu'],
+        '/reviews/vidas-uteis': ['/revisoes/vidas-uteis', '/revisao/vidas-uteis', '/reviews/rvu'],
       };
-      const alt = altMap[route];
+      const alts = altList[route] || [];
       const ok = (
         allowed.size === 0
           ? route === '/dashboard'
-          : allowed.has(route) || (alt ? allowed.has(alt) : false)
+          : (allowed.has(route) || alts.some((a) => allowed.has(a)))
       );
       if (!ok) return <Navigate to="/dashboard" replace state={{ denied: route }} />;
     } catch {}

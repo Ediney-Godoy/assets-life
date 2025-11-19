@@ -377,10 +377,10 @@ export default function DelegacaoPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('delegation_title')}</h2>
-        <div className="flex items-center gap-2">
-          <Select label={t('period_label')} name="periodo" value={selectedPeriodoId || ''} onChange={onPeriodoChange}>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Select label={t('period_label')} name="periodo" value={selectedPeriodoId || ''} onChange={onPeriodoChange} className="w-full sm:w-auto">
             {(periodos || []).map((p) => (
               <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
             ))}
@@ -391,9 +391,9 @@ export default function DelegacaoPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Coluna Esquerda - Itens disponíveis (TABELA) */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-end gap-2 mb-3">
+          <div className="flex items-end gap-2 mb-3 flex-wrap">
             {/* Dropdown de filtro */}
-            <Select label="" name="filterType" value={filterType} onChange={(e) => setFilterType(e.target.value)} className="min-w-[150px] md:min-w-[160px]">
+            <Select label="" name="filterType" value={filterType} onChange={(e) => setFilterType(e.target.value)} className="min-w-[150px] md:min-w-[160px] w-full sm:w-auto">
               <option value="ug">{t('filter_ug')}</option>
               <option value="cc">{t('filter_cc')}</option>
               <option value="classe">{t('filter_class')}</option>
@@ -432,7 +432,7 @@ export default function DelegacaoPage() {
               </div>
             )}
             {/* Pesquisa */}
-            <Input label="" name="qleft" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={queryLeft} onChange={(e) => setQueryLeft(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
+            <Input label="" name="qleft" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={queryLeft} onChange={(e) => setQueryLeft(e.target.value)} className={filterType === 'valor' ? 'w-full sm:w-40' : 'flex-1 min-w-0 w-full'} />
             {/* Toolbar esquerda: ações de delegação */}
             <div className="ml-auto flex items-center gap-2">
                <Button variant="primary" className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-500 shrink-0" title={t('delegation_delegate_selected')} onClick={onDelegateSelected}>
@@ -448,34 +448,34 @@ export default function DelegacaoPage() {
             filteredLeft.length === 0 ? (
               <p className="text-slate-500">{t('delegation_no_items')}</p>
             ) : (
-              <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1 scrollbar-stable" style={{ scrollbarGutter: 'stable both-edges' }}>
+              <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1 scrollbar-stable overflow-x-auto" style={{ scrollbarGutter: 'stable both-edges' }}>
                 <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-                  <table className="min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
+                  <table className="min-w-[800px] md:min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
                     <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                       <tr>
-                        <th className="w-12 px-3 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <th className="w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
                           <div className="flex justify-center">
                             <input type="checkbox" checked={allSelected} onChange={onToggleSelectAll} />
                           </div>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_asset_number')}</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_sub_number')}</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_description')}</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_class')}</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_book_value')}</th>
+                        <th className="px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_asset_number')}</th>
+                        <th className="hidden md:table-cell px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_sub_number')}</th>
+                        <th className="px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_description')}</th>
+                        <th className="hidden md:table-cell px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_class')}</th>
+                        <th className="px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_book_value')}</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-950 divide-y divide-slate-200 dark:divide-slate-800">
                       {filteredLeft.map((i) => (
                         <tr key={i.id} className="hover:bg-slate-50 dark:hover:bg-slate-900">
-                          <td className="w-12 px-3 py-2 text-center text-sm text-slate-700 dark:text-slate-200">
+                          <td className="w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs md:text-sm text-slate-700 dark:text-slate-200">
                             <input type="checkbox" checked={selectedItemIds.includes(i.id)} onChange={() => onToggleSelect(i.id)} />
                           </td>
-                          <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{i.numero_imobilizado}</td>
-                          <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{i.sub_numero}</td>
-                          <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{i.descricao}</td>
-                          <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{i.classe}</td>
-                          <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{Number(i.valor_contabil || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{i.numero_imobilizado}</td>
+                          <td className="hidden md:table-cell px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{i.sub_numero}</td>
+                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{i.descricao}</td>
+                          <td className="hidden md:table-cell px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{i.classe}</td>
+                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{Number(i.valor_contabil || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -488,19 +488,19 @@ export default function DelegacaoPage() {
 
         {/* Coluna Direita - Delegações existentes */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             {/* Agrupa os controles à direita e posiciona o botão azul antes dos campos */}
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2 w-full sm:w-auto">
               <Button variant="primary" className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-500 shrink-0" title={t('delegation_send_left')} onClick={onUndelegateSelected}>
                 <ArrowLeft size={16} />
               </Button>
-              <Select label="" name="revisor" value={revisorId} onChange={(e) => setRevisorId(e.target.value)} className="min-w-[260px]">
+              <Select label="" name="revisor" value={revisorId} onChange={(e) => setRevisorId(e.target.value)} className="min-w-[220px] w-full sm:w-auto">
                 <option value="">{t('select')}...</option>
                 {(usuarios || []).map((u) => (
                   <option key={u.id} value={u.id}>{u.codigo} - {u.nome_completo}</option>
                 ))}
               </Select>
-              <Input label="" name="qright" placeholder={revisorId ? t('delegation_search_placeholder') : t('delegation_select_reviewer')} value={queryRight} onChange={(e) => setQueryRight(e.target.value)} disabled={!revisorId} />
+              <Input label="" name="qright" placeholder={revisorId ? t('delegation_search_placeholder') : t('delegation_select_reviewer')} value={queryRight} onChange={(e) => setQueryRight(e.target.value)} disabled={!revisorId} className="w-full sm:w-auto flex-1 min-w-0" />
               <input type="checkbox" checked={allSelectedRight} onChange={onToggleSelectAllRight} title={t('delegation_select_all_visible')} />
             </div>
           </div>
@@ -511,36 +511,36 @@ export default function DelegacaoPage() {
             filteredRight.length === 0 ? (
               <p className="text-slate-500">{t('delegation_none_found')}</p>
             ) : (
-              <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1 scrollbar-stable" style={{ scrollbarGutter: 'stable both-edges' }}>
+              <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1 scrollbar-stable overflow-x-auto" style={{ scrollbarGutter: 'stable both-edges' }}>
                 <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-                  <table className="min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
+                  <table className="min-w-[800px] md:min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
                     <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                       <tr>
-                        <th className="w-12 px-3 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <th className="w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
                           <div className="flex justify-center">
                             <input type="checkbox" checked={allSelectedRight} onChange={onToggleSelectAllRight} title={t('delegation_select_all_visible')} />
                           </div>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_asset_number')}</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_sub_number')}</th>
-                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_description')}</th>
-                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('reviewer_label')}</th>
-                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_book_value')}</th>
-                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('assigned_at')}</th>
+                        <th className="px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_asset_number')}</th>
+                        <th className="hidden md:table-cell px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_sub_number')}</th>
+                        <th className="px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_description')}</th>
+                        <th className="px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('reviewer_label')}</th>
+                        <th className="px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('col_book_value')}</th>
+                        <th className="hidden md:table-cell px-2 md:px-4 py-1.5 md:py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300">{t('assigned_at')}</th>
                        </tr>
                      </thead>
                     <tbody className="bg-white dark:bg-slate-950 divide-y divide-slate-200 dark:divide-slate-800">
                       {filteredRight.map((d) => (
                         <tr key={d.id} className="hover:bg-slate-50 dark:hover:bg-slate-900">
-                          <td className="w-12 px-3 py-2 text-center text-sm text-slate-700 dark:text-slate-200">
+                          <td className="w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs md:text-sm text-slate-700 dark:text-slate-200">
                             <input type="checkbox" checked={selectedDelegacaoIds.includes(d.id)} onChange={() => onToggleSelectRight(d.id)} title={t('delegation_select_title')} />
                           </td>
-                          <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{d.numero_imobilizado}</td>
-                          <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{itemById.get(d.ativo_id)?.sub_numero ?? d.sub_numero ?? ''}</td>
-                           <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{d.descricao}</td>
-                           <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{d.revisor_nome || d.revisor_id}</td>
-                           <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{Number(itemById.get(d.ativo_id)?.valor_contabil ?? d.valor_contabil ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                           <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200">{new Date(d.data_atribuicao).toLocaleString()}</td>
+                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{d.numero_imobilizado}</td>
+                          <td className="hidden md:table-cell px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{itemById.get(d.ativo_id)?.sub_numero ?? d.sub_numero ?? ''}</td>
+                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{d.descricao}</td>
+                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{d.revisor_nome || d.revisor_id}</td>
+                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{Number(itemById.get(d.ativo_id)?.valor_contabil ?? d.valor_contabil ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="hidden md:table-cell px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{new Date(d.data_atribuicao).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
