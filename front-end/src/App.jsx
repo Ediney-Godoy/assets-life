@@ -42,6 +42,17 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('assetlife_sidebar_collapsed') === '1'; } catch { return false; }
   });
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('assetlife_sidebar_collapsed');
+      if (stored === null) {
+        const w = window.innerWidth || 0;
+        const shouldCollapse = w < 1024; // md e abaixo por padrão
+        setSidebarCollapsed(shouldCollapse);
+        localStorage.setItem('assetlife_sidebar_collapsed', shouldCollapse ? '1' : '0');
+      }
+    } catch {}
+  }, []);
   const location = useLocation();
   const navigate = useNavigate();
 
