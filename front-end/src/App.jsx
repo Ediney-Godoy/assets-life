@@ -151,6 +151,7 @@ export default function App() {
               onLanguageChange={changeLanguage}
               onLogout={handleLogout}
               onChangeCompany={() => navigate('/select-company')}
+              collapsed={sidebarCollapsed}
               onToggleSidebar={() => {
                 setSidebarCollapsed((prev) => {
                   const next = !prev;

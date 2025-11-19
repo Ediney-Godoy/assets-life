@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
-import { Building2, LogOut, Menu } from 'lucide-react';
+import { Building2, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar }) {
+export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
   const { t } = useTranslation();
   const [user, setUser] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch { return null; }
@@ -33,7 +33,11 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             title={t('toggle_sidebar') || 'Alternar menu'}
             aria-label={t('toggle_sidebar') || 'Alternar menu'}
           >
-            <Menu size={18} className="text-slate-700 dark:text-slate-200" />
+            {collapsed ? (
+              <ChevronRight size={18} className="text-slate-700 dark:text-slate-200" />
+            ) : (
+              <ChevronLeft size={18} className="text-slate-700 dark:text-slate-200" />
+            )}
           </button>
         )}
         <span className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('app_title')}</span>

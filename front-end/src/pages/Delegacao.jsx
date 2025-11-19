@@ -388,12 +388,12 @@ export default function DelegacaoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Coluna Esquerda - Itens disponíveis (TABELA) */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="flex items-end gap-2 mb-3 flex-wrap">
             {/* Dropdown de filtro */}
-            <Select label="" name="filterType" value={filterType} onChange={(e) => setFilterType(e.target.value)} className="min-w-[150px] md:min-w-[160px] w-full sm:w-auto">
+            <Select label="" name="filterType" value={filterType} onChange={(e) => setFilterType(e.target.value)} className="min-w-[160px] sm:w-40 md:w-52 lg:w-56">
               <option value="ug">{t('filter_ug')}</option>
               <option value="cc">{t('filter_cc')}</option>
               <option value="classe">{t('filter_class')}</option>
@@ -402,7 +402,7 @@ export default function DelegacaoPage() {
             </Select>
             {/* Valor do filtro dinâmico */}
             {filterType === 'classe' && (
-              <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-36 md:w-40 shrink-0">
+              <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-40 md:w-52 lg:w-56 shrink-0">
                 <option value="">{t('all')}</option>
                 {uniqueClasses.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -410,7 +410,7 @@ export default function DelegacaoPage() {
               </Select>
             )}
             {filterType === 'cc' && (
-              <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-36 md:w-40 shrink-0">
+              <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-40 md:w-52 lg:w-56 shrink-0">
                 <option value="">{t('all')}</option>
                 {uniqueCCs.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -418,7 +418,7 @@ export default function DelegacaoPage() {
               </Select>
             )}
             {filterType === 'ug' && (
-              <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-40 shrink-0">
+              <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-44 md:w-56 lg:w-64 shrink-0">
                 <option value="">{t('all')}</option>
                 {uniqueUGs.map((u) => (
                   <option key={u.id} value={u.codigo}>{u.codigo} - {u.nome}</option>
@@ -432,7 +432,7 @@ export default function DelegacaoPage() {
               </div>
             )}
             {/* Pesquisa */}
-            <Input label="" name="qleft" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={queryLeft} onChange={(e) => setQueryLeft(e.target.value)} className={filterType === 'valor' ? 'w-full sm:w-40' : 'flex-1 min-w-0 w-full'} />
+              <Input label="" name="qleft" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={queryLeft} onChange={(e) => setQueryLeft(e.target.value)} className={filterType === 'valor' ? 'w-full sm:w-44' : 'flex-1 min-w-0 w-full'} />
             {/* Toolbar esquerda: ações de delegação */}
             <div className="ml-auto flex items-center gap-2">
                <Button variant="primary" className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-500 shrink-0" title={t('delegation_delegate_selected')} onClick={onDelegateSelected}>
@@ -494,7 +494,7 @@ export default function DelegacaoPage() {
               <Button variant="primary" className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-500 shrink-0" title={t('delegation_send_left')} onClick={onUndelegateSelected}>
                 <ArrowLeft size={16} />
               </Button>
-              <Select label="" name="revisor" value={revisorId} onChange={(e) => setRevisorId(e.target.value)} className="min-w-[220px] w-full sm:w-auto">
+              <Select label="" name="revisor" value={revisorId} onChange={(e) => setRevisorId(e.target.value)} className="min-w-[260px] w-full sm:w-auto">
                 <option value="">{t('select')}...</option>
                 {(usuarios || []).map((u) => (
                   <option key={u.id} value={u.id}>{u.codigo} - {u.nome_completo}</option>
