@@ -35,7 +35,7 @@ export default function CostCentersPage() {
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
 
-  const [filters, setFilters] = React.useState({ empresa_id: '', ug_id: '', status: '' });
+  const [filters, setFilters] = React.useState({ empresa_id: '', ug_id: '' });
 
   const [form, setForm] = React.useState({
     nome: '',
@@ -210,8 +210,7 @@ export default function CostCentersPage() {
       (c.codigo && c.codigo.toLowerCase().includes(query.toLowerCase()));
     const byEmpresa = !filters.empresa_id || c.empresa_id === Number(filters.empresa_id);
     const byUg = !filters.ug_id || c.ug_id === Number(filters.ug_id);
-    const byStatus = !filters.status || c.status === filters.status;
-    return byQuery && byEmpresa && byUg && byStatus;
+    return byQuery && byEmpresa && byUg;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -256,8 +255,8 @@ export default function CostCentersPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <Tabs
              value={activeTab}
              onChange={setActiveTab}
@@ -269,16 +268,16 @@ export default function CostCentersPage() {
           <TabPanel active={activeTab === 'cc'}>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                {/* Empresa com busca */}
-               <div className="flex items-end gap-2">
-                 <div className="flex-1">
+               <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+                 <div className="min-w-0">
                    <Input className="w-full" label={t('company') || 'Empresa'} name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} error={errors.empresa_id} disabled />
                  </div>
                  <Button variant="secondary" onClick={() => setCompanyModalOpen(true)} title={t('open') || 'Abrir'} aria-label={t('open')} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
                </div>
 
                {/* UG com busca */}
-               <div className="flex items-end gap-2">
-                 <div className="flex-1">
+               <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+                 <div className="min-w-0">
                    <Input className="w-full" label={t('ug') || 'UG'} name="ug_nome" value={selectedUG ? `${selectedUG.codigo} - ${selectedUG.nome}` : ''} onChange={() => {}} error={errors.ug_id} disabled />
                  </div>
                  <Button variant="secondary" onClick={() => setUgModalOpen(true)} disabled={!form.empresa_id} title={t('open') || 'Abrir'} aria-label={t('open')} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
@@ -287,8 +286,8 @@ export default function CostCentersPage() {
                <Input label={t('name') || 'Nome'} name="nome" value={form.nome} onChange={onChange} error={errors.nome} />
 
                {/* Responsável com busca */}
-               <div className="flex items-end gap-2">
-                 <div className="flex-1">
+               <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+                 <div className="min-w-0">
                    <Input className="w-full" label={t('responsible') || 'Responsável'} name="responsavel_nome" value={selectedResponsavel ? (selectedResponsavel.full_name || selectedResponsavel.nome_completo) : ''} onChange={() => {}} disabled />
                  </div>
                  <Button variant="secondary" onClick={() => setRespModalOpen(true)} title={t('open') || 'Abrir'} aria-label={t('open')} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
@@ -307,17 +306,8 @@ export default function CostCentersPage() {
 
         </div>
 
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-2 flex-1">
-              <Search size={16} className="text-slate-600 dark:text-slate-300" />
-              <input
-                className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
-                placeholder={t('search_placeholder') || 'Pesquisar por Código ou Nome'}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+          <div className="grid grid-cols-1 md:grid-cols-[auto_auto_1fr] items-end gap-2 mb-3 min-w-0">
             <Select label={t('company') || 'Empresa'} name="empresaFiltro" value={filters.empresa_id} onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}>
               <option value="">Todas</option>
               {companies.map((c) => (
@@ -330,12 +320,15 @@ export default function CostCentersPage() {
                 <option key={g.id} value={g.id}>{g.codigo}</option>
               ))}
             </Select>
-            <Select label={t('status')} name="statusFiltro" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
-              <option value="">Todos</option>
-              <option value="Ativo">{t('status_active') || 'Ativo'}</option>
-              <option value="Inativo">{t('status_inactive') || 'Inativo'}</option>
-            </Select>
-            <Button variant="secondary" onClick={() => load()}>{t('open') || 'Abrir'}</Button>
+            <div className="grid grid-cols-[auto_1fr] items-center gap-2 min-w-0">
+              <Search size={16} className="text-slate-600 dark:text-slate-300" />
+              <input
+                className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1 min-w-0"
+                placeholder={t('search_placeholder') || 'Pesquisar por Código ou Nome'}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
           </div>
 
           {loading && <p className="text-slate-500">{t('backend_checking') || 'Checando backend...'}</p>}

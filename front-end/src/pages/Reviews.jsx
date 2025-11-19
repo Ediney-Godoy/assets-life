@@ -321,9 +321,9 @@ export default function ReviewsPage() {
           />
         </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
         {/* Formulário (Esquerda) */}
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input label={t('period_code') || 'Código da Revisão'} name="codigo" value={form.codigo} onChange={() => {}} disabled />
             <Select label={t('status') || 'Status'} name="status" value={form.status} onChange={onChange} disabled={disabled}>
@@ -333,22 +333,22 @@ export default function ReviewsPage() {
             </Select>
             <Input label={t('period_description') || 'Descrição do Período'} name="descricao" value={form.descricao} onChange={onChange} error={errors.descricao} disabled={disabled} />
 
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input className="w-full" label={t('company_label') || 'Empresa'} name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} error={errors.empresa_id} disabled />
               </div>
               <Button variant="secondary" onClick={() => setCompanyModalOpen(true)} disabled={disabled} title={t('search_company') || 'Buscar Empresa'} aria-label={t('search_company') || 'Buscar Empresa'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
 
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input className="w-full" label={t('ug_label') || 'UG - Unidade Gerencial'} name="ug_nome" value={selectedUG ? `${selectedUG.codigo} - ${selectedUG.nome}` : ''} onChange={() => {}} error={errors.ug_id} disabled />
               </div>
               <Button variant="secondary" onClick={() => setUgModalOpen(true)} disabled={disabled || !form.empresa_id} title={t('search_ug') || 'Buscar UG'} aria-label={t('search_ug') || 'Buscar UG'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
 
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input className="w-full" label={t('review_responsible') || 'Responsável pela Revisão'} name="responsavel_nome" value={selectedResponsavel ? selectedResponsavel.nome_completo : ''} onChange={() => {}} error={errors.responsavel_id} disabled />
               </div>
               <Button variant="secondary" onClick={() => setRespModalOpen(true)} disabled={disabled} title={t('search_employee') || 'Buscar Colaborador'} aria-label={t('search_employee') || 'Buscar Colaborador'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
@@ -369,9 +369,9 @@ export default function ReviewsPage() {
         </div>
 
         {/* Listagem (Direita) */}
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1" placeholder={t('search_periods_placeholder') || 'Pesquisar por código, descrição ou status'} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+          <div className="grid grid-cols-[1fr_auto] items-end gap-2 mb-3 min-w-0">
+            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1 min-w-0" placeholder={t('search_periods_placeholder') || 'Pesquisar por código, descrição ou status'} value={query} onChange={(e) => setQuery(e.target.value)} />
             <Select label="" name="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">{t('all') || 'Todos'}</option>
               <option value="Aberto">{t('review_status_open') || 'Aberto'}</option>

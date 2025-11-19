@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -97,7 +98,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-surface-muted dark:bg-darksurface-muted p-4">
       <div className="w-full max-w-md bg-gray-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
         <div className="text-center mb-6">
-          <img src="/brand.svg" alt="Asset Life" className="mx-auto h-16 mb-2" />
+          <img src="/brand.svg" alt="Asset Life" className="mx-auto h-24 mb-2" />
           <div className="text-slate-600 dark:text-slate-400 text-sm">{t('login_welcome')}</div>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -124,10 +125,11 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-sm px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-0 h-9 w-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center"
             aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
           >
-            {showPassword ? 'Ocultar' : 'Mostrar'}
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
       </div>

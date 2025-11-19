@@ -287,9 +287,9 @@ export default function ManagementUnitsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
         {/* Formulário (Esquerda) */}
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Nome da Unidade Gerencial" name="nome" value={form.nome} onChange={onChange} error={errors.nome} />
             <Select label="Tipo da Unidade" name="tipo_unidade" value={form.tipo_unidade} onChange={onChange}>
@@ -299,24 +299,24 @@ export default function ManagementUnitsPage() {
               {nivelOptions.map((v) => <option key={v} value={v}>{v}</option>)}
             </Select>
             {/* Empresa com busca (lupa) */}
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input label="Empresa" name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} error={errors.empresa_id} disabled />
               </div>
               <Button variant="secondary" onClick={openCompanySearch} title="Pesquisar Empresa" aria-label="Pesquisar Empresa" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
 
             {/* Responsável com busca (lupa) */}
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input label="Responsável" name="responsavel_nome" value={selectedResp ? selectedResp.full_name : ''} onChange={() => {}} disabled />
               </div>
               <Button variant="secondary" onClick={openRespSearch} title="Pesquisar Responsável" aria-label="Pesquisar Responsável" className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
 
             {/* UG Superior (Pai) com busca (lupa) */}
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
                 <Input label="UG Superior (Pai)" name="ug_pai_nome" value={selectedUGPai ? `${selectedUGPai.codigo} - ${selectedUGPai.nome}` : ''} onChange={() => {}} disabled />
               </div>
               <Button variant="secondary" onClick={openUgPaiSearch} title="Pesquisar UG Superior" aria-label="Pesquisar UG Superior" className="p-0 h-10 w-10 justify-center" disabled={form.nivel_hierarquico === 'CEO'}><Search size={18} /></Button>
@@ -329,9 +329,9 @@ export default function ManagementUnitsPage() {
         </div>
 
         {/* Listagem (Direita) */}
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <div className="flex items-center gap-2 mb-3">
-            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1" placeholder="Pesquisar por nome ou código" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1 min-w-0" placeholder="Pesquisar por nome ou código" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
 
           {loading && <p className="text-slate-500">{t('backend_checking') || 'Checando backend...'}</p>}
@@ -342,7 +342,7 @@ export default function ManagementUnitsPage() {
             ) : (
               <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
                 {filtered.map((ug) => (
-                  <div key={ug.id} className="rounded-xl bg-gray-50 dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+                  <div key={ug.id} className="rounded-xl bg-gray-50 dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <div className="text-sm text-slate-500">Código: <span className="font-mono">{ug.codigo}</span></div>

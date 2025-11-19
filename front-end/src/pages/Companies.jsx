@@ -143,8 +143,8 @@ export default function CompaniesPage() {
         <Button variant="danger" disabled={!editingId} onClick={() => editingId && onDelete(editingId)}>{t('delete')}</Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <Tabs
             value={activeTab}
             onChange={setActiveTab}
@@ -184,9 +184,9 @@ export default function CompaniesPage() {
           </TabPanel>
         </div>
 
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <div className="flex items-center gap-2 mb-3">
-            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1" placeholder={t('search_placeholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1 min-w-0" placeholder={t('search_placeholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
 
           {loading && <p className="text-slate-500">{t('backend_checking')}</p>}

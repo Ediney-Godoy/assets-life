@@ -284,9 +284,9 @@ export default function PermissionsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
         {/* Form (Esquerda) */}
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <Tabs value={activeTab} onChange={setActiveTab} items={[
             { value: 'basic', label: 'Informações Básicas' },
             { value: 'empresas', label: 'Empresas' },
@@ -295,8 +295,8 @@ export default function PermissionsPage() {
           ]} />
 
           {showClone && (
-            <div className="flex items-end gap-2 mb-4">
-              <Input label="Novo nome" value={cloneName} onChange={(e) => setCloneName(e.target.value)} className="flex-1" />
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 mb-4 min-w-0">
+              <Input label="Novo nome" value={cloneName} onChange={(e) => setCloneName(e.target.value)} className="min-w-0" />
               <Button variant="primary" onClick={onClone}>Clonar</Button>
             </div>
           )}
@@ -403,11 +403,11 @@ export default function PermissionsPage() {
         </div>
 
         {/* Lista (Direita) */}
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+          <div className="grid grid-cols-[auto_1fr_auto] items-end gap-2 mb-3 min-w-0">
             <Search size={16} className="text-slate-600 dark:text-slate-300" />
             <input
-              className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
+              className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1 min-w-0"
               placeholder="Pesquisar por nome ou descrição"
               value={query}
               onChange={(e) => setQuery(e.target.value)}

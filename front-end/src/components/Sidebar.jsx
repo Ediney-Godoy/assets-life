@@ -50,7 +50,7 @@ export default function Sidebar() {
   return (
     <aside className="w-16 sm:w-20 md:w-40 lg:w-48 xl:w-60 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-2 md:p-3">
       <div className="flex items-center justify-center px-1 md:px-2 pb-2 md:pb-3">
-        <img src="/brand.svg" alt="Logo" className="h-8 md:h-10" />
+        <img src="/brand.svg" alt="Logo" className="h-24" />
       </div>
       <nav className="flex flex-col gap-1">
         {sections.map((section) => {
