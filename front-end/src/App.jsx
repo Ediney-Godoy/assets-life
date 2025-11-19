@@ -39,6 +39,9 @@ import SelectCompanyPage from './pages/SelectCompany';
 export default function App() {
   const { t, i18n } = useTranslation();
   const [backendStatus, setBackendStatus] = useState('checking');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('assetlife_sidebar_collapsed') === '1'; } catch { return false; }
+  });
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -128,10 +131,23 @@ export default function App() {
   return (
     <ThemeProvider>
       <div className="h-screen flex bg-surface-muted dark:bg-darksurface-muted">
-        {!isAuthRoute && <Sidebar />}
+        {!isAuthRoute && <Sidebar collapsed={sidebarCollapsed} />}
         <div className="flex-1 flex flex-col">
           {!isAuthRoute && (
-            <Header backendStatus={backendStatus} language={i18n.language} onLanguageChange={changeLanguage} onLogout={handleLogout} onChangeCompany={() => navigate('/select-company')} />
+            <Header
+              backendStatus={backendStatus}
+              language={i18n.language}
+              onLanguageChange={changeLanguage}
+              onLogout={handleLogout}
+              onChangeCompany={() => navigate('/select-company')}
+              onToggleSidebar={() => {
+                setSidebarCollapsed((prev) => {
+                  const next = !prev;
+                  try { localStorage.setItem('assetlife_sidebar_collapsed', next ? '1' : '0'); } catch {}
+                  return next;
+                });
+              }}
+            />
           )}
           <main className="container-page scrollbar-stable">
             {!isAuthRoute && <DynamicTabs initialTabs={initialTabs} hideBody />}

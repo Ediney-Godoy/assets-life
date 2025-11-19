@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck } from 'lucide-react';
 import { getRole, getVisibleMenuForRole } from '../permissions';
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed = false }) {
   const { t } = useTranslation();
   const location = useLocation();
   const role = getRole();
@@ -60,10 +60,16 @@ export default function Sidebar() {
   };
   const sections = menu.filter((section) => isRouteVisible(section.to) || hasChildrenAllowed(section.to));
 
+  const asideWidth = collapsed ? 'w-12' : 'w-14 sm:w-16 md:w-36 lg:w-44 xl:w-56';
+  const logoSize = collapsed ? 'h-10' : 'h-14 sm:h-16 md:h-20 lg:h-24';
+  const linkJustify = collapsed ? 'justify-center' : 'justify-center md:justify-start';
+  const linkGap = collapsed ? 'gap-0' : 'gap-0 md:gap-3';
+  const labelClass = collapsed ? 'hidden' : 'hidden lg:inline';
+
   return (
-    <aside className="w-14 sm:w-16 md:w-36 lg:w-44 xl:w-56 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-2 md:p-3">
+    <aside className={`${asideWidth} shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-2 md:p-3`}>
       <div className="flex items-center justify-center px-1 md:px-2 pb-2 md:pb-3">
-        <img src="/brand.svg" alt="Logo" className="h-14 sm:h-16 md:h-20 lg:h-24" />
+        <img src="/brand.svg" alt="Logo" className={logoSize} />
       </div>
       <nav className="flex flex-col gap-1">
         {sections.map((section) => {
@@ -73,12 +79,12 @@ export default function Sidebar() {
             <NavLink
               key={section.to}
               to={section.to}
-              className={({ isActive }) => `flex items-center justify-center md:justify-start gap-0 md:gap-3 px-1.5 md:px-3 py-1.5 md:py-2 rounded-md text-sm transition-colors ${
+              className={({ isActive }) => `flex items-center ${linkJustify} ${linkGap} px-1.5 md:px-3 py-1.5 md:py-2 rounded-md text-sm transition-colors ${
                 isActive || isSectionActive ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100' :
                 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'} `}
             >
               <Icon size={18} />
-              <span className="hidden lg:inline">{section.label}</span>
+              <span className={labelClass}>{section.label}</span>
             </NavLink>
           );
         })}

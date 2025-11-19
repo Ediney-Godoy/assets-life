@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
-import { Building2, LogOut } from 'lucide-react';
+import { Building2, LogOut, Menu } from 'lucide-react';
 
-export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany }) {
+export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar }) {
   const { t } = useTranslation();
   const [user, setUser] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch { return null; }
@@ -25,6 +25,17 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
   return (
     <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
       <div className="flex items-center gap-3">
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+            title={t('toggle_sidebar') || 'Alternar menu'}
+            aria-label={t('toggle_sidebar') || 'Alternar menu'}
+          >
+            <Menu size={18} className="text-slate-700 dark:text-slate-200" />
+          </button>
+        )}
         <span className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('app_title')}</span>
         <span className={`status-chip ${colorMap[backendStatus]}`}>{t('backend_status')}: {backendStatus === 'ok' ? t('backend_ok') : backendStatus === 'checking' ? t('backend_checking') : t('backend_error')}</span>
       </div>
