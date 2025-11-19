@@ -453,7 +453,7 @@ export default function DelegacaoPage() {
                   <table className="min-w-[800px] md:min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
                     <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                       <tr>
-                        <th className="hidden md:table-cell w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <th className="w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
                           <div className="flex justify-center">
                             <input type="checkbox" checked={allSelected} onChange={onToggleSelectAll} />
                           </div>
@@ -468,7 +468,7 @@ export default function DelegacaoPage() {
                     <tbody className="bg-white dark:bg-slate-950 divide-y divide-slate-200 dark:divide-slate-800">
                       {filteredLeft.map((i) => (
                         <tr key={i.id} className="hover:bg-slate-50 dark:hover:bg-slate-900">
-                          <td className="hidden md:table-cell w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs md:text-sm text-slate-700 dark:text-slate-200">
+                          <td className="w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs md:text-sm text-slate-700 dark:text-slate-200">
                             <input type="checkbox" checked={selectedItemIds.includes(i.id)} onChange={() => onToggleSelect(i.id)} />
                           </td>
                           <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-slate-700 dark:text-slate-200">{i.numero_imobilizado}</td>
