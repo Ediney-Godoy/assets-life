@@ -25,6 +25,8 @@ export default function ReviewsMenu() {
     if (path === '/reviews/massa' && allowed.has('/revisoes-massa')) return true;
     // compatibilidade: Supervisão (rota no backend)
     if (path === '/supervisao/rvu' && allowed.has('/supervisao-rvu')) return true;
+    // compatibilidade: Relatórios RVU
+    if (path === '/relatorios-rvu' && allowed.has('/relatorios/rvu')) return true;
     return false;
   };
 

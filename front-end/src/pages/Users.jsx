@@ -34,6 +34,7 @@ export default function UsersPage() {
   const [empError, setEmpError] = React.useState(null);
   const [empQuery, setEmpQuery] = React.useState('');
   const [empList, setEmpList] = React.useState([]);
+  const [linkedEmpId, setLinkedEmpId] = React.useState(null);
   // Busca de UG e Centro de Custos
   const [ugModalOpen, setUgModalOpen] = React.useState(false);
   const [ugQuery, setUgQuery] = React.useState('');
@@ -80,6 +81,7 @@ export default function UsersPage() {
     });
     setErrors({});
     setChangePassword(false);
+    setLinkedEmpId(null);
   };
 
   const formatCpf = (val) => {
@@ -175,9 +177,14 @@ export default function UsersPage() {
     setForm((f) => ({
       ...f,
       nome_completo: e.full_name || '',
-      email: f.email || e.email_corporativo || '',
+      email: e.email_corporativo || '',
+      cpf: formatCpf(e.cpf || ''),
+      empresa_id: e.empresa_id ? String(e.empresa_id) : f.empresa_id,
+      ug_id: e.ug_id ? String(e.ug_id) : f.ug_id,
+      centro_custo_id: e.centro_custo_id ? String(e.centro_custo_id) : f.centro_custo_id,
     }));
     setErrors((prev) => ({ ...prev, nome_completo: null }));
+    setLinkedEmpId(e.id || null);
     toast.success('Colaborador selecionado');
     closeEmpSearch();
   };
@@ -401,10 +408,10 @@ export default function UsersPage() {
               </div>
               <Button variant="secondary" onClick={openEmpSearch} title="Pesquisar Colaborador" aria-label="Pesquisar Colaborador" className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
             </div>
-            <Input label="CPF" name="cpf" value={form.cpf} onChange={onChange} error={errors.cpf} />
+            <Input label="CPF" name="cpf" value={form.cpf} onChange={onChange} error={errors.cpf} readOnly={!!linkedEmpId} />
 
             {/* 3ª linha: E-mail e Data de Nascimento */}
-            <Input label="E-mail" name="email" type="email" value={form.email} onChange={onChange} error={errors.email} autoComplete="off" />
+            <Input label="E-mail" name="email" type="email" value={form.email} onChange={onChange} error={errors.email} autoComplete="off" readOnly={!!linkedEmpId} />
             <Input label="Data de Nascimento" name="data_nascimento" type="date" value={form.data_nascimento} onChange={onChange} />
 
             {/* 4ª linha: Senha e Confirmação de senha */}
