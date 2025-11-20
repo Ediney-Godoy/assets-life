@@ -180,6 +180,7 @@ export default function App() {
               <Route path="/cadastros" element={<RequireAuth><RequireCompany><DashboardPage t={t} registrationsOnly /></RequireCompany></RequireAuth>} />
               <Route path="/companies" element={<RequireAuth><RequireCompany><CompaniesPage /></RequireCompany></RequireAuth>} />
               <Route path="/relatorios-rvu" element={<RequireAuth><RequirePermission route="/relatorios-rvu"><RequireCompany><RelatoriosRVUView /></RequireCompany></RequirePermission></RequireAuth>} />
+              <Route path="/relatorios/rvu" element={<RequireAuth><RequirePermission route="/relatorios-rvu"><RequireCompany><RelatoriosRVUView /></RequireCompany></RequirePermission></RequireAuth>} />
               <Route path="/supervisao-rvu" element={<RequireAuth><RequirePermission route="/supervisao/rvu"><SupervisaoRVUView /></RequirePermission></RequireAuth>} />
               <Route path="/employees" element={<RequireAuth><EmployeesPage /></RequireAuth>} />
               <Route path="/ugs" element={<RequireAuth><ManagementUnitsPage /></RequireAuth>} />
