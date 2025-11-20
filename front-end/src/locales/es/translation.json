@@ -381,8 +381,7 @@
   "col_revised_end_date": "Fecha Fin Revisada",
   "status_reviewed": "Revisado",
   "status_pending": "Pendiente",
-  "status_approved": "Aprobado"
-}
+  "status_approved": "Aprobado",
   "help_title": "Ayuda – Revisiones",
   "help_intro": "Esta guía explica el flujo de trabajo de las pantallas del menú Revisiones.",
   "help_reviews_menu_title": "Pantallas del menú Revisiones",
@@ -400,4 +399,5 @@
   "help_tips_title": "Consejos",
   "help_tip_filters": "Use filtros y búsqueda para localizar ítems rápidamente.",
   "help_tip_shortcuts": "Aproveche el panel plegable para ganar espacio en pantalla.",
-  "help_tip_permissions": "¿Sin acceso? Verifique permisos y la empresa seleccionada arriba.",
+  "help_tip_permissions": "¿Sin acceso? Verifique permisos y la empresa seleccionada arriba."
+}

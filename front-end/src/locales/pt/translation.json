@@ -412,8 +412,7 @@
   "col_revised_end_date": "Data Fim Revisada",
   "status_reviewed": "Revisado",
   "status_pending": "Pendente",
-  "status_approved": "Aprovado"
-}
+  "status_approved": "Aprovado",
   "help_title": "Ajuda – Revisões",
   "help_intro": "Este guia apresenta o fluxo de trabalho das telas do menu Revisões.",
   "help_reviews_menu_title": "Telas do menu Revisões",
@@ -431,4 +430,5 @@
   "help_tips_title": "Dicas",
   "help_tip_filters": "Use os filtros e busca para localizar itens rapidamente.",
   "help_tip_shortcuts": "Aproveite o painel colapsável para ganhar espaço na tela.",
-  "help_tip_permissions": "Sem acesso? Verifique permissões e empresa selecionada no topo.",
+  "help_tip_permissions": "Sem acesso? Verifique permissões e empresa selecionada no topo."
+}

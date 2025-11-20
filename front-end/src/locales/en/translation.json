@@ -381,8 +381,7 @@
   "col_revised_end_date": "Revised End Date",
   "status_reviewed": "Reviewed",
   "status_pending": "Pending",
-  "status_approved": "Approved"
-}
+  "status_approved": "Approved",
   "help_title": "Help – Reviews",
   "help_intro": "This guide explains the workflow of the Reviews menu screens.",
   "help_reviews_menu_title": "Screens in the Reviews menu",
@@ -400,4 +399,5 @@
   "help_tips_title": "Tips",
   "help_tip_filters": "Use filters and search to quickly locate items.",
   "help_tip_shortcuts": "Leverage the collapsible panel to gain screen space.",
-  "help_tip_permissions": "No access? Check permissions and selected company at the top.",
+  "help_tip_permissions": "No access? Check permissions and selected company at the top."
+}
