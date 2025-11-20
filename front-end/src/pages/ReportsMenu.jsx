@@ -19,8 +19,8 @@ export default function ReportsMenu() {
       title,
       subtitle,
       icon: FileText,
-      // Direciona para a nova view de Relatórios RVU
-      action: () => navigate('/relatorios-rvu'),
+      // Direciona para rota compatível com permissões legadas
+      action: () => navigate('/relatorios/rvu'),
     },
   ];
 

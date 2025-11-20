@@ -125,7 +125,8 @@ export default function App() {
       const allowed = new Set(Array.isArray(rotas) ? rotas : []);
       const altList = {
         '/reviews/massa': ['/revisoes-massa'],
-        '/relatorios-rvu': ['/relatorios/rvu'],
+        // RVU: aceitar rotas alternativas antigas e o menu de relatórios
+        '/relatorios-rvu': ['/relatorios/rvu', '/reports', '/reports/vida-util'],
         '/reviews/vidas-uteis': ['/revisoes/vidas-uteis', '/revisao/vidas-uteis', '/reviews/rvu'],
       };
       const alts = altList[route] || [];
