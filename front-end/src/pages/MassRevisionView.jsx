@@ -18,7 +18,14 @@ export default function MassRevisionView() {
   const [resultSummary, setResultSummary] = React.useState(null);
   const [delegacoes, setDelegacoes] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState('pendentes'); // 'pendentes' | 'revisados'
-  const [collapsed, setCollapsed] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(() => {
+    try {
+      const v = localStorage.getItem('assetlife_mass_panel_collapsed');
+      if (v === '1') return true;
+      if (v === '0') return false;
+      return true;
+    } catch { return true; }
+  });
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [previewRows, setPreviewRows] = React.useState([]);
   const currentUserId = React.useMemo(() => {
@@ -613,7 +620,7 @@ export default function MassRevisionView() {
           {/* Botão flutuante para recolher/expandir o painel */}
           <button
             type="button"
-            onClick={() => setCollapsed((c) => !c)}
+            onClick={() => setCollapsed((c) => { const n = !c; try { localStorage.setItem('assetlife_mass_panel_collapsed', n ? '1' : '0'); } catch {} return n; })}
             className="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow hover:shadow-md transition"
             title={collapsed ? t('expand_panel') : t('collapse_panel')}
             aria-label={collapsed ? t('expand_panel') : t('collapse_panel')}
@@ -643,7 +650,12 @@ export default function MassRevisionView() {
           {activeTab === 'pendentes' && (
             <div className={`transition-all duration-300 overflow-hidden ${collapsed ? 'hidden' : 'lg:col-span-3'}`}>
               <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-4 border border-slate-200 dark:border-slate-800">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('mass_panel_title')}</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('mass_panel_title')}</h3>
+                  <button type="button" onClick={() => setCollapsed(true)} title={t('collapse_panel')} aria-label={t('collapse_panel')} className="rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2">
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                   <div>
                     <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('physical_condition_label')}</label>
