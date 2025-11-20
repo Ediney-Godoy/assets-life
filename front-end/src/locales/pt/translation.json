@@ -25,6 +25,18 @@
 
   "open": "Abrir",
 
+  "about_title": "Sobre o Assets Life",
+  "about_purpose": "Software para revisar vidas úteis de ativos conforme normas contábeis, com delegações, revisão individual e em massa, e geração de relatórios RVU.",
+  "about_origin_title": "Origem",
+  "about_origin": "Projeto criado para apoiar empresas no cumprimento do CPC 27 / IAS 16, integrando fluxo de revisão, auditoria e trilha de decisões.",
+  "about_tech_title": "Tecnologia",
+  "about_frontend": "Frontend: React, Tailwind CSS, ícones Lucide.",
+  "about_backend": "Backend: API REST com autenticação JWT (Bearer).",
+  "about_security": "Segurança: sessão via token, segregação por empresa e controle de rotas por permissão.",
+  "about_deploy": "Implantação: hospedagem em nuvem com build otimizado.",
+  "about_help_title": "Ajuda e Suporte",
+  "about_help": "Para dúvidas ou sugestões, entre em contato com o suporte do fornecedor responsável pelo sistema.",
+
   "companies_title": "Empresas",
   "companies_subtitle": "Cadastro e gestão de empresas.",
   "companies_empty": "Nenhuma empresa cadastrada.",
@@ -401,14 +413,3 @@
   "status_pending": "Pendente",
   "status_approved": "Aprovado"
 }
-  "about_title": "Sobre o Assets Life",
-  "about_purpose": "Software para revisar vidas úteis de ativos conforme normas contábeis, com delegações, revisão individual e em massa, e geração de relatórios RVU.",
-  "about_origin_title": "Origem",
-  "about_origin": "Projeto criado para apoiar empresas no cumprimento do CPC 27 / IAS 16, integrando fluxo de revisão, auditoria e trilha de decisões.",
-  "about_tech_title": "Tecnologia",
-  "about_frontend": "Frontend: React, Tailwind CSS, ícones Lucide.",
-  "about_backend": "Backend: API REST com autenticação JWT (Bearer).",
-  "about_security": "Segurança: sessão via token, segregação por empresa e controle de rotas por permissão.",
-  "about_deploy": "Implantação: hospedagem em nuvem com build otimizado.",
-  "about_help_title": "Ajuda e Suporte",
-  "about_help": "Para dúvidas ou sugestões, entre em contato com o suporte do fornecedor responsável pelo sistema."
