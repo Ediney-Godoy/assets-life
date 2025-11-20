@@ -621,7 +621,7 @@ export default function MassRevisionView() {
           <button
             type="button"
             onClick={() => setCollapsed((c) => { const n = !c; try { localStorage.setItem('assetlife_mass_panel_collapsed', n ? '1' : '0'); } catch {} return n; })}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow hover:shadow-md transition"
+            className="absolute right-2 top-[60%] md:top-[58%] lg:top-[56%] z-10 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow hover:shadow-md transition"
             title={collapsed ? t('expand_panel') : t('collapse_panel')}
             aria-label={collapsed ? t('expand_panel') : t('collapse_panel')}
           >
