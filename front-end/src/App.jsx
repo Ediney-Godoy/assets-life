@@ -28,6 +28,7 @@ import AssetSpeciesPage from './pages/AssetSpecies';
 import ReportUsefulLifePage from './pages/ReportUsefulLife';
 import ReportsMenu from './pages/ReportsMenu';
 import PermissionsMenu from './pages/PermissionsMenu';
+import AboutPage from './pages/About';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/Login';
 import ForgotPasswordPage from './pages/ForgotPassword';
@@ -199,6 +200,7 @@ export default function App() {
               <Route path="/permissions" element={<RequireAuth><RequireCompany><PermissionsMenu /></RequireCompany></RequireAuth>} />
               <Route path="/permissions/groups" element={<RequireAuth><RequireCompany><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireCompany></RequireAuth>} />
               <Route path="/users" element={<RequireAuth><RequireCompany><UsersPage /></RequireCompany></RequireAuth>} />
+              <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
             </Routes>
             <Toaster position="top-right" toastOptions={{
               style: { background: '#111827', color: '#F9FAFB' },

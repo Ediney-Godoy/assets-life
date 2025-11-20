@@ -48,6 +48,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       '/reviews/vidas-uteis': 'Revisão de Vidas Úteis',
       '/cost-centers': t('cost_centers_title') || 'Centros de Custos',
       '/reports': t('nav_reports') || 'Relatórios',
+      '/about': t('nav_about') || 'Sobre',
       '/permissions': t('nav_permissions') || 'Permissões',
       '/tabs-demo': 'Abas',
       '/users': 'Usuários',

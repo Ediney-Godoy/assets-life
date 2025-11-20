@@ -368,3 +368,15 @@
   "status_pending": "Pending",
   "status_approved": "Approved"
 }
+  "nav_about": "About",
+  "about_title": "About Assets Life",
+  "about_purpose": "Solution for useful life review of assets under accounting standards, with delegation, individual and mass review, and RVU reports.",
+  "about_origin_title": "Origin",
+  "about_origin": "Created to support compliance with IAS 16 / CPC 27, integrating review workflow, audit and decision trail.",
+  "about_tech_title": "Technology",
+  "about_frontend": "Frontend: React, Tailwind CSS, Lucide icons.",
+  "about_backend": "Backend: REST API with JWT (Bearer) authentication.",
+  "about_security": "Security: token-based session, company data segregation and route-level permissions.",
+  "about_deploy": "Deployment: cloud hosting with optimized build.",
+  "about_help_title": "Help & Support",
+  "about_help": "For questions or suggestions, contact the system provider's support."

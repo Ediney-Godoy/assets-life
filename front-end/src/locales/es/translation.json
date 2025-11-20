@@ -368,3 +368,15 @@
   "status_pending": "Pendiente",
   "status_approved": "Aprobado"
 }
+  "nav_about": "Acerca de",
+  "about_title": "Acerca de Assets Life",
+  "about_purpose": "Solución para revisar la vida útil de activos bajo normas contables, con delegación, revisión individual y masiva, y reportes RVU.",
+  "about_origin_title": "Origen",
+  "about_origin": "Creada para apoyar el cumplimiento de IAS 16 / CPC 27, integrando flujo de revisión, auditoría y trazabilidad de decisiones.",
+  "about_tech_title": "Tecnología",
+  "about_frontend": "Frontend: React, Tailwind CSS, íconos Lucide.",
+  "about_backend": "Backend: API REST con autenticación JWT (Bearer).",
+  "about_security": "Seguridad: sesión basada en token, segregación por empresa y permisos por ruta.",
+  "about_deploy": "Despliegue: hospedaje en la nube con build optimizado.",
+  "about_help_title": "Ayuda y Soporte",
+  "about_help": "Para dudas o sugerencias, contacte al soporte del proveedor del sistema."

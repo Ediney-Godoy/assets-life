@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck } from 'lucide-react';
+import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info } from 'lucide-react';
 import { getRole, getVisibleMenuForRole } from '../permissions';
 
 export default function Sidebar({ collapsed = false }) {
@@ -29,6 +29,7 @@ export default function Sidebar({ collapsed = false }) {
     { to: '/supervisao-rvu', label: t('nav_supervisao') || 'Supervisão', icon: UserCheck },
     { to: '/reports', label: t('nav_reports'), icon: BarChart3 },
     { to: '/permissions', label: t('nav_permissions'), icon: Shield },
+    { to: '/about', label: t('nav_about'), icon: Info },
   ];
 
   // Definir conjunto de rotas permitidas
@@ -37,6 +38,7 @@ export default function Sidebar({ collapsed = false }) {
     const base = hasRoutes ? visible : ['/dashboard'];
     const set = new Set(base);
     if (!set.has('/dashboard')) set.add('/dashboard');
+    set.add('/about');
     return set;
   })();
 
