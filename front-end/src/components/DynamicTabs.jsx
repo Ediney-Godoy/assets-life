@@ -49,6 +49,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       '/cost-centers': t('cost_centers_title') || 'Centros de Custos',
       '/reports': t('nav_reports') || 'Relatórios',
       '/about': t('nav_about') || 'Sobre',
+      '/help': t('nav_help') || 'Ajuda',
       '/permissions': t('nav_permissions') || 'Permissões',
       '/tabs-demo': 'Abas',
       '/users': 'Usuários',

@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info } from 'lucide-react';
+import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info, HelpCircle } from 'lucide-react';
 import { getRole, getVisibleMenuForRole } from '../permissions';
 
 export default function Sidebar({ collapsed = false }) {
@@ -30,6 +30,7 @@ export default function Sidebar({ collapsed = false }) {
     { to: '/reports', label: t('nav_reports'), icon: BarChart3 },
     { to: '/permissions', label: t('nav_permissions'), icon: Shield },
     { to: '/about', label: t('nav_about'), icon: Info },
+    { to: '/help', label: t('nav_help'), icon: HelpCircle },
   ];
 
   // Definir conjunto de rotas permitidas
@@ -39,6 +40,7 @@ export default function Sidebar({ collapsed = false }) {
     const set = new Set(base);
     if (!set.has('/dashboard')) set.add('/dashboard');
     set.add('/about');
+    set.add('/help');
     return set;
   })();
 
