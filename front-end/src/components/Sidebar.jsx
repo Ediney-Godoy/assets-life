@@ -71,6 +71,7 @@ export default function Sidebar({ collapsed = false }) {
       <div className="flex items-center justify-center px-1 md:px-2 pb-2 md:pb-3">
         <img src="/brand.svg" alt="Logo" className={logoSize} />
       </div>
+      <div className="h-px bg-slate-300 dark:bg-slate-800 opacity-70 mb-2" />
       <nav className="flex flex-col gap-1">
         {sections.map((section) => {
           const Icon = section.icon;

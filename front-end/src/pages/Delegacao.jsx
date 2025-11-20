@@ -377,10 +377,10 @@ export default function DelegacaoPage() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('delegation_title')}</h2>
-        <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
-          <Select label={t('period_label')} name="periodo" value={selectedPeriodoId || ''} onChange={onPeriodoChange} className="w-full sm:w-64 md:w-80 lg:w-96">
+        <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
+          <Select label={t('period_label')} name="periodo" value={selectedPeriodoId || ''} onChange={onPeriodoChange} className="w-full md:w-80 xl:w-[28rem]">
             {(periodos || []).map((p) => (
               <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
             ))}
@@ -388,7 +388,7 @@ export default function DelegacaoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Coluna Esquerda - Itens disponíveis (TABELA) */}
         <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="flex items-end gap-2 mb-3 flex-wrap">
@@ -450,7 +450,7 @@ export default function DelegacaoPage() {
             ) : (
               <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1 scrollbar-stable overflow-x-auto" style={{ scrollbarGutter: 'stable both-edges' }}>
                 <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-                  <table className="min-w-[800px] md:min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
+                  <table className="min-w-[720px] md:min-w-[960px] xl:min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
                     <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                       <tr>
                         <th className="w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -513,7 +513,7 @@ export default function DelegacaoPage() {
             ) : (
               <div className="max-h-[calc(100vh-270px)] overflow-auto pr-1 scrollbar-stable overflow-x-auto" style={{ scrollbarGutter: 'stable both-edges' }}>
                 <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-                  <table className="min-w-[800px] md:min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
+                  <table className="min-w-[720px] md:min-w-[960px] xl:min-w-[1100px] divide-y divide-slate-200 dark:divide-slate-800">
                     <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                       <tr>
                         <th className="w-12 px-2 md:px-3 py-1.5 md:py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
