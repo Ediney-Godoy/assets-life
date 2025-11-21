@@ -79,8 +79,8 @@ export default function Sidebar({ collapsed = false }) {
     <aside
       className={clsx(
         'shrink-0 h-full flex flex-col',
-        'border-r border-neutral-200 dark:border-neutral-800',
-        'bg-white dark:bg-neutral-900',
+        'border-r border-slate-200 dark:border-slate-800',
+        'bg-white dark:bg-slate-900',
         'transition-all duration-300 ease-in-out',
         collapsed ? 'w-16' : 'w-16 sm:w-20 md:w-48 lg:w-56 xl:w-64'
       )}
@@ -98,7 +98,7 @@ export default function Sidebar({ collapsed = false }) {
       </div>
 
       {/* Divider */}
-      <div className="mx-3 h-px bg-neutral-200 dark:bg-neutral-800" />
+      <div className="mx-3 h-px bg-slate-200 dark:bg-slate-800" />
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
@@ -117,8 +117,8 @@ export default function Sidebar({ collapsed = false }) {
                     'text-sm font-medium',
                     'transition-all duration-200',
                     isActive
-                      ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400'
-                      : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100',
+                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100',
                     collapsed && 'justify-center px-2'
                   )}
                   title={collapsed ? section.label : undefined}
@@ -128,8 +128,8 @@ export default function Sidebar({ collapsed = false }) {
                     className={clsx(
                       'shrink-0 transition-colors',
                       isActive
-                        ? 'text-brand-500 dark:text-brand-400'
-                        : 'text-neutral-500 dark:text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300'
+                        ? 'text-blue-500 dark:text-blue-400'
+                        : 'text-slate-500 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
                     )}
                   />
                   {!collapsed && (
@@ -154,14 +154,14 @@ export default function Sidebar({ collapsed = false }) {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-neutral-200 dark:border-neutral-800">
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800">
         <div className={clsx(
           'flex items-center gap-2',
           collapsed ? 'justify-center' : 'px-2'
         )}>
-          <div className="h-2 w-2 rounded-full bg-success-500 animate-pulse" />
+          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
           {!collapsed && (
-            <span className="hidden md:block text-xs text-neutral-500 dark:text-neutral-400">
+            <span className="hidden md:block text-xs text-slate-500 dark:text-slate-400">
               v1.0.0
             </span>
           )}

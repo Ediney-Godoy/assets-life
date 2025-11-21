@@ -20,8 +20,8 @@ export default function Table({
     <div
       className={clsx(
         'overflow-x-auto overflow-y-auto scrollbar-stable',
-        'rounded-lg border border-neutral-200 dark:border-neutral-800',
-        'bg-white dark:bg-neutral-900',
+        'rounded-lg border border-slate-200 dark:border-slate-800',
+        'bg-white dark:bg-slate-900',
         className
       )}
       style={{ maxHeight }}
@@ -29,7 +29,7 @@ export default function Table({
       <table className="min-w-full text-sm">
         <thead
           className={clsx(
-            'bg-neutral-50 dark:bg-neutral-800/50',
+            'bg-slate-50 dark:bg-slate-800/50',
             stickyHeader && 'sticky top-0 z-10'
           )}
         >
@@ -40,8 +40,8 @@ export default function Table({
                 className={clsx(
                   cellPadding,
                   'text-left text-xs font-semibold uppercase tracking-wider',
-                  'text-neutral-500 dark:text-neutral-400',
-                  'border-b border-neutral-200 dark:border-neutral-700',
+                  'text-slate-500 dark:text-slate-400',
+                  'border-b border-slate-200 dark:border-slate-700',
                   'whitespace-nowrap'
                 )}
                 style={col.width ? { width: col.width } : undefined}
@@ -51,14 +51,14 @@ export default function Table({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
           {loading ? (
             // Loading skeleton
             Array.from({ length: 5 }).map((_, idx) => (
               <tr key={idx}>
                 {columns.map((col) => (
                   <td key={col.key} className={cellPadding}>
-                    <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
                   </td>
                 ))}
               </tr>
@@ -68,11 +68,11 @@ export default function Table({
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-4 py-12 text-center text-neutral-500 dark:text-neutral-400"
+                className="px-4 py-12 text-center text-slate-500 dark:text-slate-400"
               >
                 <div className="flex flex-col items-center gap-2">
                   <svg
-                    className="h-8 w-8 text-neutral-300 dark:text-neutral-600"
+                    className="h-8 w-8 text-slate-300 dark:text-slate-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -97,8 +97,8 @@ export default function Table({
                 className={clsx(
                   'transition-colors duration-150',
                   onRowClick && 'cursor-pointer',
-                  'hover:bg-neutral-50 dark:hover:bg-neutral-800/50',
-                  striped && idx % 2 === 1 && 'bg-neutral-50/50 dark:bg-neutral-800/20',
+                  'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                  striped && idx % 2 === 1 && 'bg-slate-50/50 dark:bg-slate-800/20',
                   getRowClassName ? getRowClassName(row) : null
                 )}
               >
@@ -107,7 +107,7 @@ export default function Table({
                     key={col.key}
                     className={clsx(
                       cellPadding,
-                      'text-neutral-700 dark:text-neutral-300',
+                      'text-slate-700 dark:text-slate-300',
                       'whitespace-nowrap'
                     )}
                     style={col.width ? { width: col.width } : undefined}
@@ -129,7 +129,7 @@ export function SimpleTable({ children, className }) {
   return (
     <div
       className={clsx(
-        'overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800',
+        'overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800',
         className
       )}
     >

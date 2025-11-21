@@ -13,11 +13,11 @@ export function Card({ children, className, hover = false, interactive = false, 
   return (
     <div
       className={clsx(
-        'bg-white dark:bg-neutral-900',
-        'border border-neutral-200 dark:border-neutral-800',
+        'bg-white dark:bg-slate-900',
+        'border border-slate-200 dark:border-slate-800',
         'rounded-xl shadow-card',
         'transition-all duration-200',
-        hover && 'hover:shadow-card-hover hover:border-neutral-300 dark:hover:border-neutral-700',
+        hover && 'hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-700',
         interactive && 'cursor-pointer hover:-translate-y-0.5',
         paddingClasses[padding],
         className
@@ -39,7 +39,7 @@ export function CardHeader({ children, className, ...props }) {
 
 export function CardTitle({ children, className, ...props }) {
   return (
-    <h3 className={clsx('text-lg font-semibold text-neutral-900 dark:text-neutral-100', className)} {...props}>
+    <h3 className={clsx('text-lg font-semibold text-slate-900 dark:text-slate-100', className)} {...props}>
       {children}
     </h3>
   );
@@ -47,7 +47,7 @@ export function CardTitle({ children, className, ...props }) {
 
 export function CardDescription({ children, className, ...props }) {
   return (
-    <p className={clsx('text-sm text-neutral-500 dark:text-neutral-400 mt-1', className)} {...props}>
+    <p className={clsx('text-sm text-slate-500 dark:text-slate-400 mt-1', className)} {...props}>
       {children}
     </p>
   );
@@ -63,7 +63,7 @@ export function CardContent({ children, className, ...props }) {
 
 export function CardFooter({ children, className, ...props }) {
   return (
-    <div className={clsx('mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800', className)} {...props}>
+    <div className={clsx('mt-4 pt-4 border-t border-slate-200 dark:border-slate-800', className)} {...props}>
       {children}
     </div>
   );
@@ -82,19 +82,19 @@ export function MetricCard({
   ...props
 }) {
   const variantStyles = {
-    default: 'bg-white dark:bg-neutral-900',
-    primary: 'bg-brand-50 dark:bg-brand-500/10 border-brand-200 dark:border-brand-500/20',
-    success: 'bg-success-50 dark:bg-success-500/10 border-success-200 dark:border-success-500/20',
-    warning: 'bg-warning-50 dark:bg-warning-500/10 border-warning-200 dark:border-warning-500/20',
-    danger: 'bg-danger-50 dark:bg-danger-500/10 border-danger-200 dark:border-danger-500/20',
+    default: 'bg-white dark:bg-slate-900',
+    primary: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20',
+    success: 'bg-green-50 dark:bg-green-500/10 border-success-200 dark:border-green-500/20',
+    warning: 'bg-amber-50 dark:bg-amber-500/10 border-warning-200 dark:border-amber-500/20',
+    danger: 'bg-red-50 dark:bg-red-500/10 border-danger-200 dark:border-red-500/20',
   };
 
   const iconStyles = {
-    default: 'text-neutral-500 dark:text-neutral-400',
-    primary: 'text-brand-500 dark:text-brand-400',
-    success: 'text-success-600 dark:text-success-500',
-    warning: 'text-warning-600 dark:text-warning-500',
-    danger: 'text-danger-600 dark:text-danger-500',
+    default: 'text-slate-500 dark:text-slate-400',
+    primary: 'text-blue-500 dark:text-blue-400',
+    success: 'text-green-600 dark:text-green-500',
+    warning: 'text-amber-600 dark:text-amber-500',
+    danger: 'text-red-600 dark:text-red-500',
   };
 
   return (
@@ -104,27 +104,27 @@ export function MetricCard({
         'transition-all duration-200',
         'hover:shadow-card-hover',
         variantStyles[variant],
-        variant === 'default' && 'border-neutral-200 dark:border-neutral-800',
+        variant === 'default' && 'border-slate-200 dark:border-slate-800',
         className
       )}
       {...props}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 truncate">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">
             {title}
           </p>
-          <p className="mt-2 text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          <p className="mt-2 text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">
             {value}
           </p>
           {subtitle && (
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               {subtitle}
             </p>
           )}
         </div>
         {Icon && (
-          <div className={clsx('p-2.5 rounded-lg bg-neutral-100 dark:bg-neutral-800', iconStyles[variant])}>
+          <div className={clsx('p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800', iconStyles[variant])}>
             <Icon size={20} />
           </div>
         )}
@@ -133,14 +133,14 @@ export function MetricCard({
         <div className="mt-3 flex items-center gap-1">
           <span className={clsx(
             'text-xs font-medium',
-            trend === 'up' && 'text-success-600 dark:text-success-500',
-            trend === 'down' && 'text-danger-600 dark:text-danger-500',
-            trend === 'neutral' && 'text-neutral-500'
+            trend === 'up' && 'text-green-600 dark:text-green-500',
+            trend === 'down' && 'text-red-600 dark:text-red-500',
+            trend === 'neutral' && 'text-slate-500'
           )}>
             {trend === 'up' && '+'}
             {trendValue}
           </span>
-          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             vs. last period
           </span>
         </div>

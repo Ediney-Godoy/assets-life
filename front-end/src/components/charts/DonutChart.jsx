@@ -70,13 +70,13 @@ export default function DonutChart({
   };
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 relative">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 relative">
       <HighchartsReact highcharts={Highcharts} options={options} />
       {centerText && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
-            <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{total}</div>
-            <div className="text-sm text-neutral-500 dark:text-neutral-400">{centerText}</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{total}</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">{centerText}</div>
           </div>
         </div>
       )}

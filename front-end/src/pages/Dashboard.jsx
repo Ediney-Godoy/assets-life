@@ -285,8 +285,8 @@ export default function DashboardPage({ registrationsOnly }) {
       return chartData.length > 0 ? (
         <BarChart data={chartData} title={t('dashboard_chart_title')} horizontal={true} />
       ) : (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 h-[320px] flex items-center justify-center">
-          <span className="text-neutral-500 dark:text-neutral-400">{t('dashboard_no_data')}</span>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-[320px] flex items-center justify-center">
+          <span className="text-slate-500 dark:text-slate-400">{t('dashboard_no_data')}</span>
         </div>
       );
     }
@@ -299,8 +299,8 @@ export default function DashboardPage({ registrationsOnly }) {
           showPercent={true}
         />
       ) : (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 h-[320px] flex items-center justify-center">
-          <span className="text-neutral-500 dark:text-neutral-400">{t('dashboard_no_data')}</span>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-[320px] flex items-center justify-center">
+          <span className="text-slate-500 dark:text-slate-400">{t('dashboard_no_data')}</span>
         </div>
       );
     }
@@ -319,7 +319,7 @@ export default function DashboardPage({ registrationsOnly }) {
 
   return (
     <section className="animate-fade-in">
-      <h2 className="text-2xl font-semibold mb-6 text-neutral-900 dark:text-neutral-100">
+      <h2 className="text-2xl font-semibold mb-6 text-slate-900 dark:text-slate-100">
         {registrationsOnly ? t('nav_registrations') : t('nav_dashboard')}
       </h2>
 
@@ -327,11 +327,11 @@ export default function DashboardPage({ registrationsOnly }) {
         <>
           {/* Company selector */}
           <div className="mb-6 max-w-sm">
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
               Empresa
             </label>
             <select
-              className="w-full h-10 px-3 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
+              className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               value={companyId}
               onChange={(e) => setCompanyId(e.target.value)}
             >
@@ -417,22 +417,22 @@ export default function DashboardPage({ registrationsOnly }) {
               transition={{ delay: idx * 0.03 }}
               className={clsx(
                 'group text-left w-full rounded-xl border p-4',
-                'bg-white dark:bg-neutral-900',
-                'border-neutral-200 dark:border-neutral-800',
+                'bg-white dark:bg-slate-900',
+                'border-slate-200 dark:border-slate-800',
                 'shadow-card hover:shadow-card-hover',
                 'transition-all duration-200',
                 'hover:-translate-y-0.5'
               )}
             >
               <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400">
+                <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
                   <c.icon size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-neutral-900 dark:text-neutral-100">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">
                     {c.title}
                   </div>
-                  <div className="text-sm text-neutral-500 dark:text-neutral-400 truncate">
+                  <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
                     {c.subtitle}
                   </div>
                 </div>

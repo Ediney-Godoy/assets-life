@@ -68,8 +68,8 @@ export default function ActionToolbar({
     <div
       className={clsx(
         'inline-flex items-center gap-1 p-1.5',
-        'bg-neutral-100 dark:bg-neutral-800',
-        'rounded-lg border border-neutral-200 dark:border-neutral-700',
+        'bg-slate-100 dark:bg-slate-800',
+        'rounded-lg border border-slate-200 dark:border-slate-700',
         className
       )}
     >
@@ -78,7 +78,7 @@ export default function ActionToolbar({
           return (
             <div
               key={index}
-              className="w-px h-6 bg-neutral-300 dark:bg-neutral-600 mx-1"
+              className="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"
             />
           );
         }
@@ -104,20 +104,20 @@ export default function ActionToolbar({
               'focus:outline-none focus:ring-2 focus:ring-offset-1',
               isDisabled && 'opacity-40 cursor-not-allowed',
               isPrimary && !isDisabled && [
-                'bg-brand-500 text-white',
-                'hover:bg-brand-600',
-                'focus:ring-brand-500',
+                'bg-blue-500 text-white',
+                'hover:bg-blue-600',
+                'focus:ring-blue-500',
               ],
               isDanger && !isDisabled && [
-                'text-danger-600 dark:text-danger-500',
-                'hover:bg-danger-50 dark:hover:bg-danger-500/10',
-                'focus:ring-danger-500',
+                'text-red-600 dark:text-red-500',
+                'hover:bg-red-50 dark:hover:bg-red-500/10',
+                'focus:ring-red-500',
               ],
               !isPrimary && !isDanger && !isDisabled && [
-                'text-neutral-600 dark:text-neutral-400',
-                'hover:bg-white dark:hover:bg-neutral-700',
-                'hover:text-neutral-900 dark:hover:text-neutral-100',
-                'focus:ring-neutral-500',
+                'text-slate-600 dark:text-slate-400',
+                'hover:bg-white dark:hover:bg-slate-700',
+                'hover:text-slate-900 dark:hover:text-slate-100',
+                'focus:ring-slate-500',
               ]
             )}
           >

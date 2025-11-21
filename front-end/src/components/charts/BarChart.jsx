@@ -118,7 +118,7 @@ export default function BarChart({
   };
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
       <HighchartsReact highcharts={Highcharts} options={options} />
     </div>
   );

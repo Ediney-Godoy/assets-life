@@ -27,15 +27,15 @@ export default function Input({
 
   const baseClass = clsx(
     'w-full rounded-lg border',
-    'bg-white dark:bg-neutral-900',
-    'text-neutral-900 dark:text-neutral-100',
-    'placeholder:text-neutral-400 dark:placeholder:text-neutral-500',
+    'bg-white dark:bg-slate-900',
+    'text-slate-900 dark:text-slate-100',
+    'placeholder:text-slate-400 dark:placeholder:text-slate-500',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2',
     error
-      ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20'
-      : 'border-neutral-300 dark:border-neutral-700 focus:border-brand-500 focus:ring-brand-500/20 dark:focus:border-brand-400 dark:focus:ring-brand-400/20',
-    'disabled:bg-neutral-100 dark:disabled:bg-neutral-800 disabled:cursor-not-allowed',
+      ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+      : 'border-slate-300 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 dark:focus:border-blue-400 dark:focus:ring-blue-400/20',
+    'disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed',
     Icon && iconPosition === 'left' && 'pl-9',
     Icon && iconPosition === 'right' && 'pr-9',
     multiline ? textareaSizes[size] : sizes[size],
@@ -47,9 +47,9 @@ export default function Input({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={inputId} className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+        <label htmlFor={inputId} className="text-sm font-medium text-slate-700 dark:text-slate-300">
           {label}
-          {props.required && <span className="text-danger-500 ml-0.5">*</span>}
+          {props.required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
       )}
       <div className="relative">
@@ -57,7 +57,7 @@ export default function Input({
           <Icon
             size={16}
             className={clsx(
-              'absolute top-1/2 -translate-y-1/2 text-neutral-400',
+              'absolute top-1/2 -translate-y-1/2 text-slate-400',
               iconPosition === 'left' ? 'left-3' : 'right-3'
             )}
           />
@@ -69,10 +69,10 @@ export default function Input({
         )}
       </div>
       {error && (
-        <span className="text-xs font-medium text-danger-600 dark:text-danger-500">{error}</span>
+        <span className="text-xs font-medium text-red-600 dark:text-red-500">{error}</span>
       )}
       {hint && !error && (
-        <span className="text-xs text-neutral-500 dark:text-neutral-400">{hint}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{hint}</span>
       )}
     </div>
   );
@@ -83,7 +83,7 @@ export function SearchInput({ className, ...props }) {
   return (
     <div className={clsx('relative', className)}>
       <svg
-        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400"
+        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -99,12 +99,12 @@ export function SearchInput({ className, ...props }) {
         type="search"
         className={clsx(
           'w-full h-9 pl-9 pr-3 text-sm rounded-lg border',
-          'bg-white dark:bg-neutral-900',
-          'text-neutral-900 dark:text-neutral-100',
-          'placeholder:text-neutral-400 dark:placeholder:text-neutral-500',
-          'border-neutral-300 dark:border-neutral-700',
-          'focus:outline-none focus:ring-2 focus:border-brand-500 focus:ring-brand-500/20',
-          'dark:focus:border-brand-400 dark:focus:ring-brand-400/20',
+          'bg-white dark:bg-slate-900',
+          'text-slate-900 dark:text-slate-100',
+          'placeholder:text-slate-400 dark:placeholder:text-slate-500',
+          'border-slate-300 dark:border-slate-700',
+          'focus:outline-none focus:ring-2 focus:border-blue-500 focus:ring-blue-500/20',
+          'dark:focus:border-blue-400 dark:focus:ring-blue-400/20',
           'transition-all duration-200'
         )}
         {...props}
