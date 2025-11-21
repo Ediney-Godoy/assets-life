@@ -419,7 +419,7 @@ export default function DashboardPage({ registrationsOnly }) {
                 'group text-left w-full rounded-xl border p-4',
                 'bg-white dark:bg-slate-900',
                 'border-slate-200 dark:border-slate-800',
-                'shadow-card hover:shadow-card-hover',
+                'shadow-sm hover:shadow-md',
                 'transition-all duration-200',
                 'hover:-translate-y-0.5'
               )}

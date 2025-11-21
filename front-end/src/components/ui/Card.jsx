@@ -15,9 +15,9 @@ export function Card({ children, className, hover = false, interactive = false, 
       className={clsx(
         'bg-white dark:bg-slate-900',
         'border border-slate-200 dark:border-slate-800',
-        'rounded-xl shadow-card',
+        'rounded-xl shadow-sm',
         'transition-all duration-200',
-        hover && 'hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-700',
+        hover && 'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700',
         interactive && 'cursor-pointer hover:-translate-y-0.5',
         paddingClasses[padding],
         className
@@ -100,9 +100,9 @@ export function MetricCard({
   return (
     <div
       className={clsx(
-        'p-4 sm:p-5 rounded-xl border shadow-card',
+        'p-4 sm:p-5 rounded-xl border shadow-sm',
         'transition-all duration-200',
-        'hover:shadow-card-hover',
+        'hover:shadow-md',
         variantStyles[variant],
         variant === 'default' && 'border-slate-200 dark:border-slate-800',
         className

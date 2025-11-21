@@ -31,7 +31,7 @@ function CompanyCard({ company, onSelect, colorClass, iconClass }) {
   const address = [streetVal, districtVal].filter(Boolean).join(', ');
 
   return (
-    <div className={`rounded-xl border shadow-card p-4 flex flex-col gap-2 ${colorClass}`}>
+    <div className={`rounded-xl border shadow-sm p-4 flex flex-col gap-2 ${colorClass}`}>
       <div className="flex items-start gap-3">
         <div className={`p-2 rounded-lg ${iconClass}`}>🏢</div>
         <div className="flex-1 min-w-0">

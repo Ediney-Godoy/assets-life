@@ -36,7 +36,7 @@ export default function PermissionsMenu() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.03 }}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/40"
+            className="group text-left w-full rounded-xl shadow-sm border p-4 hover:shadow-md transition-colors bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/40"
           >
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
