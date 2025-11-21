@@ -288,6 +288,69 @@ export default function ReviewsPage() {
     { key: 'status', header: t('status') || 'Status', width: 140 },
   ];
 
+  const formatDateBR = (value) => {
+    if (!value) return '';
+    try { return new Date(value).toLocaleDateString('pt-BR'); } catch { return String(value || ''); }
+  };
+
+  const exportCSV = () => {
+    const header = [
+      t('period_code') || 'Código da Revisão',
+      t('period_description') || 'Descrição do Período',
+      t('company_label') || 'Empresa',
+      t('ug_label') || 'UG',
+      t('review_responsible') || 'Responsável pela Revisão',
+      t('open_date') || 'Data de Abertura',
+      t('start_new_useful_life') || 'Início Nova Depreciação',
+      t('close_date') || 'Data de Fechamento',
+    ];
+    const rows = filtered.map((p) => [
+      p.codigo || '',
+      p.descricao || '',
+      companies.find((c) => c.id === p.empresa_id)?.name || '',
+      (() => { const g = ugs.find((x) => x.id === p.ug_id); return g ? `${g.codigo} - ${g.nome}` : ''; })(),
+      users.find((u) => u.id === p.responsavel_id)?.nome_completo || '',
+      formatDateBR(p.data_abertura),
+      formatDateBR(p.data_inicio_nova_vida_util),
+      formatDateBR(p.data_fechamento),
+    ]);
+    const csv = [header, ...rows]
+      .map((r) => r.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'periodos_revisao.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(t('export_excel') || 'Exportar Excel');
+  };
+
+  const printPDF = () => {
+    const win = window.open('', 'PRINT', 'height=800,width=900');
+    const rows = filtered.map((p) => {
+      const empresa = companies.find((c) => c.id === p.empresa_id)?.name || '';
+      const ug = (() => { const g = ugs.find((x) => x.id === p.ug_id); return g ? `${g.codigo} - ${g.nome}` : ''; })();
+      const resp = users.find((u) => u.id === p.responsavel_id)?.nome_completo || '';
+      return `
+        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;font-family:Arial, sans-serif">
+          <div style="font-weight:600;color:#0f172a">${p.codigo || ''} — ${p.descricao || ''}</div>
+          <div style="color:#334155">Empresa: ${empresa} &nbsp;|&nbsp; UG: ${ug} &nbsp;|&nbsp; Responsável: ${resp}</div>
+          <div style="color:#334155">Abertura: ${formatDateBR(p.data_abertura)} &nbsp;|&nbsp; Início Nova Depreciação: ${formatDateBR(p.data_inicio_nova_vida_util)} &nbsp;|&nbsp; Fechamento: ${formatDateBR(p.data_fechamento)}</div>
+        </div>`;
+    }).join('');
+    win.document.write(`<!doctype html><html><head><title>Períodos de Revisão</title></head><body style="padding:16px">
+      <h3 style="font-family:Arial, sans-serif;color:#0f172a">Períodos de Revisão de Vidas Úteis</h3>
+      ${rows}
+    </body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+    toast.success(t('export_pdf') || 'Exportar PDF');
+  };
+
   const disabled = form.status === 'Fechado';
   const selectedCompany = companies.find((c) => c.id === Number(form.empresa_id));
   const modalFilteredCompanies = companies.filter((c) =>
@@ -338,8 +401,8 @@ export default function ReviewsPage() {
             onEdit={() => editingId && onEdit(periods.find((x) => x.id === editingId))}
             onDelete={() => editingId && onDelete(editingId)}
             onPrint={() => window.print()}
-            onExportPdf={() => toast(t('coming_soon') || 'Em breve.')}
-            onExportExcel={() => toast(t('coming_soon') || 'Em breve.')}
+            onExportPdf={printPDF}
+            onExportExcel={exportCSV}
             canEditDelete={!!editingId}
           />
         </div>
