@@ -80,13 +80,20 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .card-hover {
-  @apply card;
+  @apply bg-white dark:bg-slate-900;
+  @apply border border-slate-200 dark:border-slate-800;
+  @apply rounded-xl shadow-sm;
+  @apply transition-all duration-200;
   @apply hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700;
 }
 
 .card-interactive {
-  @apply card-hover cursor-pointer;
-  @apply hover:-translate-y-0.5;
+  @apply bg-white dark:bg-slate-900;
+  @apply border border-slate-200 dark:border-slate-800;
+  @apply rounded-xl shadow-sm;
+  @apply transition-all duration-200;
+  @apply hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700;
+  @apply cursor-pointer hover:-translate-y-0.5;
 }
 
 /* ===== GLASS MORPHISM ===== */
