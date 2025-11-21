@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Save, Pencil, Trash2, Printer } from 'lucide-react';
-import Button from './ui/Button';
+import { Plus, Save, Pencil, Trash2, Printer, FileText, FileSpreadsheet } from 'lucide-react';
+import clsx from 'clsx';
 
 export default function ActionToolbar({
   onNew,
@@ -12,17 +12,119 @@ export default function ActionToolbar({
   onExportPdf,
   onExportExcel,
   canEditDelete = false,
+  className,
 }) {
   const { t } = useTranslation();
+
+  const actions = [
+    {
+      icon: Plus,
+      label: t('new') || 'Novo',
+      onClick: onNew,
+      variant: 'primary',
+    },
+    {
+      icon: Save,
+      label: t('save') || 'Salvar',
+      onClick: onSave,
+      variant: 'default',
+    },
+    {
+      icon: Pencil,
+      label: t('edit') || 'Editar',
+      onClick: onEdit,
+      disabled: !canEditDelete,
+      variant: 'default',
+    },
+    {
+      icon: Trash2,
+      label: t('delete') || 'Excluir',
+      onClick: onDelete,
+      disabled: !canEditDelete,
+      variant: 'danger',
+    },
+    { type: 'divider' },
+    {
+      icon: Printer,
+      label: t('print') || 'Imprimir',
+      onClick: onPrint,
+      variant: 'default',
+    },
+    {
+      icon: FileText,
+      label: t('export_pdf') || 'PDF',
+      onClick: onExportPdf,
+      variant: 'default',
+    },
+    {
+      icon: FileSpreadsheet,
+      label: t('export_excel') || 'Excel',
+      onClick: onExportExcel,
+      variant: 'default',
+    },
+  ];
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button variant="secondary" title={t('new') || 'Novo'} aria-label={t('new') || 'Novo'} onClick={onNew} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><Plus size={18} /></Button>
-      <Button variant="secondary" title={t('save') || 'Salvar'} aria-label={t('save') || 'Salvar'} onClick={onSave} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><Save size={18} className="text-slate-700" /></Button>
-      <Button variant="secondary" title={t('edit') || 'Editar'} aria-label={t('edit') || 'Editar'} disabled={!canEditDelete} onClick={onEdit} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><Pencil size={18} /></Button>
-      <Button variant="secondary" title={t('delete') || 'Excluir'} aria-label={t('delete') || 'Excluir'} disabled={!canEditDelete} onClick={onDelete} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><Trash2 size={18} /></Button>
-      <Button variant="secondary" title={t('print') || 'Imprimir'} aria-label={t('print') || 'Imprimir'} onClick={onPrint} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><Printer size={18} /></Button>
-      <Button variant="secondary" title={t('export_pdf') || 'Exportar PDF'} aria-label={t('export_pdf') || 'Exportar PDF'} onClick={onExportPdf} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><img src="/Pdf.svg" alt="PDF" className="h-5 w-5" /></Button>
-      <Button variant="secondary" title={t('export_excel') || 'Exportar Excel'} aria-label={t('export_excel') || 'Exportar Excel'} onClick={onExportExcel} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><img src="/Excel.svg" alt="Excel" className="h-5 w-5" /></Button>
+    <div
+      className={clsx(
+        'inline-flex items-center gap-1 p-1.5',
+        'bg-slate-100 dark:bg-slate-800',
+        'rounded-lg border border-slate-200 dark:border-slate-700',
+        className
+      )}
+    >
+      {actions.map((action, index) => {
+        if (action.type === 'divider') {
+          return (
+            <div
+              key={index}
+              className="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"
+            />
+          );
+        }
+
+        const Icon = action.icon;
+        const isDisabled = action.disabled;
+        const isPrimary = action.variant === 'primary';
+        const isDanger = action.variant === 'danger';
+
+        return (
+          <button
+            key={index}
+            type="button"
+            onClick={action.onClick}
+            disabled={isDisabled}
+            title={action.label}
+            aria-label={action.label}
+            className={clsx(
+              'flex items-center justify-center',
+              'h-8 w-8 sm:h-9 sm:w-9',
+              'rounded-md',
+              'transition-all duration-200',
+              'focus:outline-none focus:ring-2 focus:ring-offset-1',
+              isDisabled && 'opacity-40 cursor-not-allowed',
+              isPrimary && !isDisabled && [
+                'bg-blue-500 text-white',
+                'hover:bg-blue-600',
+                'focus:ring-blue-500',
+              ],
+              isDanger && !isDisabled && [
+                'text-red-600 dark:text-red-500',
+                'hover:bg-red-50 dark:hover:bg-red-500/10',
+                'focus:ring-red-500',
+              ],
+              !isPrimary && !isDanger && !isDisabled && [
+                'text-slate-600 dark:text-slate-400',
+                'hover:bg-white dark:hover:bg-slate-700',
+                'hover:text-slate-900 dark:hover:text-slate-100',
+                'focus:ring-slate-500',
+              ]
+            )}
+          >
+            <Icon size={16} />
+          </button>
+        );
+      })}
     </div>
   );
 }

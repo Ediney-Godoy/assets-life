@@ -37,7 +37,7 @@ export default function ReportsMenu() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.03 }}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/40"
+            className="group text-left w-full rounded-xl shadow-sm border p-4 hover:shadow-md transition-colors bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/40"
           >
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">

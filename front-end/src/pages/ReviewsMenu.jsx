@@ -46,7 +46,7 @@ export default function ReviewsMenu() {
           <button
             type="button"
             onClick={() => navigate('/reviews/periodos')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-blue-50/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 hover:border-blue-200 dark:hover:border-blue-800"
+            className="group text-left w-full rounded-xl shadow-sm border p-4 hover:shadow-md transition-colors bg-blue-50/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 hover:border-blue-200 dark:hover:border-blue-800"
             aria-label={t('reviews_menu_periods_title')}
             title={t('reviews_menu_periods_title')}
           >
@@ -66,7 +66,7 @@ export default function ReviewsMenu() {
           <button
             type="button"
             onClick={() => navigate('/reviews/delegacao')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-violet-50/60 dark:bg-violet-900/20 border-violet-100 dark:border-violet-900/30 hover:border-violet-200 dark:hover:border-violet-800"
+            className="group text-left w-full rounded-xl shadow-sm border p-4 hover:shadow-md transition-colors bg-violet-50/60 dark:bg-violet-900/20 border-violet-100 dark:border-violet-900/30 hover:border-violet-200 dark:hover:border-violet-800"
             aria-label={t('reviews_menu_delegations_title')}
             title={t('reviews_menu_delegations_title')}
           >
@@ -86,7 +86,7 @@ export default function ReviewsMenu() {
           <button
             type="button"
             onClick={() => navigate('/reviews/massa')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-emerald-50/60 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-200 dark:hover:border-emerald-800"
+            className="group text-left w-full rounded-xl shadow-sm border p-4 hover:shadow-md transition-colors bg-emerald-50/60 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-200 dark:hover:border-emerald-800"
             aria-label={t('reviews_menu_mass_title')}
             title={t('reviews_menu_mass_title')}
           >
@@ -106,7 +106,7 @@ export default function ReviewsMenu() {
           <button
             type="button"
             onClick={() => navigate('/reviews/vidas-uteis')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-amber-50/60 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 hover:border-amber-200 dark:hover:border-amber-800"
+            className="group text-left w-full rounded-xl shadow-sm border p-4 hover:shadow-md transition-colors bg-amber-50/60 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 hover:border-amber-200 dark:hover:border-amber-800"
             aria-label={t('reviews_menu_useful_lives_title')}
             title={t('reviews_menu_useful_lives_title')}
           >
@@ -126,7 +126,7 @@ export default function ReviewsMenu() {
           <button
             type="button"
             onClick={() => navigate('/relatorios-rvu')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-fuchsia-50/60 dark:bg-fuchsia-900/20 border-fuchsia-100 dark:border-fuchsia-900/30 hover:border-fuchsia-200 dark:hover:border-fuchsia-800"
+            className="group text-left w-full rounded-xl shadow-sm border p-4 hover:shadow-md transition-colors bg-fuchsia-50/60 dark:bg-fuchsia-900/20 border-fuchsia-100 dark:border-fuchsia-900/30 hover:border-fuchsia-200 dark:hover:border-fuchsia-800"
             aria-label={t('reviews_menu_monitoring_title')}
             title={t('reviews_menu_monitoring_title')}
           >
@@ -146,7 +146,7 @@ export default function ReviewsMenu() {
           <button
             type="button"
             onClick={() => navigate('/supervisao-rvu')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-cyan-50/60 dark:bg-cyan-900/20 border-cyan-100 dark:border-cyan-900/30 hover:border-cyan-200 dark:hover:border-cyan-800"
+            className="group text-left w-full rounded-xl shadow-sm border p-4 hover:shadow-md transition-colors bg-cyan-50/60 dark:bg-cyan-900/20 border-cyan-100 dark:border-cyan-900/30 hover:border-cyan-200 dark:hover:border-cyan-800"
             aria-label={t('reviews_menu_supervision_title')}
             title={t('reviews_menu_supervision_title')}
           >

@@ -2,49 +2,81 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Users2, UserCog, Layers, FolderKanban, Wallet, Network, Crosshair, CalendarDays } from 'lucide-react';
+import {
+  Building2,
+  Users2,
+  UserCog,
+  Layers,
+  FolderKanban,
+  Wallet,
+  Network,
+  Crosshair,
+  CalendarDays,
+  Package,
+  UserCheck,
+  CheckCircle2,
+  Percent,
+  AlertTriangle,
+  TrendingUp,
+} from 'lucide-react';
 import { getCompanies, getReviewPeriods, getReviewItems, getReviewDelegations } from '../apiClient';
 import Pie3D from '../components/charts/Pie3D';
 import BarChart from '../components/charts/BarChart';
-import LineChart from '../components/charts/LineChart';
 import AreaChart from '../components/charts/AreaChart';
-import DonutChart from '../components/charts/DonutChart';
+import { MetricCard } from '../components/ui/Card';
+import clsx from 'clsx';
 
 export default function DashboardPage({ registrationsOnly }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [companies, setCompanies] = React.useState([]);
   const [companyId, setCompanyId] = React.useState('');
-  const [metrics, setMetrics] = React.useState({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
+  const [metrics, setMetrics] = React.useState({
+    totalItems: 0,
+    assignedItems: 0,
+    reviewedItems: 0,
+    reviewedPct: 0,
+    fullyDepreciated: 0,
+    adjustedItems: 0,
+  });
   const [chartData, setChartData] = React.useState([]);
   const [justifChartData, setJustifChartData] = React.useState([]);
-  // Rotação automática dos gráficos (variando tipos: barras, donut, área, pizza 3D)
   const [rotationIndex, setRotationIndex] = React.useState(0);
 
   React.useEffect(() => {
     if (registrationsOnly) return;
-    getCompanies().then((list) => {
-      const arr = Array.isArray(list) ? list : [];
-      setCompanies(arr);
-      if (!companyId && arr.length > 0) {
-        setCompanyId(String(arr[0].id));
-      }
-    }).catch(() => {});
+    getCompanies()
+      .then((list) => {
+        const arr = Array.isArray(list) ? list : [];
+        setCompanies(arr);
+        if (!companyId && arr.length > 0) {
+          setCompanyId(String(arr[0].id));
+        }
+      })
+      .catch(() => {});
   }, [registrationsOnly, companyId]);
 
-  // Carrega períodos e prepara dados do gráfico 3D e métricas conforme empresa selecionada
   React.useEffect(() => {
     if (registrationsOnly) return;
     if (!companyId) {
       setChartData([]);
       setJustifChartData([]);
-      setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
+      setMetrics({
+        totalItems: 0,
+        assignedItems: 0,
+        reviewedItems: 0,
+        reviewedPct: 0,
+        fullyDepreciated: 0,
+        adjustedItems: 0,
+      });
       return;
     }
     const init = async () => {
       try {
         const periods = await getReviewPeriods();
-        const list = Array.isArray(periods) ? periods.filter((p) => String(p.empresa_id) === String(companyId)) : [];
+        const list = Array.isArray(periods)
+          ? periods.filter((p) => String(p.empresa_id) === String(companyId))
+          : [];
         if (list.length > 0) {
           const open = list.find((p) => (p.status || '').toLowerCase() === 'aberto') || list[0];
           const pid = open.id;
@@ -57,20 +89,23 @@ export default function DashboardPage({ registrationsOnly }) {
           const totalItems = itemsArr.length;
           const delegatedIds = new Set(delegsArr.map((d) => d.ativo_id));
           const assignedItems = delegatedIds.size;
-          const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          // Alinhar definição de "Revisados" com a view: status 'Revisado' OU alterado OU justificativa/condição física
+          const normalize = (s) =>
+            String(s || '')
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '');
           const reviewedItems = itemsArr.filter((i) => {
             const s = normalize(i.status);
-            const statusReviewed = (s === 'revisado' || s === 'revisada');
+            const statusReviewed = s === 'revisado' || s === 'revisada';
             const adjusted = Boolean(i.alterado);
             const hasJustification = Boolean(String(i.justificativa || '').trim());
             const hasCondicao = Boolean(String(i.condicao_fisica || '').trim());
             return statusReviewed || adjusted || hasJustification || hasCondicao;
           }).length;
-          const reviewedPct = totalItems ? Number(((reviewedItems / totalItems) * 100).toFixed(1)) : 0;
+          const reviewedPct = totalItems
+            ? Number(((reviewedItems / totalItems) * 100).toFixed(1))
+            : 0;
           const adjustedItems = itemsArr.filter((i) => Boolean(i.alterado)).length;
-          // Ativos totalmente depreciados: contar somente ativos principais (sub_numero === '0') cujo
-          // valor contábil esteja zerado no principal e em todas as incorporações (se houverem)
           const groups = itemsArr.reduce((acc, it) => {
             const key = String(it.numero_imobilizado || '');
             if (!acc[key]) acc[key] = [];
@@ -83,7 +118,14 @@ export default function DashboardPage({ registrationsOnly }) {
             const allZero = list.every((x) => Number(x.valor_contabil || 0) === 0);
             if (hasMain && allZero) fullyDepreciated += 1;
           });
-          setMetrics({ totalItems, assignedItems, reviewedItems, reviewedPct, fullyDepreciated, adjustedItems });
+          setMetrics({
+            totalItems,
+            assignedItems,
+            reviewedItems,
+            reviewedPct,
+            fullyDepreciated,
+            adjustedItems,
+          });
 
           const byUser = {};
           delegsArr.forEach((d) => {
@@ -95,7 +137,6 @@ export default function DashboardPage({ registrationsOnly }) {
           series.push({ name: t('dashboard_unassigned'), y: unassigned });
           setChartData(series);
 
-          // Agrupar justificativas das revisões (top N e "Outras justificativas")
           const justifs = itemsArr
             .map((it) => String(it.justificativa || '').trim())
             .filter((j) => j.length > 0);
@@ -120,23 +161,35 @@ export default function DashboardPage({ registrationsOnly }) {
           } else {
             setJustifChartData([]);
           }
-
         } else {
           setChartData([]);
           setJustifChartData([]);
-          setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
+          setMetrics({
+            totalItems: 0,
+            assignedItems: 0,
+            reviewedItems: 0,
+            reviewedPct: 0,
+            fullyDepreciated: 0,
+            adjustedItems: 0,
+          });
         }
       } catch (err) {
         console.error(err);
         setChartData([]);
         setJustifChartData([]);
-        setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
+        setMetrics({
+          totalItems: 0,
+          assignedItems: 0,
+          reviewedItems: 0,
+          reviewedPct: 0,
+          fullyDepreciated: 0,
+          adjustedItems: 0,
+        });
       }
     };
     init();
-  }, [registrationsOnly, companyId]);
+  }, [registrationsOnly, companyId, t]);
 
-  // Intervalo de 10 segundos para alternar os gráficos automaticamente
   React.useEffect(() => {
     const id = setInterval(() => {
       setRotationIndex((i) => (i + 1) % 3);
@@ -145,25 +198,64 @@ export default function DashboardPage({ registrationsOnly }) {
   }, []);
 
   const cards = [
-    { title: t('companies_title'), subtitle: t('companies_subtitle'), icon: Building2, action: () => navigate('/companies') },
-    { title: t('users_title'), subtitle: t('users_subtitle'), icon: Users2, action: () => navigate('/users') },
-    { title: t('collab_title'), subtitle: t('collab_subtitle'), icon: UserCog, action: () => navigate('/employees') },
-    { title: t('acc_classes_title'), subtitle: t('acc_classes_subtitle'), icon: Layers, action: () => alert('Em breve') },
-    { title: t('acc_groups_title'), subtitle: t('acc_groups_subtitle'), icon: FolderKanban, action: () => alert('Em breve') },
-    { title: t('acc_accounts_title'), subtitle: t('acc_accounts_subtitle'), icon: Wallet, action: () => alert('Em breve') },
-    { title: t('ug_title'), subtitle: t('ug_subtitle'), icon: Network, action: () => navigate('/ugs') },
-    { title: t('cost_centers_title'), subtitle: t('cost_centers_subtitle'), icon: Crosshair, action: () => navigate('/cost-centers') },
-    { title: t('asset_species_title'), subtitle: t('asset_species_subtitle'), icon: CalendarDays, action: () => navigate('/asset-species') },
+    {
+      title: t('companies_title'),
+      subtitle: t('companies_subtitle'),
+      icon: Building2,
+      action: () => navigate('/companies'),
+    },
+    {
+      title: t('users_title'),
+      subtitle: t('users_subtitle'),
+      icon: Users2,
+      action: () => navigate('/users'),
+    },
+    {
+      title: t('collab_title'),
+      subtitle: t('collab_subtitle'),
+      icon: UserCog,
+      action: () => navigate('/employees'),
+    },
+    {
+      title: t('acc_classes_title'),
+      subtitle: t('acc_classes_subtitle'),
+      icon: Layers,
+      action: () => alert('Em breve'),
+    },
+    {
+      title: t('acc_groups_title'),
+      subtitle: t('acc_groups_subtitle'),
+      icon: FolderKanban,
+      action: () => alert('Em breve'),
+    },
+    {
+      title: t('acc_accounts_title'),
+      subtitle: t('acc_accounts_subtitle'),
+      icon: Wallet,
+      action: () => alert('Em breve'),
+    },
+    {
+      title: t('ug_title'),
+      subtitle: t('ug_subtitle'),
+      icon: Network,
+      action: () => navigate('/ugs'),
+    },
+    {
+      title: t('cost_centers_title'),
+      subtitle: t('cost_centers_subtitle'),
+      icon: Crosshair,
+      action: () => navigate('/cost-centers'),
+    },
+    {
+      title: t('asset_species_title'),
+      subtitle: t('asset_species_subtitle'),
+      icon: CalendarDays,
+      action: () => navigate('/asset-species'),
+    },
   ];
 
-  // Exibir cards SOMENTE em Cadastros; no Dashboard, manter foco em métricas/gráfico
   const visibleCards = registrationsOnly ? cards : [];
 
-  // Paleta suave para os cards (métricas e atalhos)
-  const metricColors = ['sky', 'violet', 'emerald', 'amber', 'rose'];
-  const shortcutColors = ['blue', 'violet', 'emerald', 'amber', 'rose', 'indigo', 'cyan', 'teal', 'fuchsia'];
-
-  // Dados de evolução: revisados vs não revisados (3D Pie)
   const evolutionData = React.useMemo(() => {
     const reviewed = Number(metrics.reviewedItems || 0);
     const total = Number(metrics.totalItems || 0);
@@ -174,29 +266,27 @@ export default function DashboardPage({ registrationsOnly }) {
     ];
   }, [metrics, t]);
 
-  // Dados de ajustados: ajustados vs não ajustados (3D Pie)
   const adjustedData = React.useMemo(() => {
     const adjusted = Number(metrics.adjustedItems || 0);
     const total = Number(metrics.totalItems || 0);
     const notAdjusted = Math.max(0, total - adjusted);
     return [
       { name: t('dashboard_adjusted') || 'Ajustados', y: adjusted },
-      { name: t('dashboard_not_adjusted') || 'Não Ajustados', y: notAdjusted },
+      { name: t('dashboard_not_adjusted') || 'Nao Ajustados', y: notAdjusted },
     ];
   }, [metrics, t]);
 
-  // Função util para selecionar qual gráfico mostrar por posição (esquerda/direita)
   const renderRotatingChart = (slotOffset = 0) => {
     const sequence = ['assignments', 'evolution', 'adjusted', 'justifications'];
     const idx = (rotationIndex + slotOffset) % sequence.length;
     const type = sequence[idx];
-    
+
     if (type === 'assignments') {
       return chartData.length > 0 ? (
         <BarChart data={chartData} title={t('dashboard_chart_title')} horizontal={true} />
       ) : (
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-[320px] flex items-center justify-center">
+          <span className="text-slate-500 dark:text-slate-400">{t('dashboard_no_data')}</span>
         </div>
       );
     }
@@ -209,8 +299,8 @@ export default function DashboardPage({ registrationsOnly }) {
           showPercent={true}
         />
       ) : (
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-[320px] flex items-center justify-center">
+          <span className="text-slate-500 dark:text-slate-400">{t('dashboard_no_data')}</span>
         </div>
       );
     }
@@ -219,44 +309,75 @@ export default function DashboardPage({ registrationsOnly }) {
         <Pie3D data={adjustedData} title={t('dashboard_chart_adjusted_title') || 'Itens Ajustados'} />
       );
     }
-    // evolution
     return (
-      <AreaChart data={evolutionData} title={t('dashboard_chart_evolution_title') || 'Evolução da Revisão'} />
+      <AreaChart
+        data={evolutionData}
+        title={t('dashboard_chart_evolution_title') || 'Evolucao da Revisao'}
+      />
     );
   };
 
   return (
-    <section>
+    <section className="">
       <h2 className="text-2xl font-semibold mb-6 text-slate-900 dark:text-slate-100">
         {registrationsOnly ? t('nav_registrations') : t('nav_dashboard')}
       </h2>
 
       {!registrationsOnly && (
         <>
-          {/* Mantém layout original; abaixo ficam os gráficos lado a lado com rotação automática */}
-
-          <div className="mb-4 max-w-md flex items-center gap-2">
-            <span className="text-sm text-slate-700 dark:text-slate-300">Empresa</span>
+          {/* Company selector */}
+          <div className="mb-6 max-w-sm">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Empresa
+            </label>
             <select
-              className="flex-1 h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+              className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               value={companyId}
               onChange={(e) => setCompanyId(e.target.value)}
             >
               {companies.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
             </select>
           </div>
 
+          {/* Metrics cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <MetricCard color={metricColors[0]} label={t('dashboard_metric_total_items')} value={metrics.totalItems} />
-            <MetricCard color={metricColors[1]} label={t('dashboard_metric_assigned_items')} value={metrics.assignedItems} />
-            <MetricCard color={metricColors[2]} label={t('dashboard_metric_reviewed_items')} value={metrics.reviewedItems} />
-            <MetricCard color={metricColors[3]} label={t('dashboard_metric_reviewed_pct')} value={`${metrics.reviewedPct}%`} />
-            <MetricCard color={metricColors[4]} label={t('dashboard_metric_fully_depreciated')} value={metrics.fullyDepreciated} />
+            <MetricCard
+              title={t('dashboard_metric_total_items')}
+              value={metrics.totalItems}
+              icon={Package}
+              variant="default"
+            />
+            <MetricCard
+              title={t('dashboard_metric_assigned_items')}
+              value={metrics.assignedItems}
+              icon={UserCheck}
+              variant="primary"
+            />
+            <MetricCard
+              title={t('dashboard_metric_reviewed_items')}
+              value={metrics.reviewedItems}
+              icon={CheckCircle2}
+              variant="success"
+            />
+            <MetricCard
+              title={t('dashboard_metric_reviewed_pct')}
+              value={`${metrics.reviewedPct}%`}
+              icon={Percent}
+              variant="warning"
+            />
+            <MetricCard
+              title={t('dashboard_metric_fully_depreciated')}
+              value={metrics.fullyDepreciated}
+              icon={AlertTriangle}
+              variant="danger"
+            />
           </div>
 
-          {/* Dois gráficos lado a lado com substituição a cada 15s - tipos variados */}
+          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <AnimatePresence mode="wait">
               <motion.div
@@ -281,13 +402,12 @@ export default function DashboardPage({ registrationsOnly }) {
               </motion.div>
             </AnimatePresence>
           </div>
-
-          {/* Mantém demais seções originais do Dashboard */}
         </>
       )}
 
+      {/* Registration cards */}
       {visibleCards.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {visibleCards.map((c, idx) => (
             <motion.button
               key={idx}
@@ -295,47 +415,26 @@ export default function DashboardPage({ registrationsOnly }) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.03 }}
-              className={`group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors
-               ${idx % shortcutColors.length === 0 ? 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800' : ''}
-               ${(() => {
-                 const cName = shortcutColors[idx % shortcutColors.length];
-                 const base = {
-                   blue: 'bg-blue-50/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 hover:border-blue-200 dark:hover:border-blue-800',
-                   violet: 'bg-violet-50/60 dark:bg-violet-900/20 border-violet-100 dark:border-violet-900/30 hover:border-violet-200 dark:hover:border-violet-800',
-                   emerald: 'bg-emerald-50/60 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-200 dark:hover:border-emerald-800',
-                   amber: 'bg-amber-50/60 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 hover:border-amber-200 dark:hover:border-amber-800',
-                   rose: 'bg-rose-50/60 dark:bg-rose-900/20 border-rose-100 dark:border-rose-900/30 hover:border-rose-200 dark:hover:border-rose-800',
-                   indigo: 'bg-indigo-50/60 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30 hover:border-indigo-200 dark:hover:border-indigo-800',
-                   cyan: 'bg-cyan-50/60 dark:bg-cyan-900/20 border-cyan-100 dark:border-cyan-900/30 hover:border-cyan-200 dark:hover:border-cyan-800',
-                   teal: 'bg-teal-50/60 dark:bg-teal-900/20 border-teal-100 dark:border-teal-900/30 hover:border-teal-200 dark:hover:border-teal-800',
-                   fuchsia: 'bg-fuchsia-50/60 dark:bg-fuchsia-900/20 border-fuchsia-100 dark:border-fuchsia-900/30 hover:border-fuchsia-200 dark:hover:border-fuchsia-800',
-                 };
-                 return base[cName] || '';
-               })()}`}
+              className={clsx(
+                'group text-left w-full rounded-xl border p-4',
+                'bg-white dark:bg-slate-900',
+                'border-slate-200 dark:border-slate-800',
+                'shadow-sm hover:shadow-md',
+                'transition-all duration-200',
+                'hover:-translate-y-0.5'
+              )}
             >
               <div className="flex items-start gap-3">
-                {(() => {
-                  const cName = shortcutColors[idx % shortcutColors.length];
-                  const iconCls = {
-                    blue: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
-                    violet: 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300',
-                    emerald: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
-                    amber: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
-                    rose: 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300',
-                    indigo: 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300',
-                    cyan: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300',
-                    teal: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-                    fuchsia: 'bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-700 dark:text-fuchsia-300',
-                  }[cName];
-                  return (
-                    <div className={`p-2 rounded-lg ${iconCls}`}>
-                      <c.icon size={22} />
-                    </div>
-                  );
-                })()}
-                <div className="flex-1">
-                  <div className="font-semibold text-slate-900 dark:text-slate-100">{c.title}</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-300">{c.subtitle}</div>
+                <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <c.icon size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">
+                    {c.title}
+                  </div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                    {c.subtitle}
+                  </div>
                 </div>
               </div>
             </motion.button>
@@ -343,23 +442,5 @@ export default function DashboardPage({ registrationsOnly }) {
         </div>
       )}
     </section>
-  );
-}
-
-function MetricCard({ label, value, color = 'slate' }) {
-  const colorMap = {
-    slate: 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800',
-    sky: 'bg-sky-50 dark:bg-sky-900/20 border-sky-100 dark:border-sky-900/30',
-    violet: 'bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-900/30',
-    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30',
-    amber: 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30',
-    rose: 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-900/30',
-  };
-  const cls = colorMap[color] || colorMap.slate;
-  return (
-    <div className={`rounded-xl border p-4 ${cls}`}>
-      <div className="text-sm text-slate-700 dark:text-slate-300">{label}</div>
-      <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</div>
-    </div>
   );
 }
