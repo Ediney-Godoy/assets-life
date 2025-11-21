@@ -18,7 +18,7 @@
   "nav_help": "Ajuda",
   "backend_status": "Backend",
   "backend_ok": "Online",
-  "backend_error": "Offline",
+  "backend_error": "Off line",
   "backend_checking": "Verificando...",
   "backend_unreachable": "Falha ao conectar ao servidor. Verifique sua conexão e tente novamente.",
   "retry": "Tentar novamente",
