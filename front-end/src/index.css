@@ -2,39 +2,366 @@
 @import "tailwindcss/theme";
 @import "tailwindcss/utilities";
 
-/* Base theme tokens */
+/* ===== BASE THEME TOKENS ===== */
 :root {
   color-scheme: light;
-}
-.dark:root {
-  color-scheme: dark;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --border-primary: #e2e8f0;
+  --border-secondary: #cbd5e1;
 }
 
+.dark:root {
+  color-scheme: dark;
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --border-primary: #334155;
+  --border-secondary: #475569;
+}
+
+/* ===== GLOBAL STYLES ===== */
 html, body, #root {
   height: 100%;
 }
 
-/* Typography and layout defaults */
 body {
-  @apply font-sans;
+  @apply font-sans antialiased;
+  @apply bg-surface-secondary dark:bg-surface-dark;
+  @apply text-neutral-900 dark:text-neutral-100;
 }
 
-/* Simple container utility */
-.container-page {
-  @apply p-6 md:p-8;
+/* ===== TYPOGRAPHY ===== */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-semibold tracking-tight;
 }
 
-/* Card surface */
-.card {
-  @apply bg-white dark:bg-slate-900 shadow rounded-xl border border-slate-200 dark:border-slate-800;
-}
-
-/* Header chip */
-.status-chip {
-  @apply text-xs px-2 py-1 rounded-full border;
-}
-
-/* Garante espaço estável para a barra de rolagem, evitando saltos no layout */
+/* ===== SCROLLBAR STYLING ===== */
 .scrollbar-stable {
   scrollbar-gutter: stable both-edges;
+}
+
+/* Modern scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-300 dark:bg-neutral-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-400 dark:bg-neutral-600;
+}
+
+/* ===== LAYOUT UTILITIES ===== */
+.container-page {
+  @apply p-4 sm:p-6 lg:p-8;
+  @apply animate-fade-in;
+}
+
+/* ===== CARD COMPONENT ===== */
+.card {
+  @apply bg-white dark:bg-neutral-900;
+  @apply border border-neutral-200 dark:border-neutral-800;
+  @apply rounded-xl shadow-card;
+  @apply transition-all duration-200;
+}
+
+.card-hover {
+  @apply card;
+  @apply hover:shadow-card-hover hover:border-neutral-300 dark:hover:border-neutral-700;
+}
+
+.card-interactive {
+  @apply card-hover cursor-pointer;
+  @apply hover:-translate-y-0.5;
+}
+
+/* ===== GLASS MORPHISM ===== */
+.glass {
+  @apply bg-white/80 dark:bg-neutral-900/80;
+  @apply backdrop-blur-md;
+  @apply border border-neutral-200/50 dark:border-neutral-800/50;
+}
+
+/* ===== STATUS CHIPS ===== */
+.status-chip {
+  @apply inline-flex items-center gap-1.5;
+  @apply text-xs font-medium px-2.5 py-1;
+  @apply rounded-full border;
+}
+
+.status-success {
+  @apply bg-success-50 text-success-700 border-success-500/30;
+  @apply dark:bg-success-500/10 dark:text-success-500 dark:border-success-500/20;
+}
+
+.status-warning {
+  @apply bg-warning-50 text-warning-700 border-warning-500/30;
+  @apply dark:bg-warning-500/10 dark:text-warning-500 dark:border-warning-500/20;
+}
+
+.status-danger {
+  @apply bg-danger-50 text-danger-700 border-danger-500/30;
+  @apply dark:bg-danger-500/10 dark:text-danger-500 dark:border-danger-500/20;
+}
+
+.status-info {
+  @apply bg-info-50 text-info-700 border-info-500/30;
+  @apply dark:bg-info-500/10 dark:text-info-500 dark:border-info-500/20;
+}
+
+.status-neutral {
+  @apply bg-neutral-100 text-neutral-700 border-neutral-300;
+  @apply dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700;
+}
+
+/* ===== BUTTON VARIANTS ===== */
+.btn {
+  @apply inline-flex items-center justify-center gap-2;
+  @apply font-medium text-sm;
+  @apply px-4 py-2 rounded-lg;
+  @apply transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply btn;
+  @apply bg-brand-500 text-white;
+  @apply hover:bg-brand-600 active:bg-brand-700;
+  @apply focus:ring-brand-500;
+  @apply dark:focus:ring-offset-neutral-900;
+}
+
+.btn-secondary {
+  @apply btn;
+  @apply bg-neutral-100 text-neutral-700;
+  @apply hover:bg-neutral-200 active:bg-neutral-300;
+  @apply dark:bg-neutral-800 dark:text-neutral-200;
+  @apply dark:hover:bg-neutral-700 dark:active:bg-neutral-600;
+  @apply focus:ring-neutral-500;
+  @apply dark:focus:ring-offset-neutral-900;
+}
+
+.btn-ghost {
+  @apply btn;
+  @apply bg-transparent text-neutral-600;
+  @apply hover:bg-neutral-100 active:bg-neutral-200;
+  @apply dark:text-neutral-400;
+  @apply dark:hover:bg-neutral-800 dark:active:bg-neutral-700;
+  @apply focus:ring-neutral-500;
+  @apply dark:focus:ring-offset-neutral-900;
+}
+
+.btn-danger {
+  @apply btn;
+  @apply bg-danger-500 text-white;
+  @apply hover:bg-danger-600 active:bg-danger-700;
+  @apply focus:ring-danger-500;
+  @apply dark:focus:ring-offset-neutral-900;
+}
+
+.btn-icon {
+  @apply p-2 rounded-lg;
+  @apply text-neutral-500 hover:text-neutral-700;
+  @apply hover:bg-neutral-100 active:bg-neutral-200;
+  @apply dark:text-neutral-400 dark:hover:text-neutral-200;
+  @apply dark:hover:bg-neutral-800 dark:active:bg-neutral-700;
+  @apply transition-colors duration-200;
+}
+
+/* ===== INPUT STYLES ===== */
+.input {
+  @apply w-full px-3 py-2;
+  @apply text-sm text-neutral-900 dark:text-neutral-100;
+  @apply bg-white dark:bg-neutral-900;
+  @apply border border-neutral-300 dark:border-neutral-700;
+  @apply rounded-lg;
+  @apply placeholder:text-neutral-400 dark:placeholder:text-neutral-500;
+  @apply focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500;
+  @apply dark:focus:ring-brand-400/20 dark:focus:border-brand-400;
+  @apply transition-all duration-200;
+  @apply disabled:bg-neutral-100 dark:disabled:bg-neutral-800;
+  @apply disabled:cursor-not-allowed;
+}
+
+.input-error {
+  @apply border-danger-500 dark:border-danger-500;
+  @apply focus:ring-danger-500/20 focus:border-danger-500;
+}
+
+/* ===== SELECT STYLES ===== */
+.select {
+  @apply input;
+  @apply appearance-none cursor-pointer;
+  @apply pr-10;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+}
+
+/* ===== TABLE STYLES ===== */
+.table-container {
+  @apply overflow-x-auto overflow-y-auto;
+  @apply rounded-lg border border-neutral-200 dark:border-neutral-800;
+  @apply bg-white dark:bg-neutral-900;
+}
+
+.table {
+  @apply w-full text-sm;
+}
+
+.table thead {
+  @apply bg-neutral-50 dark:bg-neutral-800/50;
+  @apply sticky top-0 z-10;
+}
+
+.table th {
+  @apply px-4 py-3;
+  @apply text-left font-semibold text-neutral-600 dark:text-neutral-300;
+  @apply border-b border-neutral-200 dark:border-neutral-700;
+}
+
+.table td {
+  @apply px-4 py-3;
+  @apply text-neutral-700 dark:text-neutral-300;
+  @apply border-b border-neutral-100 dark:border-neutral-800;
+}
+
+.table tbody tr {
+  @apply transition-colors duration-150;
+}
+
+.table tbody tr:hover {
+  @apply bg-neutral-50 dark:bg-neutral-800/30;
+}
+
+.table tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+/* ===== SKELETON LOADER ===== */
+.skeleton {
+  @apply animate-pulse;
+  @apply bg-neutral-200 dark:bg-neutral-700;
+  @apply rounded;
+}
+
+.skeleton-text {
+  @apply skeleton h-4 w-full;
+}
+
+.skeleton-title {
+  @apply skeleton h-6 w-3/4;
+}
+
+.skeleton-avatar {
+  @apply skeleton h-10 w-10 rounded-full;
+}
+
+.skeleton-card {
+  @apply skeleton h-32 w-full rounded-xl;
+}
+
+/* ===== DIVIDER ===== */
+.divider {
+  @apply h-px w-full;
+  @apply bg-neutral-200 dark:bg-neutral-800;
+}
+
+.divider-vertical {
+  @apply w-px h-full;
+  @apply bg-neutral-200 dark:bg-neutral-800;
+}
+
+/* ===== BADGE ===== */
+.badge {
+  @apply inline-flex items-center;
+  @apply text-xs font-medium;
+  @apply px-2 py-0.5 rounded-md;
+}
+
+.badge-primary {
+  @apply badge;
+  @apply bg-brand-100 text-brand-700;
+  @apply dark:bg-brand-500/20 dark:text-brand-400;
+}
+
+.badge-secondary {
+  @apply badge;
+  @apply bg-neutral-100 text-neutral-600;
+  @apply dark:bg-neutral-800 dark:text-neutral-400;
+}
+
+/* ===== FOCUS RING ===== */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-brand-500/40;
+  @apply dark:focus:ring-brand-400/40;
+}
+
+/* ===== TRANSITIONS ===== */
+.transition-base {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.transition-fast {
+  @apply transition-all duration-150 ease-in-out;
+}
+
+.transition-slow {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  body {
+    @apply bg-white text-black;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .card {
+    @apply shadow-none border-neutral-300;
+    break-inside: avoid;
+  }
+
+  .table-container {
+    overflow: visible;
+  }
+}
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  @apply sr-only;
+  @apply focus:not-sr-only focus:absolute focus:top-4 focus:left-4;
+  @apply focus:z-50 focus:px-4 focus:py-2;
+  @apply focus:bg-brand-500 focus:text-white focus:rounded-lg;
 }

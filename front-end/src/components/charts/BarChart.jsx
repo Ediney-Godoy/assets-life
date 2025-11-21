@@ -1,48 +1,53 @@
 import React from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
+import { useChartTheme } from '../../hooks/useChartTheme';
 
-/**
- * BarChart component
- * Props:
- *  - data: Array<{ name: string, y: number }>
- *  - title: string (optional)
- *  - horizontal: boolean (optional) - se true, cria barras horizontais
- */
-export default function BarChart({ data = [], title = 'Gráfico de Barras', horizontal = false, showPercent = false }) {
+export default function BarChart({
+  data = [],
+  title = 'Grafico de Barras',
+  horizontal = false,
+  showPercent = false,
+  height = 320,
+}) {
+  const { colors, getBaseOptions } = useChartTheme();
   const total = data.reduce((sum, item) => sum + (Number(item.y) || 0), 0);
+
   const options = {
+    ...getBaseOptions(),
     chart: {
+      ...getBaseOptions().chart,
       type: horizontal ? 'bar' : 'column',
-      backgroundColor: 'transparent',
-      height: 380,
-      style: { fontFamily: 'Inter, system-ui, sans-serif' },
+      height,
     },
     title: {
       text: title || null,
-      style: { color: '#0f172a', fontSize: '16px', fontWeight: '600' },
-    },
-    credits: { enabled: false },
-    xAxis: {
-      categories: data.map(item => item.name),
-      labels: {
-        style: { color: '#64748b' },
+      style: {
+        color: colors.title,
+        fontSize: '14px',
+        fontWeight: '600',
       },
-      lineColor: '#e2e8f0',
-      tickColor: '#e2e8f0',
+    },
+    xAxis: {
+      categories: data.map((item) => item.name),
+      labels: {
+        style: { color: colors.label, fontSize: '11px' },
+      },
+      lineColor: colors.borderColor,
+      tickColor: colors.borderColor,
     },
     yAxis: {
       title: {
         text: 'Quantidade',
-        style: { color: '#64748b' },
+        style: { color: colors.label, fontSize: '11px' },
       },
       labels: {
-        style: { color: '#64748b' },
+        style: { color: colors.label, fontSize: '11px' },
       },
-      gridLineColor: '#f1f5f9',
+      gridLineColor: colors.gridLine,
     },
     tooltip: {
-      pointFormatter: function() {
+      pointFormatter: function () {
         const y = Number(this.y) || 0;
         if (showPercent && total > 0) {
           const pct = (y / total) * 100;
@@ -50,14 +55,15 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
         }
         return `<b>${y}</b>`;
       },
-      backgroundColor: '#ffffff',
-      borderColor: '#e2e8f0',
-      style: { color: '#334155' },
+      backgroundColor: colors.tooltipBg,
+      borderColor: colors.tooltipBorder,
+      style: { color: colors.tooltipText },
+      borderRadius: 8,
+      shadow: true,
     },
-    accessibility: { enabled: false },
     plotOptions: {
       column: {
-        borderRadius: 4,
+        borderRadius: 6,
         colorByPoint: true,
         dataLabels: {
           enabled: true,
@@ -69,11 +75,16 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
             }
             return `${y}`;
           },
-          style: { color: '#334155', textOutline: 'none' },
+          style: {
+            color: colors.dataLabel,
+            textOutline: 'none',
+            fontSize: '11px',
+            fontWeight: '500',
+          },
         },
       },
       bar: {
-        borderRadius: 4,
+        borderRadius: 6,
         colorByPoint: true,
         dataLabels: {
           enabled: true,
@@ -85,24 +96,29 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
             }
             return `${y}`;
           },
-          style: { color: '#334155', textOutline: 'none' },
+          style: {
+            color: colors.dataLabel,
+            textOutline: 'none',
+            fontSize: '11px',
+            fontWeight: '500',
+          },
         },
       },
     },
-    colors: [
-      '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444',
-      '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
-    ],
+    colors: colors.series,
     series: [
       {
         name: 'Quantidade',
-        data: data.map(item => item.y),
+        data: data.map((item) => item.y),
       },
     ],
+    legend: {
+      enabled: false,
+    },
   };
 
   return (
-    <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
       <HighchartsReact highcharts={Highcharts} options={options} />
     </div>
   );
