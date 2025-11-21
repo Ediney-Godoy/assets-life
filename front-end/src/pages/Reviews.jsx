@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import * as XLSX from 'xlsx';
 import { Pencil, Trash2, Plus, Save, FileDown, FileText, Printer, Upload, Lock, X, Search } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
@@ -327,23 +328,71 @@ export default function ReviewsPage() {
     toast.success(t('export_excel') || 'Exportar Excel');
   };
 
-  const printPDF = () => {
-    const win = window.open('', 'PRINT', 'height=800,width=900');
-    const rows = filtered.map((p) => {
+  const buildReportHtml = () => {
+    const headerTitle = t('review_periods_register_title') || 'Períodos de Revisão de Vidas Úteis';
+    const tableHeader = `
+      <tr>
+        <th style="padding:8px;border:1px solid #e5e7eb">${t('period_code') || 'Código da Revisão'}</th>
+        <th style="padding:8px;border:1px solid #e5e7eb">${t('period_description') || 'Descrição do Período'}</th>
+        <th style="padding:8px;border:1px solid #e5e7eb">${t('company_label') || 'Empresa'}</th>
+        <th style="padding:8px;border:1px solid #e5e7eb">${t('ug_label') || 'UG'}</th>
+        <th style="padding:8px;border:1px solid #e5e7eb">${t('review_responsible') || 'Responsável pela Revisão'}</th>
+        <th style="padding:8px;border:1px solid #e5e7eb">${t('open_date') || 'Data de Abertura'}</th>
+        <th style="padding:8px;border:1px solid #e5e7eb">${t('start_new_useful_life') || 'Início Nova Depreciação'}</th>
+        <th style="padding:8px;border:1px solid #e5e7eb">${t('close_date') || 'Data de Fechamento'}</th>
+      </tr>`;
+    const tableRows = filtered.map((p) => {
       const empresa = companies.find((c) => c.id === p.empresa_id)?.name || '';
       const ug = (() => { const g = ugs.find((x) => x.id === p.ug_id); return g ? `${g.codigo} - ${g.nome}` : ''; })();
       const resp = users.find((u) => u.id === p.responsavel_id)?.nome_completo || '';
       return `
-        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;font-family:Arial, sans-serif">
-          <div style="font-weight:600;color:#0f172a">${p.codigo || ''} — ${p.descricao || ''}</div>
-          <div style="color:#334155">Empresa: ${empresa} &nbsp;|&nbsp; UG: ${ug} &nbsp;|&nbsp; Responsável: ${resp}</div>
-          <div style="color:#334155">Abertura: ${formatDateBR(p.data_abertura)} &nbsp;|&nbsp; Início Nova Depreciação: ${formatDateBR(p.data_inicio_nova_vida_util)} &nbsp;|&nbsp; Fechamento: ${formatDateBR(p.data_fechamento)}</div>
-        </div>`;
+        <tr>
+          <td style="padding:8px;border:1px solid #e5e7eb">${p.codigo || ''}</td>
+          <td style="padding:8px;border:1px solid #e5e7eb">${p.descricao || ''}</td>
+          <td style="padding:8px;border:1px solid #e5e7eb">${empresa}</td>
+          <td style="padding:8px;border:1px solid #e5e7eb">${ug}</td>
+          <td style="padding:8px;border:1px solid #e5e7eb">${resp}</td>
+          <td style="padding:8px;border:1px solid #e5e7eb">${formatDateBR(p.data_abertura)}</td>
+          <td style="padding:8px;border:1px solid #e5e7eb">${formatDateBR(p.data_inicio_nova_vida_util)}</td>
+          <td style="padding:8px;border:1px solid #e5e7eb">${formatDateBR(p.data_fechamento)}</td>
+        </tr>`;
     }).join('');
-    win.document.write(`<!doctype html><html><head><title>Períodos de Revisão</title></head><body style="padding:16px">
-      <h3 style="font-family:Arial, sans-serif;color:#0f172a">Períodos de Revisão de Vidas Úteis</h3>
-      ${rows}
-    </body></html>`);
+    const html = `<!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>${headerTitle}</title>
+        <style>
+          @page { margin: 20mm; }
+          body { font-family: Arial, sans-serif; color: #0f172a; }
+          .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+          .brand { display:flex; align-items:center; gap:10px; }
+          .brand img { height:40px; }
+          .brand .title { font-size:18px; font-weight:600; }
+          table { width:100%; border-collapse: collapse; }
+          thead { background:#f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="brand">
+            <img src="/brand.svg" alt="Logo" />
+            <div class="title">${headerTitle}</div>
+          </div>
+          <div style="font-size:12px;color:#64748b">${new Date().toLocaleString('pt-BR')}</div>
+        </div>
+        <table>
+          <thead>${tableHeader}</thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </body>
+      </html>`;
+    return html;
+  };
+
+  const printPDF = () => {
+    const win = window.open('', 'PRINT', 'height=800,width=900');
+    win.document.write(buildReportHtml());
     win.document.close();
     win.focus();
     win.print();
@@ -402,7 +451,7 @@ export default function ReviewsPage() {
             onDelete={() => editingId && onDelete(editingId)}
             onPrint={() => window.print()}
             onExportPdf={printPDF}
-            onExportExcel={exportCSV}
+            onExportExcel={exportXLSX}
             canEditDelete={!!editingId}
           />
         </div>
