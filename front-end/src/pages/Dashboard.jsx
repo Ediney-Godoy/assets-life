@@ -318,7 +318,7 @@ export default function DashboardPage({ registrationsOnly }) {
   };
 
   return (
-    <section className="animate-fade-in">
+    <section className="">
       <h2 className="text-2xl font-semibold mb-6 text-slate-900 dark:text-slate-100">
         {registrationsOnly ? t('nav_registrations') : t('nav_dashboard')}
       </h2>
