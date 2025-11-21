@@ -13,7 +13,6 @@ import {
   listarComentariosRVU,
 } from '../apiClient';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
 
 export default function SupervisaoRVUView() {
   const { t } = useTranslation();
@@ -208,7 +207,7 @@ export default function SupervisaoRVUView() {
     try { return it?.revisor_id || 0; } catch { return 0; }
   };
 
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     // Exportação nativa XLSX com os itens filtrados
     const headers = [
       'Nº Imobilizado','Descrição','Classe Contábil','Valor Contábil','Vida Útil Atual','Vida Útil Revisada','Δ Vida Útil (%)','Revisor','Condição Física','Justificativa','Data Revisão','Status','Último comentário'
@@ -234,6 +233,8 @@ export default function SupervisaoRVUView() {
         i.ultimo_comentario || ''
       ];
     });
+    const XLSXLib = await import('xlsx');
+    const XLSX = XLSXLib.default || XLSXLib;
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Supervisão RVU');

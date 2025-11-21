@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import * as XLSX from 'xlsx';
 import { Pencil, Trash2, Plus, Save, FileDown, FileText, Printer, Upload, Lock, X, Search } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
@@ -292,6 +291,48 @@ export default function ReviewsPage() {
   const formatDateBR = (value) => {
     if (!value) return '';
     try { return new Date(value).toLocaleDateString('pt-BR'); } catch { return String(value || ''); }
+  };
+
+  const exportXLSX = async () => {
+    const header = [
+      t('period_code') || 'Código da Revisão',
+      t('period_description') || 'Descrição do Período',
+      t('company_label') || 'Empresa',
+      t('ug_label') || 'UG',
+      t('review_responsible') || 'Responsável pela Revisão',
+      t('open_date') || 'Data de Abertura',
+      t('start_new_useful_life') || 'Início Nova Depreciação',
+      t('close_date') || 'Data de Fechamento',
+    ];
+    const data = filtered.map((p) => {
+      const empresa = companies.find((c) => c.id === p.empresa_id)?.name || '';
+      const ug = (() => { const g = ugs.find((x) => x.id === p.ug_id); return g ? `${g.codigo} - ${g.nome}` : ''; })();
+      const resp = users.find((u) => u.id === p.responsavel_id)?.nome_completo || '';
+      return {
+        [header[0]]: p.codigo || '',
+        [header[1]]: p.descricao || '',
+        [header[2]]: empresa,
+        [header[3]]: ug,
+        [header[4]]: resp,
+        [header[5]]: formatDateBR(p.data_abertura),
+        [header[6]]: formatDateBR(p.data_inicio_nova_vida_util),
+        [header[7]]: formatDateBR(p.data_fechamento),
+      };
+    });
+    const XLSXLib = await import('xlsx');
+    const XLSX = XLSXLib.default || XLSXLib;
+    const ws = XLSX.utils.json_to_sheet(data, { header });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Períodos');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Periodos_Revisao.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(t('export_excel') || 'Exportar Excel');
   };
 
   const exportCSV = () => {

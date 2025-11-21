@@ -17,7 +17,7 @@ import EmployeesPage from './pages/Employees';
 import ManagementUnitsPage from './pages/ManagementUnits';
 import TabsDemo from './pages/TabsDemo';
 import ReviewsMenu from './pages/ReviewsMenu';
-import Reviews from './pages/Reviews';
+const ReviewsPageLazy = React.lazy(() => import('./pages/Reviews'));
 import DelegacaoPage from './pages/Delegacao';
 import RevisaoVidasUteis from './pages/RevisaoVidasUteis';
 import MassRevisionView from './pages/MassRevisionView';
@@ -165,6 +165,7 @@ export default function App() {
             />
           )}
           <main className="container-page scrollbar-stable">
+            <ErrorBoundary>
             {!isAuthRoute && <DynamicTabs initialTabs={initialTabs} hideBody />}
             <Routes>
               {/* Auth routes */}
@@ -190,7 +191,7 @@ export default function App() {
               <Route path="/assets" element={<RequireAuth><Section title={t('nav_assets')} body={t('coming_soon')} /></RequireAuth>} />
               <Route path="/asset-species" element={<RequireAuth><AssetSpeciesPage /></RequireAuth>} />
               <Route path="/reviews" element={<RequireAuth><ReviewsMenu /></RequireAuth>} />
-              <Route path="/reviews/periodos" element={<RequireAuth><RequirePermission route="/reviews/periodos"><Reviews /></RequirePermission></RequireAuth>} />
+              <Route path="/reviews/periodos" element={<RequireAuth><RequirePermission route="/reviews/periodos"><ErrorBoundary><React.Suspense fallback={<div className="p-4">Carregando…</div>}><ReviewsPageLazy /></React.Suspense></ErrorBoundary></RequirePermission></RequireAuth>} />
               <Route path="/reviews/delegacao" element={<RequireAuth><RequirePermission route="/reviews/delegacao"><DelegacaoPage /></RequirePermission></RequireAuth>} />
               <Route path="/reviews/vidas-uteis" element={<RequireAuth><RequirePermission route="/reviews/vidas-uteis"><RevisaoVidasUteis /></RequirePermission></RequireAuth>} />
               <Route path="/reviews/massa" element={<RequireAuth><RequirePermission route="/reviews/massa"><MassRevisionView /></RequirePermission></RequireAuth>} />
@@ -204,6 +205,7 @@ export default function App() {
               <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
               <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
             </Routes>
+            </ErrorBoundary>
             <Toaster position="top-right" toastOptions={{
               style: { background: '#111827', color: '#F9FAFB' },
             }} />
