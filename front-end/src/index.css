@@ -232,7 +232,17 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ===== SELECT STYLES ===== */
 .select {
-  @apply input;
+  @apply w-full px-3 py-2;
+  @apply text-sm text-slate-900 dark:text-slate-100;
+  @apply bg-white dark:bg-slate-900;
+  @apply border border-slate-300 dark:border-slate-700;
+  @apply rounded-lg;
+  @apply placeholder:text-slate-400 dark:placeholder:text-slate-500;
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500;
+  @apply dark:focus:ring-blue-400/20 dark:focus:border-blue-400;
+  @apply transition-all duration-200;
+  @apply disabled:bg-slate-100 dark:disabled:bg-slate-800;
+  @apply disabled:cursor-not-allowed;
   @apply appearance-none cursor-pointer;
   @apply pr-10;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
