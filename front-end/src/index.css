@@ -299,19 +299,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .skeleton-text {
-  @apply skeleton h-4 w-full;
+  @apply animate-pulse bg-slate-200 dark:bg-slate-700 rounded h-4 w-full;
 }
 
 .skeleton-title {
-  @apply skeleton h-6 w-3/4;
+  @apply animate-pulse bg-slate-200 dark:bg-slate-700 rounded h-6 w-3/4;
 }
 
 .skeleton-avatar {
-  @apply skeleton h-10 w-10 rounded-full;
+  @apply animate-pulse bg-slate-200 dark:bg-slate-700 h-10 w-10 rounded-full;
 }
 
 .skeleton-card {
-  @apply skeleton h-32 w-full rounded-xl;
+  @apply animate-pulse bg-slate-200 dark:bg-slate-700 h-32 w-full rounded-xl;
 }
 
 /* ===== DIVIDER ===== */
@@ -333,13 +333,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .badge-primary {
-  @apply badge;
+  @apply inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-md;
   @apply bg-blue-100 text-blue-700;
   @apply dark:bg-blue-500/20 dark:text-blue-400;
 }
 
 .badge-secondary {
-  @apply badge;
+  @apply inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-md;
   @apply bg-slate-100 text-slate-600;
   @apply dark:bg-slate-800 dark:text-slate-400;
 }
