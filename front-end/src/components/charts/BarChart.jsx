@@ -10,7 +10,27 @@ import HighchartsReact from 'highcharts-react-official';
  *  - horizontal: boolean (optional) - se true, cria barras horizontais
  */
 export default function BarChart({ data = [], title = 'Gráfico de Barras', horizontal = false, showPercent = false }) {
+  const [isDark, setIsDark] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkDark = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   const total = data.reduce((sum, item) => sum + (Number(item.y) || 0), 0);
+
+  const textColor = isDark ? '#e2e8f0' : '#0f172a';
+  const labelColor = isDark ? '#94a3b8' : '#64748b';
+  const gridColor = isDark ? '#334155' : '#f1f5f9';
+  const lineColor = isDark ? '#475569' : '#e2e8f0';
+  const tooltipBg = isDark ? '#1e293b' : '#ffffff';
+  const tooltipText = isDark ? '#f1f5f9' : '#334155';
+
   const options = {
     chart: {
       type: horizontal ? 'bar' : 'column',
@@ -20,26 +40,26 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
     },
     title: {
       text: title || null,
-      style: { color: '#0f172a', fontSize: '16px', fontWeight: '600' },
+      style: { color: textColor, fontSize: '16px', fontWeight: '600' },
     },
     credits: { enabled: false },
     xAxis: {
       categories: data.map(item => item.name),
       labels: {
-        style: { color: '#64748b' },
+        style: { color: labelColor },
       },
-      lineColor: '#e2e8f0',
-      tickColor: '#e2e8f0',
+      lineColor: lineColor,
+      tickColor: lineColor,
     },
     yAxis: {
       title: {
         text: 'Quantidade',
-        style: { color: '#64748b' },
+        style: { color: labelColor },
       },
       labels: {
-        style: { color: '#64748b' },
+        style: { color: labelColor },
       },
-      gridLineColor: '#f1f5f9',
+      gridLineColor: gridColor,
     },
     tooltip: {
       pointFormatter: function() {
@@ -50,9 +70,9 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
         }
         return `<b>${y}</b>`;
       },
-      backgroundColor: '#ffffff',
-      borderColor: '#e2e8f0',
-      style: { color: '#334155' },
+      backgroundColor: tooltipBg,
+      borderColor: lineColor,
+      style: { color: tooltipText },
     },
     accessibility: { enabled: false },
     plotOptions: {
@@ -69,7 +89,7 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
             }
             return `${y}`;
           },
-          style: { color: '#334155', textOutline: 'none' },
+          style: { color: labelColor, textOutline: 'none' },
         },
       },
       bar: {
@@ -85,7 +105,7 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
             }
             return `${y}`;
           },
-          style: { color: '#334155', textOutline: 'none' },
+          style: { color: labelColor, textOutline: 'none' },
         },
       },
     },
@@ -102,7 +122,7 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
   };
 
   return (
-    <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 h-full">
       <HighchartsReact highcharts={Highcharts} options={options} />
     </div>
   );
