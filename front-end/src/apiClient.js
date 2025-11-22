@@ -34,8 +34,8 @@ try {
   }
 } catch {}
 const IS_HTTPS = (() => { try { return typeof window !== 'undefined' && window.location?.protocol === 'https:'; } catch { return false; }})();
-const DEFAULT_PROD_BASES = ['https://brief-grete-assetlife-f50c6bd0.koyeb.app'];
-const BASE_CANDIDATES = [PRIMARY_BASE, ...(IS_HTTPS ? DEFAULT_PROD_BASES : []), HOST_BASE, 'http://127.0.0.1:8000'].filter(Boolean);
+// Não usar URLs hardcoded em produção - sempre usar VITE_API_URL configurada no Vercel
+const BASE_CANDIDATES = [PRIMARY_BASE, HOST_BASE, 'http://127.0.0.1:8000'].filter(Boolean);
 const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//i.test(String(b)));
 
 async function resolveBase() {
