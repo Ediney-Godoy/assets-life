@@ -21,7 +21,7 @@ body {
 
 /* Simple container utility */
 .container-page {
-  @apply p-6 md:p-8;
+  @apply pt-3 px-6 pb-6 md:pt-4 md:px-8 md:pb-8;
 }
 
 /* Card surface */
