@@ -39,4 +39,4 @@ coverage/
 .vercel
 node_modules
 *.md
-.gitignore
+.gitignore.venv/
