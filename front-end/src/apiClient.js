@@ -36,35 +36,53 @@ try {
 } catch {}
 const IS_HTTPS = (() => { try { return typeof window !== 'undefined' && window.location?.protocol === 'https:'; } catch { return false; }})();
 
+// Lista de URLs antigas que devem ser limpas
+const OLD_URLS = [
+  'https://brief-grete-assetlife-f50c6bd0.koyeb.app',
+  // Adicione outras URLs antigas aqui se necessário
+];
+
+// URL atual do backend (fallback até VITE_API_URL ser aplicada)
+const CURRENT_BACKEND_URL = 'https://different-marlie-assetslifev2-bc199b4b.koyeb.app';
+
 // Limpa cache de URL antiga antes de usar
 if (typeof window !== 'undefined') {
   try {
     const cachedBase = window.__ASSETS_API_BASE;
-    // Lista de URLs antigas que devem ser limpas
-    const OLD_URLS = [
-      'https://brief-grete-assetlife-f50c6bd0.koyeb.app',
-      // Adicione outras URLs antigas aqui se necessário
-    ];
+    console.log('[apiClient] Verificando cache:', { cachedBase, PRIMARY_BASE, OLD_URLS });
     
     // Se há uma URL configurada via env e é diferente da cacheada, limpa o cache
     if (PRIMARY_BASE && cachedBase && cachedBase !== PRIMARY_BASE) {
       console.log('[apiClient] Limpando cache de URL antiga:', cachedBase, '→ Nova:', PRIMARY_BASE);
       delete window.__ASSETS_API_BASE;
+      ACTIVE_BASE = null;
     }
     // Se a URL cacheada é uma URL antiga conhecida, limpa mesmo sem PRIMARY_BASE
     else if (cachedBase && OLD_URLS.includes(cachedBase)) {
-      console.log('[apiClient] Limpando cache de URL antiga conhecida:', cachedBase);
+      console.log('[apiClient] ⚠️ Limpando cache de URL antiga conhecida:', cachedBase);
       delete window.__ASSETS_API_BASE;
+      ACTIVE_BASE = null;
+      console.log('[apiClient] ✅ Cache limpo! ACTIVE_BASE resetado.');
     }
-    // Restaura ACTIVE_BASE do cache apenas se não foi limpo
-    if (window.__ASSETS_API_BASE) {
+    // Restaura ACTIVE_BASE do cache apenas se não foi limpo e não é URL antiga
+    else if (window.__ASSETS_API_BASE && !OLD_URLS.includes(window.__ASSETS_API_BASE)) {
       ACTIVE_BASE = window.__ASSETS_API_BASE;
+      console.log('[apiClient] Restaurando ACTIVE_BASE do cache:', ACTIVE_BASE);
     }
-  } catch {}
+  } catch (e) {
+    console.error('[apiClient] Erro ao limpar cache:', e);
+  }
 }
 
 // Não usar URLs hardcoded em produção - sempre usar VITE_API_URL configurada no Vercel
-const BASE_CANDIDATES = [PRIMARY_BASE, HOST_BASE, 'http://127.0.0.1:8000'].filter(Boolean);
+// Mas adiciona fallback temporário enquanto VITE_API_URL não é aplicada
+const BASE_CANDIDATES = [
+  PRIMARY_BASE, 
+  // Fallback temporário: usa URL atual se PRIMARY_BASE não estiver configurada e estamos em produção
+  (!PRIMARY_BASE && IS_HTTPS ? CURRENT_BACKEND_URL : null),
+  HOST_BASE, 
+  'http://127.0.0.1:8000'
+].filter(Boolean);
 const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//i.test(String(b)));
 
 async function resolveBase() {
