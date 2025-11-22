@@ -183,8 +183,8 @@ export default function DashboardPage({ registrationsOnly }) {
       return chartData.length > 0 ? (
         <BarChart data={chartData} title={t('dashboard_chart_title')} horizontal={true} />
       ) : (
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-full flex items-center justify-center">
-          <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
+        <div className="card h-full flex items-center justify-center p-4">
+          <div style={{ color: 'var(--text-tertiary)' }}>{t('dashboard_no_data')}</div>
         </div>
       );
     }
@@ -197,8 +197,8 @@ export default function DashboardPage({ registrationsOnly }) {
           showPercent={true}
         />
       ) : (
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-full flex items-center justify-center">
-          <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
+        <div className="card h-full flex items-center justify-center p-4">
+          <div style={{ color: 'var(--text-tertiary)' }}>{t('dashboard_no_data')}</div>
         </div>
       );
     }
@@ -290,27 +290,27 @@ export default function DashboardPage({ registrationsOnly }) {
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg"
+                  className="card-elevated"
                 >
-                  <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-primary)' }}>
                     <div className="flex items-center gap-2">
-                      <Filter size={18} className="text-slate-500" />
-                      <span className="font-medium text-slate-900 dark:text-slate-100">Filtros</span>
+                      <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Filtros</span>
                     </div>
                     <button
                       onClick={() => setFilterPanelOpen(false)}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                      className="btn btn-ghost p-1"
                     >
-                      <ChevronRight size={18} className="text-slate-500" />
+                      <ChevronRight size={18} />
                     </button>
                   </div>
                   <div className="p-4 space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                         Empresa
                       </label>
                       <select
-                        className="w-full h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm"
+                        className="select"
                         value={companyId}
                         onChange={(e) => setCompanyId(e.target.value)}
                       >
@@ -324,10 +324,10 @@ export default function DashboardPage({ registrationsOnly }) {
               ) : (
                 <button
                   onClick={() => setFilterPanelOpen(true)}
-                  className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-md hover:shadow-lg transition-shadow"
+                  className="card-elevated w-10 h-10 flex items-center justify-center hover:shadow-lg transition-shadow"
                   title="Abrir filtros"
                 >
-                  <ChevronLeft size={18} className="text-slate-500" />
+                  <ChevronLeft size={18} style={{ color: 'var(--text-muted)' }} />
                 </button>
               )}
             </div>
@@ -395,24 +395,23 @@ export default function DashboardPage({ registrationsOnly }) {
   );
 }
 
-function MetricCardCompact({ icon: Icon, label, value, color = 'slate' }) {
-  const colorMap = {
-    slate: 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400',
-    sky: 'bg-sky-50 dark:bg-slate-900 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400',
-    violet: 'bg-violet-50 dark:bg-slate-900 border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400',
-    emerald: 'bg-emerald-50 dark:bg-slate-900 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400',
-    amber: 'bg-amber-50 dark:bg-slate-900 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400',
-    rose: 'bg-rose-50 dark:bg-slate-900 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400',
+function MetricCardCompact({ icon: Icon, label, value, color = 'default' }) {
+  const iconColors = {
+    default: 'var(--text-muted)',
+    sky: '#0ea5e9',
+    violet: '#8b5cf6',
+    emerald: '#10b981',
+    amber: '#f59e0b',
+    rose: '#f43f5e',
   };
-  const cls = colorMap[color] || colorMap.slate;
 
   return (
-    <div className={`rounded-xl border p-3 ${cls}`}>
-      <div className="flex items-center gap-2 mb-1">
-        <Icon size={16} className="opacity-70" />
-        <span className="text-xs font-medium truncate">{label}</span>
+    <div className="metric-card card-hover">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={16} style={{ color: iconColors[color] || iconColors.default }} />
+        <span className="metric-label truncate">{label}</span>
       </div>
-      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{value}</div>
+      <div className="metric-value">{value}</div>
     </div>
   );
 }

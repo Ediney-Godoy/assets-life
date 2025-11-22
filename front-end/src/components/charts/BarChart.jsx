@@ -122,7 +122,7 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 h-full">
+    <div className="card p-4 h-full">
       <HighchartsReact highcharts={Highcharts} options={options} />
     </div>
   );

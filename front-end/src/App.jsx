@@ -144,9 +144,9 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <div className="h-screen flex bg-surface-muted dark:bg-darksurface-muted">
+      <div className="h-screen flex" style={{ background: 'var(--bg-secondary)' }}>
         {!isAuthRoute && <Sidebar collapsed={sidebarCollapsed} />}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {!isAuthRoute && (
             <Header
               backendStatus={backendStatus}
