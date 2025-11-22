@@ -16,6 +16,10 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Isso copia backend/app/ para /app/app/, backend/alembic/ para /app/alembic/, etc.
 COPY backend/ /app/
 
+# Copia e torna executável o script de inicialização
+COPY backend/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Verifica se o módulo pode ser importado (falha o build se não conseguir)
 RUN python -c "import app.main; print('✓ Module app.main import successful')"
 
@@ -23,7 +27,6 @@ RUN python -c "import app.main; print('✓ Module app.main import successful')"
 ENV PORT=8000
 EXPOSE 8000
 
-# Comando de inicialização (módulo app dentro de /app)
-# Garante que estamos no diretório correto e usa a porta do ambiente se disponível
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Usa o script de inicialização
+CMD ["/app/start.sh"]
 
