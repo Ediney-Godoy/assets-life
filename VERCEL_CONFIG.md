@@ -45,8 +45,8 @@ Esta é a forma **recomendada** para produção, pois permite mudar a URL sem fa
 
 3. **Adicione:**
    - **Key:** `VITE_API_URL`
-   - **Value:** `https://brief-grete-assetlife-f50c6bd0.koyeb.app`
-   - **Environments:** Marque **Production** ✅
+   - **Value:** `https://different-marlie-assetslifev2-bc199b4b.koyeb.app`
+   - **Environments:** Marque **Production** ✅ (e Preview/Development se necessário)
 
 4. **Salve e Re-deploy:**
    - Clique em **Save**

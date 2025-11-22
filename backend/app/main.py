@@ -51,6 +51,9 @@ origins = [
     "http://127.0.0.1:5180", "http://127.0.0.1:5181",
     # Produção - Frontend Vercel
     "https://assets-life-bp3b.vercel.app",
+    # Backend Koyeb (para testes diretos)
+    "https://brief-grete-assetlife-f50c6bd0.koyeb.app",
+    "https://different-marlie-assetslifev2-bc199b4b.koyeb.app",
 ]
 
 # Origin adicional via variável de ambiente (ex.: "http://192.168.101.8:5175" ou URL de produção)

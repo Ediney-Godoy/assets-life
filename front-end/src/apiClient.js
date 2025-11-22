@@ -8,6 +8,20 @@ if (!rawBase && typeof window !== 'undefined') {
   if (!isProduction) rawBase = 'http://localhost:8000';
 }
 const PRIMARY_BASE = rawBase || null;
+
+// Limpa cache de URL antiga se VITE_API_URL estiver configurada
+if (PRIMARY_BASE && typeof window !== 'undefined') {
+  try {
+    const cachedBase = window.__ASSETS_API_BASE;
+    // Se há uma URL configurada via env e é diferente da cacheada, limpa o cache
+    if (cachedBase && cachedBase !== PRIMARY_BASE) {
+      console.log('[apiClient] Limpando cache de URL antiga:', cachedBase, '→ Nova:', PRIMARY_BASE);
+      delete window.__ASSETS_API_BASE;
+      ACTIVE_BASE = null;
+    }
+  } catch {}
+}
+
 const IS_PROD = (() => {
   try {
     if (import.meta?.env?.PROD) return true;
