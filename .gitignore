@@ -37,3 +37,6 @@ KOYEB_ENV_VARS.md
 coverage/
 
 .vercel
+node_modules
+*.md
+.gitignore
