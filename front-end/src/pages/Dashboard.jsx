@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Users2, UserCog, Layers, FolderKanban, Wallet, Network, Crosshair, CalendarDays } from 'lucide-react';
+import { Building2, Users2, UserCog, Layers, FolderKanban, Wallet, Network, Crosshair, CalendarDays, ChevronLeft, ChevronRight, Filter, Package, UserCheck, CheckCircle2, Percent, AlertTriangle } from 'lucide-react';
 import { getCompanies, getReviewPeriods, getReviewItems, getReviewDelegations } from '../apiClient';
 import Pie3D from '../components/charts/Pie3D';
 import BarChart from '../components/charts/BarChart';
@@ -18,8 +18,8 @@ export default function DashboardPage({ registrationsOnly }) {
   const [metrics, setMetrics] = React.useState({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
   const [chartData, setChartData] = React.useState([]);
   const [justifChartData, setJustifChartData] = React.useState([]);
-  // Rotação automática dos gráficos (variando tipos: barras, donut, área, pizza 3D)
   const [rotationIndex, setRotationIndex] = React.useState(0);
+  const [filterPanelOpen, setFilterPanelOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (registrationsOnly) return;
@@ -32,7 +32,6 @@ export default function DashboardPage({ registrationsOnly }) {
     }).catch(() => {});
   }, [registrationsOnly, companyId]);
 
-  // Carrega períodos e prepara dados do gráfico 3D e métricas conforme empresa selecionada
   React.useEffect(() => {
     if (registrationsOnly) return;
     if (!companyId) {
@@ -58,7 +57,6 @@ export default function DashboardPage({ registrationsOnly }) {
           const delegatedIds = new Set(delegsArr.map((d) => d.ativo_id));
           const assignedItems = delegatedIds.size;
           const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          // Alinhar definição de "Revisados" com a view: status 'Revisado' OU alterado OU justificativa/condição física
           const reviewedItems = itemsArr.filter((i) => {
             const s = normalize(i.status);
             const statusReviewed = (s === 'revisado' || s === 'revisada');
@@ -69,8 +67,6 @@ export default function DashboardPage({ registrationsOnly }) {
           }).length;
           const reviewedPct = totalItems ? Number(((reviewedItems / totalItems) * 100).toFixed(1)) : 0;
           const adjustedItems = itemsArr.filter((i) => Boolean(i.alterado)).length;
-          // Ativos totalmente depreciados: contar somente ativos principais (sub_numero === '0') cujo
-          // valor contábil esteja zerado no principal e em todas as incorporações (se houverem)
           const groups = itemsArr.reduce((acc, it) => {
             const key = String(it.numero_imobilizado || '');
             if (!acc[key]) acc[key] = [];
@@ -95,7 +91,6 @@ export default function DashboardPage({ registrationsOnly }) {
           series.push({ name: t('dashboard_unassigned'), y: unassigned });
           setChartData(series);
 
-          // Agrupar justificativas das revisões (top N e "Outras justificativas")
           const justifs = itemsArr
             .map((it) => String(it.justificativa || '').trim())
             .filter((j) => j.length > 0);
@@ -136,7 +131,6 @@ export default function DashboardPage({ registrationsOnly }) {
     init();
   }, [registrationsOnly, companyId]);
 
-  // Intervalo de 10 segundos para alternar os gráficos automaticamente
   React.useEffect(() => {
     const id = setInterval(() => {
       setRotationIndex((i) => (i + 1) % 3);
@@ -156,14 +150,10 @@ export default function DashboardPage({ registrationsOnly }) {
     { title: t('asset_species_title'), subtitle: t('asset_species_subtitle'), icon: CalendarDays, action: () => navigate('/asset-species') },
   ];
 
-  // Exibir cards SOMENTE em Cadastros; no Dashboard, manter foco em métricas/gráfico
   const visibleCards = registrationsOnly ? cards : [];
 
-  // Paleta suave para os cards (métricas e atalhos)
-  const metricColors = ['sky', 'violet', 'emerald', 'amber', 'rose'];
   const shortcutColors = ['blue', 'violet', 'emerald', 'amber', 'rose', 'indigo', 'cyan', 'teal', 'fuchsia'];
 
-  // Dados de evolução: revisados vs não revisados (3D Pie)
   const evolutionData = React.useMemo(() => {
     const reviewed = Number(metrics.reviewedItems || 0);
     const total = Number(metrics.totalItems || 0);
@@ -174,7 +164,6 @@ export default function DashboardPage({ registrationsOnly }) {
     ];
   }, [metrics, t]);
 
-  // Dados de ajustados: ajustados vs não ajustados (3D Pie)
   const adjustedData = React.useMemo(() => {
     const adjusted = Number(metrics.adjustedItems || 0);
     const total = Number(metrics.totalItems || 0);
@@ -185,17 +174,16 @@ export default function DashboardPage({ registrationsOnly }) {
     ];
   }, [metrics, t]);
 
-  // Função util para selecionar qual gráfico mostrar por posição (esquerda/direita)
   const renderRotatingChart = (slotOffset = 0) => {
     const sequence = ['assignments', 'evolution', 'adjusted', 'justifications'];
     const idx = (rotationIndex + slotOffset) % sequence.length;
     const type = sequence[idx];
-    
+
     if (type === 'assignments') {
       return chartData.length > 0 ? (
         <BarChart data={chartData} title={t('dashboard_chart_title')} horizontal={true} />
       ) : (
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-full flex items-center justify-center">
           <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
         </div>
       );
@@ -209,7 +197,7 @@ export default function DashboardPage({ registrationsOnly }) {
           showPercent={true}
         />
       ) : (
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-full flex items-center justify-center">
           <div className="text-slate-600 dark:text-slate-300">{t('dashboard_no_data')}</div>
         </div>
       );
@@ -219,71 +207,132 @@ export default function DashboardPage({ registrationsOnly }) {
         <Pie3D data={adjustedData} title={t('dashboard_chart_adjusted_title') || 'Itens Ajustados'} />
       );
     }
-    // evolution
     return (
       <AreaChart data={evolutionData} title={t('dashboard_chart_evolution_title') || 'Evolução da Revisão'} />
     );
   };
 
+  const selectedCompanyName = companies.find(c => String(c.id) === companyId)?.name || '';
+
   return (
-    <section>
-      <h2 className="text-2xl font-semibold mb-6 text-slate-900 dark:text-slate-100">
-        {registrationsOnly ? t('nav_registrations') : t('nav_dashboard')}
-      </h2>
-
+    <section className="relative -mt-2">
       {!registrationsOnly && (
-        <>
-          {/* Mantém layout original; abaixo ficam os gráficos lado a lado com rotação automática */}
+        <div className="flex gap-4">
+          {/* Main content area */}
+          <div className={`flex-1 transition-all duration-300 ${filterPanelOpen ? 'mr-0' : 'mr-0'}`}>
+            {/* Compact metrics row */}
+            <div className="grid grid-cols-5 gap-3 mb-4">
+              <MetricCardCompact
+                icon={Package}
+                label={t('dashboard_metric_total_items')}
+                value={metrics.totalItems}
+                color="sky"
+              />
+              <MetricCardCompact
+                icon={UserCheck}
+                label={t('dashboard_metric_assigned_items')}
+                value={metrics.assignedItems}
+                color="violet"
+              />
+              <MetricCardCompact
+                icon={CheckCircle2}
+                label={t('dashboard_metric_reviewed_items')}
+                value={metrics.reviewedItems}
+                color="emerald"
+              />
+              <MetricCardCompact
+                icon={Percent}
+                label={t('dashboard_metric_reviewed_pct')}
+                value={`${metrics.reviewedPct}%`}
+                color="amber"
+              />
+              <MetricCardCompact
+                icon={AlertTriangle}
+                label={t('dashboard_metric_fully_depreciated')}
+                value={metrics.fullyDepreciated}
+                color="rose"
+              />
+            </div>
 
-          <div className="mb-4 max-w-md flex items-center gap-2">
-            <span className="text-sm text-slate-700 dark:text-slate-300">Empresa</span>
-            <select
-              className="flex-1 h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
-              value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            {/* Charts - full height */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ minHeight: 'calc(100vh - 240px)' }}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`left-${rotationIndex}`}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.35 }}
+                  className="h-full"
+                >
+                  {renderRotatingChart(0)}
+                </motion.div>
+              </AnimatePresence>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`right-${rotationIndex}`}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.35 }}
+                  className="h-full"
+                >
+                  {renderRotatingChart(1)}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <MetricCard color={metricColors[0]} label={t('dashboard_metric_total_items')} value={metrics.totalItems} />
-            <MetricCard color={metricColors[1]} label={t('dashboard_metric_assigned_items')} value={metrics.assignedItems} />
-            <MetricCard color={metricColors[2]} label={t('dashboard_metric_reviewed_items')} value={metrics.reviewedItems} />
-            <MetricCard color={metricColors[3]} label={t('dashboard_metric_reviewed_pct')} value={`${metrics.reviewedPct}%`} />
-            <MetricCard color={metricColors[4]} label={t('dashboard_metric_fully_depreciated')} value={metrics.fullyDepreciated} />
+          {/* Collapsible filter panel on the right */}
+          <div className={`transition-all duration-300 ease-in-out ${filterPanelOpen ? 'w-72' : 'w-10'}`}>
+            <div className="sticky top-4">
+              {filterPanelOpen ? (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg"
+                >
+                  <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Filter size={18} className="text-slate-500" />
+                      <span className="font-medium text-slate-900 dark:text-slate-100">Filtros</span>
+                    </div>
+                    <button
+                      onClick={() => setFilterPanelOpen(false)}
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                    >
+                      <ChevronRight size={18} className="text-slate-500" />
+                    </button>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Empresa
+                      </label>
+                      <select
+                        className="w-full h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm"
+                        value={companyId}
+                        onChange={(e) => setCompanyId(e.target.value)}
+                      >
+                        {companies.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <button
+                  onClick={() => setFilterPanelOpen(true)}
+                  className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-md hover:shadow-lg transition-shadow"
+                  title="Abrir filtros"
+                >
+                  <ChevronLeft size={18} className="text-slate-500" />
+                </button>
+              )}
+            </div>
           </div>
-
-          {/* Dois gráficos lado a lado com substituição a cada 15s - tipos variados */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`left-${rotationIndex}`}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                transition={{ duration: 0.35 }}
-              >
-                {renderRotatingChart(0)}
-              </motion.div>
-            </AnimatePresence>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`right-${rotationIndex}`}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.35 }}
-              >
-                {renderRotatingChart(1)}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* Mantém demais seções originais do Dashboard */}
-        </>
+        </div>
       )}
 
       {visibleCards.length > 0 && (
@@ -346,20 +395,24 @@ export default function DashboardPage({ registrationsOnly }) {
   );
 }
 
-function MetricCard({ label, value, color = 'slate' }) {
+function MetricCardCompact({ icon: Icon, label, value, color = 'slate' }) {
   const colorMap = {
-    slate: 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800',
-    sky: 'bg-sky-50 dark:bg-sky-900/20 border-sky-100 dark:border-sky-900/30',
-    violet: 'bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-900/30',
-    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30',
-    amber: 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30',
-    rose: 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-900/30',
+    slate: 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400',
+    sky: 'bg-sky-50 dark:bg-sky-900/20 border-sky-100 dark:border-sky-900/30 text-sky-600 dark:text-sky-400',
+    violet: 'bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-900/30 text-violet-600 dark:text-violet-400',
+    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+    amber: 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 text-amber-600 dark:text-amber-400',
+    rose: 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400',
   };
   const cls = colorMap[color] || colorMap.slate;
+
   return (
-    <div className={`rounded-xl border p-4 ${cls}`}>
-      <div className="text-sm text-slate-700 dark:text-slate-300">{label}</div>
-      <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</div>
+    <div className={`rounded-xl border p-3 ${cls}`}>
+      <div className="flex items-center gap-2 mb-1">
+        <Icon size={16} className="opacity-70" />
+        <span className="text-xs font-medium truncate">{label}</span>
+      </div>
+      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{value}</div>
     </div>
   );
 }
