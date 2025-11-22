@@ -67,8 +67,9 @@ app.add_middleware(
     allow_origins=origins,
     # Permite origens de redes privadas comuns além de localhost/127.0.0.1
     # e amplia para subdomínios em vercel.app, koyeb.app, fly.dev, etc em produção
-    # Regex melhorada para capturar todos os subdomínios vercel.app
-    allow_origin_regex=r"^https?://((localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?|([a-zA-Z0-9-]+\.)*?(vercel\.app|koyeb\.app|fly\.dev|run\.app|cloudfunctions\.net)(:443)?/?$",
+    # Regex simplificada e corrigida para evitar erros de sintaxe
+    # Suporta múltiplos níveis de subdomínios (ex: sub1.sub2.vercel.app)
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$|^https?://([a-zA-Z0-9-]+\.)+?(vercel\.app|koyeb\.app|fly\.dev|run\.app|cloudfunctions\.net)(:443)?/?$",
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     allow_credentials=True,
