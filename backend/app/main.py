@@ -49,22 +49,30 @@ origins = [
     # 127.0.0.1 equivalentes
     "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175", "http://127.0.0.1:5176",
     "http://127.0.0.1:5180", "http://127.0.0.1:5181",
+    # Produção - Frontend Vercel
+    "https://assets-life-bp3b.vercel.app",
 ]
 
-# Origin adicional via variável de ambiente (ex.: "http://192.168.101.8:5175")
+# Origin adicional via variável de ambiente (ex.: "http://192.168.101.8:5175" ou URL de produção)
 _frontend_origin = os.getenv("FRONTEND_ORIGIN")
 if _frontend_origin:
-    origins.append(_frontend_origin)
+    # Permite múltiplas origens separadas por vírgula
+    for origin in _frontend_origin.split(","):
+        origin = origin.strip()
+        if origin and origin not in origins:
+            origins.append(origin)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     # Permite origens de redes privadas comuns além de localhost/127.0.0.1
     # e amplia para subdomínios em vercel.app, koyeb.app, fly.dev, etc em produção
-    allow_origin_regex=r"^https?://((localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?|([a-z0-9-]+\.)?(vercel\.app|koyeb\.app|fly\.dev|run\.app|cloudfunctions\.net))(:443)?$",
-    allow_methods=["*"],
+    # Regex melhorada para capturar todos os subdomínios vercel.app
+    allow_origin_regex=r"^https?://((localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?|([a-zA-Z0-9-]+\.)*?(vercel\.app|koyeb\.app|fly\.dev|run\.app|cloudfunctions\.net)(:443)?/?$",
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     allow_credentials=True,
+    expose_headers=["*"],
 )
 
 # Complemento CORS para "Private Network Access" (PNA) em navegadores modernos.
