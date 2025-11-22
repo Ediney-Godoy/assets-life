@@ -68,10 +68,13 @@ export default function Sidebar({ collapsed = false }) {
 
   return (
 <<<<<<< HEAD
+<<<<<<< HEAD
     <aside className={`${asideWidth} shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-2 md:p-3 transition-all duration-300`}>
       <div className="flex items-center justify-center px-1 md:px-2 pb-2 md:pb-3">
         <img src="/brand.svg" alt="Logo" className={logoSize} />
 =======
+=======
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
     <aside className={`sidebar ${asideWidth} shrink-0 flex flex-col h-full transition-all duration-300`}>
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-4">
@@ -80,7 +83,10 @@ export default function Sidebar({ collapsed = false }) {
           alt="Assets Life"
           className={`transition-all duration-300 ${collapsed ? 'h-8' : 'h-8 md:h-10'}`}
         />
+<<<<<<< HEAD
 >>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
+=======
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
       </div>
 
       {/* Divider */}
@@ -96,6 +102,7 @@ export default function Sidebar({ collapsed = false }) {
             <NavLink
               key={section.to}
               to={section.to}
+<<<<<<< HEAD
 <<<<<<< HEAD
               className={({ isActive }) => {
                 const baseClasses = `group flex items-center ${linkJustify} ${linkGap} px-1.5 md:px-3 py-1.5 md:py-2 rounded-lg text-sm transition-all duration-200 relative`;
@@ -118,6 +125,14 @@ export default function Sidebar({ collapsed = false }) {
               {!collapsed && (
                 <span className="hidden md:block truncate">{section.label}</span>
 >>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
+=======
+              className={`sidebar-item ${isActive ? 'sidebar-item-active' : ''} ${collapsed ? 'justify-center px-2' : 'justify-center md:justify-start'}`}
+              title={collapsed ? section.label : undefined}
+            >
+              <Icon size={20} className="shrink-0" />
+              {!collapsed && (
+                <span className="hidden md:block truncate">{section.label}</span>
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
               )}
             </NavLink>
           );

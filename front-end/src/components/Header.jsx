@@ -2,10 +2,14 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Building2, LogOut, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Loader2, User, ChevronDown } from 'lucide-react';
 =======
 import { Building2, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe } from 'lucide-react';
 >>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
+=======
+import { Building2, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe } from 'lucide-react';
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
 
 export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
   const { t } = useTranslation();
@@ -21,6 +25,7 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
   }, []);
+<<<<<<< HEAD
 <<<<<<< HEAD
 
   React.useEffect(() => {
@@ -49,15 +54,26 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
       {/* Left side */}
       <div className="flex items-center gap-2">
 >>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
+=======
+
+  return (
+    <header className="header flex items-center justify-between px-4 md:px-6 h-14">
+      {/* Left side */}
+      <div className="flex items-center gap-2">
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
 <<<<<<< HEAD
+<<<<<<< HEAD
             className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
 =======
             className="btn btn-ghost p-2"
 >>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
+=======
+            className="btn btn-ghost p-2"
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
             title={t('toggle_sidebar') || 'Alternar menu'}
             aria-label={t('toggle_sidebar') || 'Alternar menu'}
           >
@@ -68,6 +84,7 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             )}
           </button>
         )}
+<<<<<<< HEAD
 <<<<<<< HEAD
         <span className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('app_title')}</span>
       </div>
@@ -110,6 +127,31 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
         </div>
 
         {user && (
+=======
+        <h1 className="text-lg font-semibold hidden sm:block" style={{ color: 'var(--text-primary)' }}>
+          {t('app_title')}
+        </h1>
+      </div>
+
+      {/* Right side */}
+      <div className="flex items-center gap-1">
+        {/* Language selector */}
+        <div className="relative">
+          <select
+            className="select h-8 pl-8 pr-8 text-xs bg-transparent border-none hover:bg-[var(--bg-hover)]"
+            value={language}
+            onChange={(e) => onLanguageChange(e.target.value)}
+            style={{ backgroundPosition: 'right 0.25rem center' }}
+          >
+            <option value="en">EN</option>
+            <option value="pt">PT</option>
+            <option value="es">ES</option>
+          </select>
+          <Globe size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+        </div>
+
+        {user && (
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
           <>
             {/* User name */}
             <div
@@ -121,7 +163,10 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             </div>
 
             {/* Theme toggle */}
+<<<<<<< HEAD
 >>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
+=======
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
             <ThemeToggle />
 
             {/* Change company */}
@@ -130,16 +175,21 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
                 type="button"
                 onClick={onChangeCompany}
 <<<<<<< HEAD
+<<<<<<< HEAD
                 className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
 =======
                 className="btn btn-ghost p-2"
 >>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
+=======
+                className="btn btn-ghost p-2"
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
                 title={t('change_company') || 'Trocar de Empresa'}
                 aria-label={t('change_company') || 'Trocar de Empresa'}
               >
                 <Building2 size={18} />
               </button>
             )}
+<<<<<<< HEAD
 <<<<<<< HEAD
             <div className="relative user-menu">
               <button
@@ -210,6 +260,18 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
                 : (t('backend_error') || 'Offline')
               }
             >
+=======
+
+            {/* Backend status */}
+            <div
+              className="p-2 rounded-md"
+              title={
+                backendStatus === 'ok' ? (t('backend_ok') || 'Online')
+                : backendStatus === 'checking' ? (t('backend_checking') || 'Verificando...')
+                : (t('backend_error') || 'Offline')
+              }
+            >
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
               {backendStatus === 'ok' && (
                 <CheckCircle2 size={18} style={{ color: 'var(--accent-primary)' }} />
               )}
@@ -232,7 +294,10 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
               <LogOut size={18} />
             </button>
           </>
+<<<<<<< HEAD
 >>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
+=======
+>>>>>>> b02c8fc087998eaa9cfd6ca462e94005ae303b7e
         )}
       </div>
     </header>
