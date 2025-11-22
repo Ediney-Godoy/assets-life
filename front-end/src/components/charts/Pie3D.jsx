@@ -18,6 +18,24 @@ try {
  *  - title: string (optional)
  */
 export default function Pie3D({ data = [], title = 'Distribuição de Ativos' }) {
+  const [isDark, setIsDark] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkDark = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const textColor = isDark ? '#e2e8f0' : '#0f172a';
+  const labelColor = isDark ? '#94a3b8' : '#334155';
+  const tooltipBg = isDark ? '#1e293b' : '#ffffff';
+  const tooltipText = isDark ? '#f1f5f9' : '#334155';
+  const lineColor = isDark ? '#475569' : '#e2e8f0';
+
   const options = {
     chart: {
       type: 'pie',
@@ -28,11 +46,14 @@ export default function Pie3D({ data = [], title = 'Distribuição de Ativos' })
     },
     title: {
       text: title || null,
-      style: { color: '#0f172a', fontSize: '16px', fontWeight: '600' },
+      style: { color: textColor, fontSize: '16px', fontWeight: '600' },
     },
     credits: { enabled: false },
     tooltip: {
       pointFormat: '<b>{point.y}</b> ({point.percentage:.1f}%)',
+      backgroundColor: tooltipBg,
+      borderColor: lineColor,
+      style: { color: tooltipText },
     },
     accessibility: { enabled: false },
     plotOptions: {
@@ -43,7 +64,7 @@ export default function Pie3D({ data = [], title = 'Distribuição de Ativos' })
         dataLabels: {
           enabled: true,
           format: '<b>{point.name}</b>: {point.y}',
-          style: { color: '#334155', textOutline: 'none' },
+          style: { color: labelColor, textOutline: 'none' },
         },
       },
     },
@@ -57,7 +78,7 @@ export default function Pie3D({ data = [], title = 'Distribuição de Ativos' })
   };
 
   return (
-    <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+    <div className="card p-4 h-full">
       <HighchartsReact highcharts={Highcharts} options={options} />
     </div>
   );

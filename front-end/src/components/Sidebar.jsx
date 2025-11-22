@@ -21,7 +21,6 @@ export default function Sidebar({ collapsed = false }) {
     }
   } catch {}
 
-  // Apenas itens essenciais no menu (top-level)
   const menu = [
     { to: '/dashboard', label: t('nav_dashboard'), icon: LayoutDashboard },
     { to: '/cadastros', label: t('nav_registrations'), icon: SquareStack },
@@ -33,7 +32,6 @@ export default function Sidebar({ collapsed = false }) {
     { to: '/help', label: t('nav_help'), icon: HelpCircle },
   ];
 
-  // Definir conjunto de rotas permitidas
   const allowed = (() => {
     const hasRoutes = Array.isArray(visible) && visible.length > 0 && visible.every((v) => v.startsWith('/'));
     const base = hasRoutes ? visible : ['/dashboard'];
@@ -56,34 +54,49 @@ export default function Sidebar({ collapsed = false }) {
     '/permissions': ['/permissions','/permissions/groups'],
     '/cadastros': ['/companies','/ugs','/cost-centers','/users','/asset-species','/cadastros'],
   };
+
   const hasChildrenAllowed = (parent) => {
     const list = childMap[parent] || [];
     for (const r of list) if (allowed.has(r)) return true;
     for (const r of allowed) if (r.startsWith(parent + '/')) return true;
     return false;
   };
+
   const sections = menu.filter((section) => isRouteVisible(section.to) || hasChildrenAllowed(section.to));
 
-  const asideWidth = collapsed ? 'w-12' : 'w-14 sm:w-16 md:w-36 lg:w-44 xl:w-56';
-  const logoSize = collapsed ? 'h-10' : 'h-14 sm:h-16 md:h-20 lg:h-24';
-  const linkJustify = collapsed ? 'justify-center' : 'justify-center md:justify-start';
-  const linkGap = collapsed ? 'gap-0' : 'gap-0 md:gap-3';
-  const labelClass = collapsed ? 'hidden' : 'hidden lg:inline';
+  const asideWidth = collapsed ? 'w-16' : 'w-16 md:w-56 lg:w-64';
 
   return (
+<<<<<<< HEAD
     <aside className={`${asideWidth} shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-2 md:p-3 transition-all duration-300`}>
       <div className="flex items-center justify-center px-1 md:px-2 pb-2 md:pb-3">
         <img src="/brand.svg" alt="Logo" className={logoSize} />
+=======
+    <aside className={`sidebar ${asideWidth} shrink-0 flex flex-col h-full transition-all duration-300`}>
+      {/* Logo */}
+      <div className="flex items-center justify-center h-16 px-4">
+        <img
+          src="/brand.svg"
+          alt="Assets Life"
+          className={`transition-all duration-300 ${collapsed ? 'h-8' : 'h-8 md:h-10'}`}
+        />
+>>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
       </div>
-      <div className="h-px bg-slate-300 dark:bg-slate-800 opacity-70 mb-2" />
-      <nav className="flex flex-col gap-1">
+
+      {/* Divider */}
+      <div className="divider mx-3" />
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto no-scrollbar">
         {sections.map((section) => {
           const Icon = section.icon;
-          const isSectionActive = location.pathname.startsWith(section.to);
+          const isActive = location.pathname === section.to || location.pathname.startsWith(section.to + '/');
+
           return (
             <NavLink
               key={section.to}
               to={section.to}
+<<<<<<< HEAD
               className={({ isActive }) => {
                 const baseClasses = `group flex items-center ${linkJustify} ${linkGap} px-1.5 md:px-3 py-1.5 md:py-2 rounded-lg text-sm transition-all duration-200 relative`;
                 const activeClasses = isActive || isSectionActive 
@@ -97,11 +110,27 @@ export default function Sidebar({ collapsed = false }) {
               <span className={labelClass}>{section.label}</span>
               {(isSectionActive || location.pathname.startsWith(section.to)) && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
+=======
+              className={`sidebar-item ${isActive ? 'sidebar-item-active' : ''} ${collapsed ? 'justify-center px-2' : 'justify-center md:justify-start'}`}
+              title={collapsed ? section.label : undefined}
+            >
+              <Icon size={20} className="shrink-0" />
+              {!collapsed && (
+                <span className="hidden md:block truncate">{section.label}</span>
+>>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
               )}
             </NavLink>
           );
         })}
       </nav>
+
+      {/* Footer */}
+      <div className="px-3 py-4">
+        <div className="divider mb-3" />
+        <div className={`text-xs text-center ${collapsed ? 'hidden' : 'hidden md:block'}`} style={{ color: 'var(--text-muted)' }}>
+          Assets Life v2.0
+        </div>
+      </div>
     </aside>
   );
 }

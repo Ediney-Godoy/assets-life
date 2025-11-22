@@ -1,7 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
+<<<<<<< HEAD
 import { Building2, LogOut, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Loader2, User, ChevronDown } from 'lucide-react';
+=======
+import { Building2, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe } from 'lucide-react';
+>>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
 
 export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
   const { t } = useTranslation();
@@ -17,6 +21,7 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
   }, []);
+<<<<<<< HEAD
 
   React.useEffect(() => {
     const handleClickOutside = (e) => {
@@ -37,21 +42,33 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
   return (
     <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm">
       <div className="flex items-center gap-3">
+=======
+
+  return (
+    <header className="header flex items-center justify-between px-4 md:px-6 h-14">
+      {/* Left side */}
+      <div className="flex items-center gap-2">
+>>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
+<<<<<<< HEAD
             className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+=======
+            className="btn btn-ghost p-2"
+>>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
             title={t('toggle_sidebar') || 'Alternar menu'}
             aria-label={t('toggle_sidebar') || 'Alternar menu'}
           >
             {collapsed ? (
-              <ChevronRight size={18} className="text-slate-700 dark:text-slate-200" />
+              <PanelLeft size={18} />
             ) : (
-              <ChevronLeft size={18} className="text-slate-700 dark:text-slate-200" />
+              <PanelLeftClose size={18} />
             )}
           </button>
         )}
+<<<<<<< HEAD
         <span className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('app_title')}</span>
       </div>
       <div className="flex items-center gap-2 md:gap-3">
@@ -69,18 +86,61 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
         </div>
         {user && (
           <div className="flex items-center gap-2">
+=======
+        <h1 className="text-lg font-semibold hidden sm:block" style={{ color: 'var(--text-primary)' }}>
+          {t('app_title')}
+        </h1>
+      </div>
+
+      {/* Right side */}
+      <div className="flex items-center gap-1">
+        {/* Language selector */}
+        <div className="relative">
+          <select
+            className="select h-8 pl-8 pr-8 text-xs bg-transparent border-none hover:bg-[var(--bg-hover)]"
+            value={language}
+            onChange={(e) => onLanguageChange(e.target.value)}
+            style={{ backgroundPosition: 'right 0.25rem center' }}
+          >
+            <option value="en">EN</option>
+            <option value="pt">PT</option>
+            <option value="es">ES</option>
+          </select>
+          <Globe size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+        </div>
+
+        {user && (
+          <>
+            {/* User name */}
+            <div
+              className="hidden md:flex items-center px-3 py-1.5 rounded-md text-sm max-w-[180px]"
+              title={`${user.nome} • ${user.email || ''}`}
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <span className="truncate">{user.nome}</span>
+            </div>
+
+            {/* Theme toggle */}
+>>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
             <ThemeToggle />
+
+            {/* Change company */}
             {onChangeCompany && (
               <button
                 type="button"
                 onClick={onChangeCompany}
+<<<<<<< HEAD
                 className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+=======
+                className="btn btn-ghost p-2"
+>>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
                 title={t('change_company') || 'Trocar de Empresa'}
                 aria-label={t('change_company') || 'Trocar de Empresa'}
               >
-                <Building2 size={18} className="text-slate-700 dark:text-slate-200" />
+                <Building2 size={18} />
               </button>
             )}
+<<<<<<< HEAD
             <div className="relative user-menu">
               <button
                 type="button"
@@ -139,6 +199,40 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
               {backendStatus === 'error' && <AlertCircle size={18} className="text-red-600 dark:text-red-400" />}
             </div>
           </div>
+=======
+
+            {/* Backend status */}
+            <div
+              className="p-2 rounded-md"
+              title={
+                backendStatus === 'ok' ? (t('backend_ok') || 'Online')
+                : backendStatus === 'checking' ? (t('backend_checking') || 'Verificando...')
+                : (t('backend_error') || 'Offline')
+              }
+            >
+              {backendStatus === 'ok' && (
+                <CheckCircle2 size={18} style={{ color: 'var(--accent-primary)' }} />
+              )}
+              {backendStatus === 'checking' && (
+                <Loader2 size={18} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+              )}
+              {backendStatus === 'error' && (
+                <AlertCircle size={18} className="text-red-500" />
+              )}
+            </div>
+
+            {/* Logout */}
+            <button
+              type="button"
+              onClick={onLogout}
+              className="btn btn-ghost p-2"
+              title={t('logout') || 'Sair'}
+              aria-label={t('logout') || 'Sair'}
+            >
+              <LogOut size={18} />
+            </button>
+          </>
+>>>>>>> 4ea84427c8ef10b72d0d9b8d0d6ee7eeb6b9b252
         )}
       </div>
     </header>
