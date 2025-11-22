@@ -9,19 +9,6 @@ if (!rawBase && typeof window !== 'undefined') {
 }
 const PRIMARY_BASE = rawBase || null;
 
-// Limpa cache de URL antiga se VITE_API_URL estiver configurada
-if (PRIMARY_BASE && typeof window !== 'undefined') {
-  try {
-    const cachedBase = window.__ASSETS_API_BASE;
-    // Se há uma URL configurada via env e é diferente da cacheada, limpa o cache
-    if (cachedBase && cachedBase !== PRIMARY_BASE) {
-      console.log('[apiClient] Limpando cache de URL antiga:', cachedBase, '→ Nova:', PRIMARY_BASE);
-      delete window.__ASSETS_API_BASE;
-      ACTIVE_BASE = null;
-    }
-  } catch {}
-}
-
 const IS_PROD = (() => {
   try {
     if (import.meta?.env?.PROD) return true;
@@ -48,6 +35,34 @@ try {
   }
 } catch {}
 const IS_HTTPS = (() => { try { return typeof window !== 'undefined' && window.location?.protocol === 'https:'; } catch { return false; }})();
+
+// Limpa cache de URL antiga antes de usar
+if (typeof window !== 'undefined') {
+  try {
+    const cachedBase = window.__ASSETS_API_BASE;
+    // Lista de URLs antigas que devem ser limpas
+    const OLD_URLS = [
+      'https://brief-grete-assetlife-f50c6bd0.koyeb.app',
+      // Adicione outras URLs antigas aqui se necessário
+    ];
+    
+    // Se há uma URL configurada via env e é diferente da cacheada, limpa o cache
+    if (PRIMARY_BASE && cachedBase && cachedBase !== PRIMARY_BASE) {
+      console.log('[apiClient] Limpando cache de URL antiga:', cachedBase, '→ Nova:', PRIMARY_BASE);
+      delete window.__ASSETS_API_BASE;
+    }
+    // Se a URL cacheada é uma URL antiga conhecida, limpa mesmo sem PRIMARY_BASE
+    else if (cachedBase && OLD_URLS.includes(cachedBase)) {
+      console.log('[apiClient] Limpando cache de URL antiga conhecida:', cachedBase);
+      delete window.__ASSETS_API_BASE;
+    }
+    // Restaura ACTIVE_BASE do cache apenas se não foi limpo
+    if (window.__ASSETS_API_BASE) {
+      ACTIVE_BASE = window.__ASSETS_API_BASE;
+    }
+  } catch {}
+}
+
 // Não usar URLs hardcoded em produção - sempre usar VITE_API_URL configurada no Vercel
 const BASE_CANDIDATES = [PRIMARY_BASE, HOST_BASE, 'http://127.0.0.1:8000'].filter(Boolean);
 const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//i.test(String(b)));
