@@ -21,14 +21,17 @@ RUN echo "=== Verificando estrutura ===" && \
     ls -la /app/ | head -10 && \
     echo "=== Conteúdo de /app/app ===" && \
     ls -la /app/app/ | head -10 && \
-    echo "=== Testando importação ===" && \
+    echo "=== Testando importação app.main ===" && \
     python -c "import app.main; print('✓ Module app.main import successful')" && \
+    echo "=== Testando importação main (wrapper) ===" && \
+    python -c "import main; print('✓ Module main (wrapper) import successful')" && \
     echo "=== Verificação completa ==="
 
 # Porta padrão (pode ser sobrescrita pelo ambiente)
 ENV PORT=8000
 EXPOSE 8000
 
-# Comando de inicialização direto - garante que app.main seja usado
-CMD ["sh", "-c", "cd /app && python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Comando de inicialização - usa main.py wrapper que importa app.main
+# Isso resolve o problema do uvicorn tentar importar "main" diretamente
+CMD ["sh", "-c", "cd /app && python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 
