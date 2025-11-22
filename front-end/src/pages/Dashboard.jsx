@@ -215,7 +215,7 @@ export default function DashboardPage({ registrationsOnly }) {
   const selectedCompanyName = companies.find(c => String(c.id) === companyId)?.name || '';
 
   return (
-    <section className="relative -mt-2">
+    <section className=""relative mt-2">
       {!registrationsOnly && (
         <div className="flex gap-4">
           {/* Main content area */}
