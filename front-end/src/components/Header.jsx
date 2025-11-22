@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
-import { Building2, LogOut, ChevronLeft, ChevronRight, Server, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Building2, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe } from 'lucide-react';
 
 export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
   const { t } = useTranslation();
@@ -16,80 +16,106 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
   }, []);
-  const colorMap = {
-    ok: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700',
-    checking: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700',
-    error: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700',
-  };
 
   return (
-    <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-      <div className="flex items-center gap-3">
+    <header className="header flex items-center justify-between px-4 md:px-6 h-14">
+      {/* Left side */}
+      <div className="flex items-center gap-2">
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="btn btn-ghost p-2"
             title={t('toggle_sidebar') || 'Alternar menu'}
             aria-label={t('toggle_sidebar') || 'Alternar menu'}
           >
             {collapsed ? (
-              <ChevronRight size={18} className="text-slate-700 dark:text-slate-200" />
+              <PanelLeft size={18} />
             ) : (
-              <ChevronLeft size={18} className="text-slate-700 dark:text-slate-200" />
+              <PanelLeftClose size={18} />
             )}
           </button>
         )}
-        <span className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('app_title')}</span>
-        
+        <h1 className="text-lg font-semibold hidden sm:block" style={{ color: 'var(--text-primary)' }}>
+          {t('app_title')}
+        </h1>
       </div>
-      <div className="flex items-center gap-3">
-        <label className="text-sm text-slate-600 dark:text-slate-300">{t('language')}</label>
-        <select
-          className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
-          value={language}
-          onChange={(e) => onLanguageChange(e.target.value)}
-        >
-          <option value="en">{t('lang_en')}</option>
-          <option value="pt">{t('lang_pt')}</option>
-          <option value="es">{t('lang_es')}</option>
-        </select>
+
+      {/* Right side */}
+      <div className="flex items-center gap-1">
+        {/* Language selector */}
+        <div className="relative">
+          <select
+            className="select h-8 pl-8 pr-8 text-xs bg-transparent border-none hover:bg-[var(--bg-hover)]"
+            value={language}
+            onChange={(e) => onLanguageChange(e.target.value)}
+            style={{ backgroundPosition: 'right 0.25rem center' }}
+          >
+            <option value="en">EN</option>
+            <option value="pt">PT</option>
+            <option value="es">ES</option>
+          </select>
+          <Globe size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+        </div>
+
         {user && (
-          <div className="flex items-center gap-2 ml-3">
-            <div className="hidden sm:block text-sm text-slate-700 dark:text-slate-300 max-w-[220px] truncate" title={`${user.nome} • ${user.email || ''}`}>
-              {user.nome}
+          <>
+            {/* User name */}
+            <div
+              className="hidden md:flex items-center px-3 py-1.5 rounded-md text-sm max-w-[180px]"
+              title={`${user.nome} • ${user.email || ''}`}
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <span className="truncate">{user.nome}</span>
             </div>
+
+            {/* Theme toggle */}
             <ThemeToggle />
+
+            {/* Change company */}
             {onChangeCompany && (
               <button
                 type="button"
                 onClick={onChangeCompany}
-                className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="btn btn-ghost p-2"
                 title={t('change_company') || 'Trocar de Empresa'}
                 aria-label={t('change_company') || 'Trocar de Empresa'}
               >
-                <Building2 size={18} className="text-slate-700 dark:text-slate-200" />
+                <Building2 size={18} />
               </button>
             )}
-            <span
-              className="p-2 rounded"
-              title={backendStatus === 'ok' ? (t('backend_ok') || 'Online') : backendStatus === 'checking' ? (t('backend_checking') || 'Verificando...') : (t('backend_error') || 'Offline')}
-              aria-label={t('backend_status') || 'Backend'}
+
+            {/* Backend status */}
+            <div
+              className="p-2 rounded-md"
+              title={
+                backendStatus === 'ok' ? (t('backend_ok') || 'Online')
+                : backendStatus === 'checking' ? (t('backend_checking') || 'Verificando...')
+                : (t('backend_error') || 'Offline')
+              }
             >
-              {backendStatus === 'ok' && <CheckCircle2 size={18} className="text-green-600" />}
-              {backendStatus === 'checking' && <Loader2 size={18} className="text-yellow-600 animate-spin" />}
-              {backendStatus === 'error' && <AlertCircle size={18} className="text-red-600" />}
-            </span>
+              {backendStatus === 'ok' && (
+                <CheckCircle2 size={18} style={{ color: 'var(--accent-primary)' }} />
+              )}
+              {backendStatus === 'checking' && (
+                <Loader2 size={18} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+              )}
+              {backendStatus === 'error' && (
+                <AlertCircle size={18} className="text-red-500" />
+              )}
+            </div>
+
+            {/* Logout */}
             <button
               type="button"
               onClick={onLogout}
-              className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="btn btn-ghost p-2"
               title={t('logout') || 'Sair'}
               aria-label={t('logout') || 'Sair'}
             >
-              <LogOut size={18} className="text-slate-700 dark:text-slate-200" />
+              <LogOut size={18} />
             </button>
-          </div>
+          </>
         )}
       </div>
     </header>
