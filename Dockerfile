@@ -16,8 +16,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Isso copia backend/app/ para /app/app/, backend/alembic/ para /app/alembic/, etc.
 COPY backend/ /app/
 
-# Copia e torna executável o script de inicialização
-COPY backend/start.sh /app/start.sh
+# Torna executável o script de inicialização (já copiado acima)
 RUN chmod +x /app/start.sh
 
 # Verifica se o módulo pode ser importado (falha o build se não conseguir)
@@ -27,6 +26,6 @@ RUN python -c "import app.main; print('✓ Module app.main import successful')"
 ENV PORT=8000
 EXPOSE 8000
 
-# Usa o script de inicialização
-CMD ["/app/start.sh"]
+# Usa ENTRYPOINT para garantir que o script seja sempre executado
+ENTRYPOINT ["/app/start.sh"]
 

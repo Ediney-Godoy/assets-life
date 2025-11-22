@@ -5,6 +5,7 @@ dockerfile_path = "Dockerfile"
 [deploy]
 type = "web"
 ports = [8000]
+run = "/app/start.sh"
 
 [env]
 PORT = "8000"
