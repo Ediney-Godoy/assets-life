@@ -71,6 +71,7 @@
 
   "users_title": "Users",
   "users_subtitle": "User registration and management.",
+  "users_send_invite_label": "Send email invite to set password",
   "collab_title": "Collaborators",
   "collab_subtitle": "Collaborator registration and management.",
   "acc_classes_title": "Accounting Classes",

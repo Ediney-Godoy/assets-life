@@ -14,6 +14,7 @@ import {
   getCompanies,
   getManagementUnits,
   getEmployees,
+  forgotPassword,
 } from '../apiClient';
 
 export default function UsersPage() {
@@ -28,6 +29,7 @@ export default function UsersPage() {
   const [editingId, setEditingId] = React.useState(null);
   const [errors, setErrors] = React.useState({});
   const [changePassword, setChangePassword] = React.useState(false);
+  const [sendInvite, setSendInvite] = React.useState(true);
   // Pesquisa de colaboradores
   const [showEmpSearch, setShowEmpSearch] = React.useState(false);
   const [empLoading, setEmpLoading] = React.useState(false);
@@ -109,9 +111,13 @@ export default function UsersPage() {
     const cpfDigits = (form.cpf || '').replace(/\D/g, '');
     if (!cpfDigits || cpfDigits.length !== 11) next.cpf = 'CPF inválido';
     if (!editingId || changePassword) {
-      if (!form.senha) next.senha = 'Obrigatório';
-      if (!form.confirmacao_senha) next.confirmacao_senha = 'Obrigatório';
-      if (form.senha !== form.confirmacao_senha) next.confirmacao_senha = 'Confirmação não confere';
+      if (!sendInvite) {
+        if (!form.senha) next.senha = 'Obrigatório';
+        if (!form.confirmacao_senha) next.confirmacao_senha = 'Obrigatório';
+        if (form.senha !== form.confirmacao_senha) next.confirmacao_senha = 'Confirmação não confere';
+      } else {
+        if (form.senha && form.confirmacao_senha && form.senha !== form.confirmacao_senha) next.confirmacao_senha = 'Confirmação não confere';
+      }
     }
     if (!form.nome_usuario) next.nome_usuario = 'Obrigatório';
     return next;
@@ -265,12 +271,27 @@ export default function UsersPage() {
       setErrors(v);
       if (Object.keys(v).length) { toast.error('Verifique os campos obrigatórios'); return; }
       const payload = buildPayload();
+      if (!editingId && sendInvite) {
+        if (!payload.senha) {
+          const tmp = generateTempPassword();
+          payload.senha = tmp;
+          payload.confirmacao_senha = tmp;
+        }
+      }
       if (editingId) {
         await updateUser(editingId, payload);
         toast.success('Usuário atualizado com sucesso');
       } else {
         const created = await createUser(payload);
         toast.success('Usuário criado com sucesso');
+        if (sendInvite && (form.email || created?.email)) {
+          try {
+            await forgotPassword(form.email || created?.email);
+            toast.success('Convite enviado para definição de senha');
+          } catch (e) {
+            toast.error(e.message || 'Falha ao enviar convite');
+          }
+        }
         setForm((f) => ({ ...f, codigo: created?.codigo || '' }));
       }
       resetForm();
@@ -419,6 +440,10 @@ export default function UsersPage() {
               <>
                 <Input label="Senha" name="senha" type="password" value={form.senha} onChange={onChange} error={errors.senha} autoComplete="new-password" />
                 <Input label="Confirmação de senha" name="confirmacao_senha" type="password" value={form.confirmacao_senha} onChange={onChange} error={errors.confirmacao_senha} autoComplete="new-password" />
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <input type="checkbox" checked={sendInvite} onChange={() => setSendInvite((v) => !v)} id="sendInvite" />
+                  <label htmlFor="sendInvite" className="text-sm text-slate-700 dark:text-slate-300">{t('users_send_invite_label')}</label>
+                </div>
               </>
             )}
             {editingId && (
@@ -626,3 +651,8 @@ export default function UsersPage() {
     </section>
   );
 }
+  const generateTempPassword = () => {
+    const r = Math.random().toString(36).slice(2, 8);
+    const s = Date.now().toString().slice(-4);
+    return `Tmp-${r}-${s}`;
+  };

@@ -71,6 +71,7 @@
 
   "users_title": "Usuarios",
   "users_subtitle": "Registro y gestión de usuarios.",
+  "users_send_invite_label": "Enviar invitación por correo para definir contraseña",
   "collab_title": "Colaboradores",
   "collab_subtitle": "Registro y gestión de colaboradores.",
   "acc_classes_title": "Clases Contables",

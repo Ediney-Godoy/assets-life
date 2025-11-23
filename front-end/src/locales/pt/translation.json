@@ -70,6 +70,7 @@
 
   "users_title": "Usuários",
   "users_subtitle": "Cadastro e gestão de usuários.",
+  "users_send_invite_label": "Enviar convite por e‑mail para definir senha",
   "collab_title": "Colaboradores",
   "collab_subtitle": "Cadastro e gestão de colaboradores.",
   "acc_classes_title": "Classes Contábeis",
