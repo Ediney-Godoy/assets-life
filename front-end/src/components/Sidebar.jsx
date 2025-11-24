@@ -52,7 +52,7 @@ export default function Sidebar({ collapsed = false }) {
     '/reports': ['/relatorios-rvu','/reports/vida-util'],
     '/supervisao-rvu': ['/supervisao/rvu','/supervisao-rvu'],
     '/permissions': ['/permissions','/permissions/groups'],
-    '/cadastros': ['/companies','/ugs','/cost-centers','/users','/asset-species','/cadastros'],
+    '/cadastros': ['/companies','/ugs','/cost-centers','/users','/asset-species','/employees','/cadastros'],
   };
 
   const hasChildrenAllowed = (parent) => {
@@ -68,12 +68,12 @@ export default function Sidebar({ collapsed = false }) {
 
   return (
     <aside className={`sidebar ${asideWidth} shrink-0 flex flex-col h-full transition-all duration-300`}>
-      {/* Logo */}
-      <div className="flex items-center justify-center h-16 px-4">
+      {/* Logo - mesmo tamanho da tela de login (h-24) */}
+      <div className="flex items-center justify-center h-24 px-4">
         <img
           src="/brand.svg"
           alt="Assets Life"
-          className={`transition-all duration-300 ${collapsed ? 'h-8' : 'h-8 md:h-10'}`}
+          className={`transition-all duration-300 ${collapsed ? 'h-16' : 'h-16 md:h-20'}`}
         />
       </div>
 

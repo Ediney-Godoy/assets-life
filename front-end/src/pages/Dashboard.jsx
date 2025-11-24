@@ -212,16 +212,14 @@ export default function DashboardPage({ registrationsOnly }) {
     );
   };
 
-  const selectedCompanyName = companies.find(c => String(c.id) === companyId)?.name || '';
-
   return (
-    <section className="relative mt-2">
+    <section className="relative">
       {!registrationsOnly && (
-        <div className="flex gap-4">
+        <div className="flex gap-4 mt-2">
           {/* Main content area */}
           <div className={`flex-1 transition-all duration-300 ${filterPanelOpen ? 'mr-0' : 'mr-0'}`}>
-            {/* Compact metrics row */}
-            <div className="grid grid-cols-5 gap-3 mb-4">
+            {/* Compact metrics row - responsivo */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-4">
               <MetricCardCompact
                 icon={Package}
                 label={t('dashboard_metric_total_items')}
@@ -336,7 +334,7 @@ export default function DashboardPage({ registrationsOnly }) {
       )}
 
       {visibleCards.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 mt-4">
           {visibleCards.map((c, idx) => (
             <motion.button
               key={idx}
@@ -409,9 +407,9 @@ function MetricCardCompact({ icon: Icon, label, value, color = 'default' }) {
     <div className="metric-card card-hover">
       <div className="flex items-center gap-2 mb-2">
         <Icon size={16} style={{ color: iconColors[color] || iconColors.default }} />
-        <span className="metric-label truncate">{label}</span>
+        <span className="metric-label truncate text-xs">{label}</span>
       </div>
-      <div className="metric-value">{value}</div>
+      <div className="metric-value text-xl">{value}</div>
     </div>
   );
 }
