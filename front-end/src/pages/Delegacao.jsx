@@ -481,9 +481,9 @@ export default function DelegacaoPage() {
                 {t('search') || 'Buscar'}
               </label>
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" style={{ color: 'var(--text-muted)' }} />
                 <input
-                  className="input w-full pl-9"
+                  className="input w-full pl-10"
                   placeholder={filterType === 'valor' ? (t('exact_value_placeholder') || 'Valor exato') : (t('search_item_placeholder') || 'Buscar item...')}
                   value={queryLeft}
                   onChange={(e) => setQueryLeft(e.target.value)}
@@ -607,9 +607,9 @@ export default function DelegacaoPage() {
                 {t('search') || 'Buscar'}
               </label>
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" style={{ color: 'var(--text-muted)' }} />
                 <input
-                  className="input w-full pl-9"
+                  className="input w-full pl-10"
                   placeholder={t('delegation_search_placeholder') || 'Buscar delegação...'}
                   value={queryRight}
                   onChange={(e) => setQueryRight(e.target.value)}

@@ -46,8 +46,9 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
       <div className="flex items-center gap-1">
         {/* Language selector */}
         <div className="relative">
+          <Globe size={14} className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none z-10" style={{ color: 'var(--text-muted)' }} />
           <select
-            className="select h-8 pl-8 pr-8 text-xs bg-transparent border-none hover:bg-[var(--bg-hover)]"
+            className="select h-8 pl-7 pr-8 text-xs bg-transparent border-none hover:bg-[var(--bg-hover)] cursor-pointer"
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}
             style={{ backgroundPosition: 'right 0.25rem center' }}
@@ -56,7 +57,6 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             <option value="pt">PT</option>
             <option value="es">ES</option>
           </select>
-          <Globe size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
         </div>
 
         {user && (
