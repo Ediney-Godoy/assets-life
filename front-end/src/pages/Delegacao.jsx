@@ -331,217 +331,369 @@ export default function DelegacaoPage() {
   };
 
   return (
-    <div className="p-2 sm:p-4">
+    <div className="space-y-4">
       {/* Header com select de período */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 mb-3 sm:mb-4">
-        <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('delegation_title')}</h2>
-        <div className="w-full sm:w-auto">
-          <Select
-            label={t('period_label')}
-            name="periodo"
-            value={selectedPeriodoId || ''}
-            onChange={onPeriodoChange}
-            className="w-full sm:w-64 md:w-80"
-          >
-            {(periodos || []).map((p) => (
-              <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
-            ))}
-          </Select>
+      <div className="flex flex-col gap-3">
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('delegation_title')}</h2>
+
+        <div className="card p-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                {t('period_label')}
+              </label>
+              <select
+                className="select w-full"
+                value={selectedPeriodoId || ''}
+                onChange={onPeriodoChange}
+              >
+                {periodos.length === 0 && <option value="">{t('no_periods_available') || 'Nenhum período disponível'}</option>}
+                {periodos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.codigo} - {p.descricao}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Badges de informação */}
+            {periodoInfo && (
+              <div className="flex gap-2 flex-wrap">
+                <div className="badge badge-secondary px-3 py-1.5">
+                  <span className="font-medium">{availableItems.length}</span>
+                  <span className="ml-1 text-xs">{t('available_items') || 'disponíveis'}</span>
+                </div>
+                <div className="badge badge-primary px-3 py-1.5">
+                  <span className="font-medium">{delegacoes.length}</span>
+                  <span className="ml-1 text-xs">{t('delegated_items') || 'delegados'}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Grid de 2 colunas */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* Coluna Esquerda - Itens disponíveis */}
-        <div className="card p-3 sm:p-4">
-          {/* Filtros - mais compactos e responsivos */}
-          <div className="flex flex-col gap-2 mb-3">
-            {/* Linha 1: Tipo de filtro + Valor do filtro */}
-            <div className="flex flex-wrap gap-2">
-              <Select
-                label=""
-                name="filterType"
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--border-primary)' }}>
+            <h3 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+              {t('available_items') || 'Itens Disponíveis'}
+            </h3>
+            <span className="badge badge-secondary">
+              {filteredLeft.length} / {availableItems.length}
+            </span>
+          </div>
+
+          {/* Filtros organizados */}
+          <div className="space-y-3 mb-4">
+            {/* Seletor de tipo de filtro */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                {t('filter_by') || 'Filtrar por'}
+              </label>
+              <select
+                className="select w-full"
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="w-full sm:w-40"
               >
-                <option value="ug">{t('filter_ug')}</option>
-                <option value="cc">{t('filter_cc')}</option>
-                <option value="classe">{t('filter_class')}</option>
-                <option value="valor">{t('filter_value')}</option>
-                <option value="selecao">{t('filter_selection')}</option>
-              </Select>
+                <option value="ug">{t('filter_ug') || 'Unidade Gerencial'}</option>
+                <option value="cc">{t('filter_cc') || 'Centro de Custo'}</option>
+                <option value="classe">{t('filter_class') || 'Classe'}</option>
+                <option value="valor">{t('filter_value') || 'Valor'}</option>
+                <option value="selecao">{t('filter_selection') || 'Seleção'}</option>
+              </select>
+            </div>
 
-              {filterType === 'classe' && (
-                <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="flex-1 min-w-[140px]">
-                  <option value="">{t('all')}</option>
+            {/* Valor do filtro dinâmico */}
+            {filterType === 'classe' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  {t('filter_class') || 'Classe'}
+                </label>
+                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                  <option value="">{t('all') || 'Todos'}</option>
                   {uniqueClasses.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
-                </Select>
-              )}
-              {filterType === 'cc' && (
-                <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="flex-1 min-w-[140px]">
-                  <option value="">{t('all')}</option>
+                </select>
+              </div>
+            )}
+            {filterType === 'cc' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  {t('filter_cc') || 'Centro de Custo'}
+                </label>
+                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                  <option value="">{t('all') || 'Todos'}</option>
                   {uniqueCCs.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
-                </Select>
-              )}
-              {filterType === 'ug' && (
-                <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="flex-1 min-w-[160px]">
-                  <option value="">{t('all')}</option>
+                </select>
+              </div>
+            )}
+            {filterType === 'ug' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  {t('filter_ug') || 'Unidade Gerencial'}
+                </label>
+                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                  <option value="">{t('all') || 'Todos'}</option>
                   {uniqueUGs.map((u) => (
                     <option key={u.id} value={u.codigo}>{u.codigo} - {u.nome}</option>
                   ))}
-                </Select>
-              )}
-              {filterType === 'valor' && (
-                <>
-                  <Input label={t('min_label')} type="number" name="valorMin" value={valorMin} onChange={(e) => setValorMin(e.target.value)} className="w-24" />
-                  <Input label={t('max_label')} type="number" name="valorMax" value={valorMax} onChange={(e) => setValorMax(e.target.value)} className="w-24" />
-                </>
-              )}
+                </select>
+              </div>
+            )}
+            {filterType === 'valor' && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                    {t('min_label') || 'Mínimo'}
+                  </label>
+                  <input
+                    type="number"
+                    className="input w-full"
+                    value={valorMin}
+                    onChange={(e) => setValorMin(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                    {t('max_label') || 'Máximo'}
+                  </label>
+                  <input
+                    type="number"
+                    className="input w-full"
+                    value={valorMax}
+                    onChange={(e) => setValorMax(e.target.value)}
+                    placeholder="999999"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Campo de busca */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                {t('search') || 'Buscar'}
+              </label>
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                <input
+                  className="input w-full pl-9"
+                  placeholder={filterType === 'valor' ? (t('exact_value_placeholder') || 'Valor exato') : (t('search_item_placeholder') || 'Buscar item...')}
+                  value={queryLeft}
+                  onChange={(e) => setQueryLeft(e.target.value)}
+                />
+              </div>
             </div>
 
-            {/* Linha 2: Busca + Botão delegar */}
-            <div className="flex gap-2">
-              <Input
-                label=""
-                name="qleft"
-                placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')}
-                value={queryLeft}
-                onChange={(e) => setQueryLeft(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                variant="primary"
-                className="btn-sm shrink-0"
-                title={t('delegation_delegate_selected')}
-                onClick={onDelegateSelected}
-              >
-                <ArrowRight size={16} />
-              </Button>
-            </div>
+            {/* Botão de delegação */}
+            <Button
+              variant="primary"
+              className="btn-md w-full"
+              onClick={onDelegateSelected}
+              disabled={selectedItemIds.length === 0 || !revisorId}
+            >
+              <ArrowRight size={18} />
+              <span>{t('delegation_delegate_selected') || 'Delegar Selecionados'} ({selectedItemIds.length})</span>
+            </Button>
           </div>
 
-          {loading && <p className="text-slate-500 text-sm">{t('loading')}</p>}
-          {error && <p className="text-red-600 text-sm">{t('backend_error')}</p>}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-2" style={{ borderColor: 'var(--accent-primary)' }}></div>
+                <p style={{ color: 'var(--text-tertiary)' }}>{t('loading') || 'Carregando...'}</p>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="text-center py-12">
+              <p className="text-red-500">{t('backend_error') || 'Erro ao carregar'}</p>
+            </div>
+          )}
           {!loading && !error && (
             filteredLeft.length === 0 ? (
-              <p className="text-slate-500 text-sm">{t('delegation_no_items')}</p>
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ background: 'var(--bg-tertiary)' }}>
+                  <Search size={24} style={{ color: 'var(--text-muted)' }} />
+                </div>
+                <p style={{ color: 'var(--text-tertiary)' }}>{t('delegation_no_items') || 'Nenhum item encontrado'}</p>
+              </div>
             ) : (
-              <div className="max-h-[calc(100vh-280px)] overflow-auto">
-                <table className="w-full text-xs sm:text-sm">
-                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
-                    <tr>
-                      <th className="w-8 px-2 py-1.5 text-center">
-                        <input type="checkbox" checked={allSelected} onChange={onToggleSelectAll} />
-                      </th>
-                      <th className="px-2 py-1.5 text-left font-medium text-slate-600 dark:text-slate-300">{t('col_asset_number')}</th>
-                      <th className="px-2 py-1.5 text-left font-medium text-slate-600 dark:text-slate-300">{t('col_description')}</th>
-                      <th className="hidden lg:table-cell px-2 py-1.5 text-left font-medium text-slate-600 dark:text-slate-300">{t('col_class')}</th>
-                      <th className="px-2 py-1.5 text-right font-medium text-slate-600 dark:text-slate-300">{t('col_book_value')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-slate-950">
-                    {filteredLeft.map((i) => (
-                      <tr key={i.id} className="border-t border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
-                        <td className="w-8 px-2 py-1.5 text-center">
-                          <input type="checkbox" checked={selectedItemIds.includes(i.id)} onChange={() => onToggleSelect(i.id)} />
-                        </td>
-                        <td className="px-2 py-1.5 text-slate-700 dark:text-slate-200">{i.numero_imobilizado}</td>
-                        <td className="px-2 py-1.5 text-slate-700 dark:text-slate-200 truncate max-w-[200px]">{i.descricao}</td>
-                        <td className="hidden lg:table-cell px-2 py-1.5 text-slate-700 dark:text-slate-200">{i.classe}</td>
-                        <td className="px-2 py-1.5 text-slate-700 dark:text-slate-200 text-right tabular-nums">{Number(i.valor_contabil || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <div className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border-primary)' }}>
+                <div className="max-h-[calc(100vh-340px)] overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-tertiary)' }}>
+                      <tr>
+                        <th className="w-10 px-3 py-2.5 text-center">
+                          <input type="checkbox" checked={allSelected} onChange={onToggleSelectAll} className="w-4 h-4 cursor-pointer" />
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_asset_number') || 'Nº Ativo'}
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_description') || 'Descrição'}
+                        </th>
+                        <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_class') || 'Classe'}
+                        </th>
+                        <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_book_value') || 'Valor'}
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody style={{ background: 'var(--bg-primary)' }}>
+                      {filteredLeft.map((i) => (
+                        <tr key={i.id} className="transition-colors" style={{ borderTop: '1px solid var(--border-primary)' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <td className="w-10 px-3 py-2.5 text-center">
+                            <input type="checkbox" checked={selectedItemIds.includes(i.id)} onChange={() => onToggleSelect(i.id)} className="w-4 h-4 cursor-pointer" />
+                          </td>
+                          <td className="px-3 py-2.5 font-medium" style={{ color: 'var(--text-primary)' }}>{i.numero_imobilizado}</td>
+                          <td className="px-3 py-2.5 truncate max-w-[250px]" style={{ color: 'var(--text-secondary)' }} title={i.descricao}>{i.descricao}</td>
+                          <td className="hidden lg:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{i.classe}</td>
+                          <td className="px-3 py-2.5 text-right tabular-nums font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {Number(i.valor_contabil || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )
           )}
         </div>
 
         {/* Coluna Direita - Delegações existentes */}
-        <div className="card p-3 sm:p-4">
-          {/* Controles do lado direito - compactos */}
-          <div className="flex flex-col gap-2 mb-3">
-            <div className="flex gap-2">
-              <Button
-                variant="primary"
-                className="btn-sm shrink-0"
-                title={t('delegation_send_left')}
-                onClick={onUndelegateSelected}
-              >
-                <ArrowLeft size={16} />
-              </Button>
-              <Select
-                label=""
-                name="revisor"
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--border-primary)' }}>
+            <h3 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+              {t('delegated_items') || 'Itens Delegados'}
+            </h3>
+            <span className="badge badge-primary">
+              {filteredRight.length} / {delegacoes.length}
+            </span>
+          </div>
+
+          {/* Controles organizados */}
+          <div className="space-y-3 mb-4">
+            {/* Seletor de revisor */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                {t('reviewer_label') || 'Revisor'}
+              </label>
+              <select
+                className="select w-full"
                 value={revisorId}
                 onChange={(e) => setRevisorId(e.target.value)}
-                className="flex-1 min-w-0"
               >
-                <option value="">{t('select')}...</option>
-                {(usuarios || []).map((u) => (
-                  <option key={u.id} value={u.id}>{u.codigo} - {u.nome_completo}</option>
+                <option value="">{t('all_reviewers') || 'Todos os revisores'}</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.codigo} - {u.nome_completo}
+                  </option>
                 ))}
-              </Select>
-              <div className="flex items-center">
+              </select>
+            </div>
+
+            {/* Campo de busca */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                {t('search') || 'Buscar'}
+              </label>
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                 <input
-                  type="checkbox"
-                  checked={allSelectedRight}
-                  onChange={onToggleSelectAllRight}
-                  title={t('delegation_select_all_visible')}
-                  className="w-4 h-4"
+                  className="input w-full pl-9"
+                  placeholder={t('delegation_search_placeholder') || 'Buscar delegação...'}
+                  value={queryRight}
+                  onChange={(e) => setQueryRight(e.target.value)}
                 />
               </div>
             </div>
-            <Input
-              label=""
-              name="qright"
-              placeholder={revisorId ? t('delegation_search_placeholder') : t('delegation_select_reviewer')}
-              value={queryRight}
-              onChange={(e) => setQueryRight(e.target.value)}
-              disabled={!revisorId}
-              className="w-full"
-            />
+
+            {/* Botão de remoção */}
+            <Button
+              variant="secondary"
+              className="btn-md w-full"
+              onClick={onUndelegateSelected}
+              disabled={selectedDelegacaoIds.length === 0}
+            >
+              <ArrowLeft size={18} />
+              <span>{t('delegation_send_left') || 'Remover Selecionados'} ({selectedDelegacaoIds.length})</span>
+            </Button>
           </div>
 
-          {loading && <p className="text-slate-500 text-sm">{t('loading')}</p>}
-          {error && <p className="text-red-600 text-sm">{t('backend_error')}</p>}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-2" style={{ borderColor: 'var(--accent-primary)' }}></div>
+                <p style={{ color: 'var(--text-tertiary)' }}>{t('loading') || 'Carregando...'}</p>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="text-center py-12">
+              <p className="text-red-500">{t('backend_error') || 'Erro ao carregar'}</p>
+            </div>
+          )}
           {!loading && !error && (
             filteredRight.length === 0 ? (
-              <p className="text-slate-500 text-sm">{t('delegation_none_found')}</p>
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ background: 'var(--bg-tertiary)' }}>
+                  <UserPlus size={24} style={{ color: 'var(--text-muted)' }} />
+                </div>
+                <p style={{ color: 'var(--text-tertiary)' }}>
+                  {revisorId
+                    ? (t('delegation_none_found') || 'Nenhuma delegação encontrada')
+                    : (t('select_reviewer_to_view') || 'Selecione um revisor para visualizar delegações')}
+                </p>
+              </div>
             ) : (
-              <div className="max-h-[calc(100vh-280px)] overflow-auto">
-                <table className="w-full text-xs sm:text-sm">
-                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
-                    <tr>
-                      <th className="w-8 px-2 py-1.5 text-center">
-                        <input type="checkbox" checked={allSelectedRight} onChange={onToggleSelectAllRight} />
-                      </th>
-                      <th className="px-2 py-1.5 text-left font-medium text-slate-600 dark:text-slate-300">{t('col_asset_number')}</th>
-                      <th className="px-2 py-1.5 text-left font-medium text-slate-600 dark:text-slate-300">{t('col_description')}</th>
-                      <th className="hidden lg:table-cell px-2 py-1.5 text-left font-medium text-slate-600 dark:text-slate-300">{t('reviewer_label')}</th>
-                      <th className="px-2 py-1.5 text-right font-medium text-slate-600 dark:text-slate-300">{t('col_book_value')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-slate-950">
-                    {filteredRight.map((d) => (
-                      <tr key={d.id} className="border-t border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
-                        <td className="w-8 px-2 py-1.5 text-center">
-                          <input type="checkbox" checked={selectedDelegacaoIds.includes(d.id)} onChange={() => onToggleSelectRight(d.id)} />
-                        </td>
-                        <td className="px-2 py-1.5 text-slate-700 dark:text-slate-200">{d.numero_imobilizado}</td>
-                        <td className="px-2 py-1.5 text-slate-700 dark:text-slate-200 truncate max-w-[200px]">{d.descricao}</td>
-                        <td className="hidden lg:table-cell px-2 py-1.5 text-slate-700 dark:text-slate-200">{d.revisor_nome || d.revisor_id}</td>
-                        <td className="px-2 py-1.5 text-slate-700 dark:text-slate-200 text-right tabular-nums">{Number(itemById.get(d.ativo_id)?.valor_contabil ?? d.valor_contabil ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <div className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border-primary)' }}>
+                <div className="max-h-[calc(100vh-340px)] overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-tertiary)' }}>
+                      <tr>
+                        <th className="w-10 px-3 py-2.5 text-center">
+                          <input type="checkbox" checked={allSelectedRight} onChange={onToggleSelectAllRight} className="w-4 h-4 cursor-pointer" />
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_asset_number') || 'Nº Ativo'}
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_description') || 'Descrição'}
+                        </th>
+                        <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('reviewer_label') || 'Revisor'}
+                        </th>
+                        <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_book_value') || 'Valor'}
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody style={{ background: 'var(--bg-primary)' }}>
+                      {filteredRight.map((d) => (
+                        <tr key={d.id} className="transition-colors" style={{ borderTop: '1px solid var(--border-primary)' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <td className="w-10 px-3 py-2.5 text-center">
+                            <input type="checkbox" checked={selectedDelegacaoIds.includes(d.id)} onChange={() => onToggleSelectRight(d.id)} className="w-4 h-4 cursor-pointer" />
+                          </td>
+                          <td className="px-3 py-2.5 font-medium" style={{ color: 'var(--text-primary)' }}>{d.numero_imobilizado}</td>
+                          <td className="px-3 py-2.5 truncate max-w-[250px]" style={{ color: 'var(--text-secondary)' }} title={d.descricao}>{d.descricao}</td>
+                          <td className="hidden lg:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d.revisor_nome || d.revisor_id}</td>
+                          <td className="px-3 py-2.5 text-right tabular-nums font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {Number(itemById.get(d.ativo_id)?.valor_contabil ?? d.valor_contabil ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )
           )}
