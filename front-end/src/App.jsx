@@ -44,6 +44,37 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('assetlife_sidebar_collapsed') === '1'; } catch { return false; }
   });
+
+  // Detectar erros de chunk/module loading e recarregar automaticamente
+  useEffect(() => {
+    // Limpar flag de reload quando app carrega com sucesso
+    sessionStorage.removeItem('chunk_reload_attempted');
+
+    const handleChunkError = (event) => {
+      const isChunkError = event.message?.includes('Failed to fetch dynamically imported module') ||
+                          event.message?.includes('Falha ao buscar o módulo importado dinamicamente') ||
+                          event.reason?.message?.includes('Failed to fetch dynamically imported module');
+
+      if (isChunkError) {
+        console.log('Detectado erro de carregamento de chunk. Recarregando página...');
+        // Evitar loop infinito - só recarrega uma vez
+        const hasReloaded = sessionStorage.getItem('chunk_reload_attempted');
+        if (!hasReloaded) {
+          sessionStorage.setItem('chunk_reload_attempted', 'true');
+          window.location.reload();
+        }
+      }
+    };
+
+    window.addEventListener('error', handleChunkError);
+    window.addEventListener('unhandledrejection', handleChunkError);
+
+    return () => {
+      window.removeEventListener('error', handleChunkError);
+      window.removeEventListener('unhandledrejection', handleChunkError);
+    };
+  }, []);
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem('assetlife_sidebar_collapsed');
