@@ -42,6 +42,9 @@ export default function DelegacaoPage() {
   const [ugs, setUgs] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
   const [filterRightType, setFilterRightType] = useState('todos');
+  const [filterRightValue, setFilterRightValue] = useState('');
+  const [valorMinRight, setValorMinRight] = useState('');
+  const [valorMaxRight, setValorMaxRight] = useState('');
 
   const refreshLists = async (pid) => {
     if (!pid) return;
@@ -108,10 +111,25 @@ export default function DelegacaoPage() {
     return vals.sort();
   }, [availableItems]);
 
+  const uniqueCCsDelegated = useMemo(() => {
+    const vals = Array.from(new Set((delegacoes || []).map((d) => d.centro_custo).filter(Boolean)));
+    return vals.sort();
+  }, [delegacoes]);
+
   const uniqueClasses = useMemo(() => {
     const vals = Array.from(new Set((availableItems || []).map((i) => i.classe).filter(Boolean)));
     return vals.sort();
   }, [availableItems]);
+
+  const uniqueClassesDelegated = useMemo(() => {
+    const vals = Array.from(new Set((delegacoes || []).map((d) => d.classe).filter(Boolean)));
+    return vals.sort();
+  }, [delegacoes]);
+
+  const uniqueContasDelegated = useMemo(() => {
+    const vals = Array.from(new Set((delegacoes || []).map((d) => d.conta_contabil).filter(Boolean)));
+    return vals.sort();
+  }, [delegacoes]);
 
   const ccByCodigo = useMemo(() => {
     const m = new Map();
@@ -204,25 +222,24 @@ export default function DelegacaoPage() {
     let list = Array.isArray(delegacoes) ? delegacoes : [];
 
     // Filtro por tipo
-    if (filterRightType === 'revisor' && revisorId) {
-      const target = String(revisorId);
-      list = list.filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === target);
-    } else if (filterRightType === 'cc' && filterValue) {
-      const fv = filterValue.toLowerCase();
+    if (filterRightType === 'cc' && filterRightValue) {
+      const fv = filterRightValue.toLowerCase();
       list = list.filter((d) => String(d.centro_custo || '').toLowerCase().includes(fv));
-    } else if (filterRightType === 'ug' && filterValue) {
-      const fv = filterValue.toLowerCase();
-      list = list.filter((d) => {
-        const cc = ccByCodigo.get(String(d.centro_custo || ''));
-        const ugId = cc?.ug_id ? Number(cc.ug_id) : null;
-        const ug = ugId ? ugById.get(ugId) : null;
-        const codigo = String(ug?.codigo || '').toLowerCase();
-        const nome = String(ug?.nome || '').toLowerCase();
-        return ug && (codigo.includes(fv) || nome.includes(fv));
-      });
-    } else if (filterRightType === 'classe' && filterValue) {
-      const fv = filterValue.toLowerCase();
+    } else if (filterRightType === 'classe' && filterRightValue) {
+      const fv = filterRightValue.toLowerCase();
       list = list.filter((d) => String(d.classe || '').toLowerCase().includes(fv));
+    } else if (filterRightType === 'conta' && filterRightValue) {
+      const fv = filterRightValue.toLowerCase();
+      list = list.filter((d) => String(d.conta_contabil || '').toLowerCase().includes(fv));
+    } else if (filterRightType === 'valor') {
+      const minParsed = parseDecimal(valorMinRight);
+      const maxParsed = parseDecimal(valorMaxRight);
+      list = list.filter((d) => {
+        const v = Number(itemById.get(d.ativo_id)?.valor_contabil ?? d.valor_contabil ?? 0);
+        const okMin = minParsed === null || v >= minParsed;
+        const okMax = maxParsed === null || v <= maxParsed;
+        return okMin && okMax;
+      });
     }
 
     // Busca textual
@@ -235,7 +252,7 @@ export default function DelegacaoPage() {
       );
     }
     return list;
-  }, [delegacoes, queryRight, revisorId, filterRightType, filterValue, ccByCodigo, ugById]);
+  }, [delegacoes, queryRight, filterRightType, filterRightValue, valorMinRight, valorMaxRight, itemById]);
 
   const allSelected = useMemo(() => {
     const ids = new Set(selectedItemIds);
@@ -612,34 +629,44 @@ export default function DelegacaoPage() {
                 value={filterRightType}
                 onChange={(e) => {
                   setFilterRightType(e.target.value);
-                  setRevisorId('');
-                  setFilterValue('');
+                  setFilterRightValue('');
+                  setValorMinRight('');
+                  setValorMaxRight('');
                 }}
               >
                 <option value="todos">Todos os itens</option>
-                <option value="revisor">Revisor</option>
-                <option value="cc">Centro de Custos</option>
-                <option value="ug">Unidade Gerencial</option>
                 <option value="classe">Classe</option>
+                <option value="conta">Conta Contábil</option>
+                <option value="cc">Centro de Custos</option>
+                <option value="valor">Valor Contábil</option>
               </select>
             </div>
 
-            {/* Seletor de revisor */}
-            {filterRightType === 'revisor' && (
+            {/* Seletor de Classe */}
+            {filterRightType === 'classe' && (
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Revisor
+                  Classe
                 </label>
-                <select
-                  className="select w-full"
-                  value={revisorId}
-                  onChange={(e) => setRevisorId(e.target.value)}
-                >
+                <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
                   <option value="">Todos</option>
-                  {usuarios.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.codigo} - {u.nome_completo}
-                    </option>
+                  {uniqueClassesDelegated.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Seletor de Conta Contábil */}
+            {filterRightType === 'conta' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  Conta Contábil
+                </label>
+                <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
+                  <option value="">Todos</option>
+                  {uniqueContasDelegated.map((c) => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
@@ -651,42 +678,42 @@ export default function DelegacaoPage() {
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
                   Centro de Custos
                 </label>
-                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
                   <option value="">Todos</option>
-                  {uniqueCCs.map((c) => (
+                  {uniqueCCsDelegated.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
             )}
 
-            {/* Seletor de UG */}
-            {filterRightType === 'ug' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Unidade Gerencial
-                </label>
-                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueUGs.map((u) => (
-                    <option key={u.id} value={u.codigo}>{u.codigo} - {u.nome}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Seletor de Classe */}
-            {filterRightType === 'classe' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Classe
-                </label>
-                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueClasses.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+            {/* Seletor de Valor Contábil */}
+            {filterRightType === 'valor' && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                    Mínimo
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={valorMinRight}
+                    onChange={(e) => setValorMinRight(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                    Máximo
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={valorMaxRight}
+                    onChange={(e) => setValorMaxRight(e.target.value)}
+                    placeholder="999999"
+                  />
+                </div>
               </div>
             )}
 
@@ -739,8 +766,7 @@ export default function DelegacaoPage() {
                   <UserPlus size={24} style={{ color: 'var(--text-muted)' }} />
                 </div>
                 <p style={{ color: 'var(--text-tertiary)' }}>
-                  {(filterRightType === 'revisor' && !revisorId) ||
-                   ((filterRightType === 'cc' || filterRightType === 'ug' || filterRightType === 'classe') && !filterValue)
+                  {((filterRightType === 'cc' || filterRightType === 'classe' || filterRightType === 'conta') && !filterRightValue)
                     ? 'Selecione um filtro para visualizar'
                     : 'Nenhuma delegação encontrada'}
                 </p>
