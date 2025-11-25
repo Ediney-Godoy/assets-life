@@ -79,6 +79,8 @@ export default function DelegacaoPage() {
           }
         })();
 
+        console.log('EmpresaId para buscar usuários:', empresaId);
+
         const [periods, users, ugData, ccData] = await Promise.all([
           getReviewPeriods(),
           getUsers(empresaId),
@@ -86,10 +88,17 @@ export default function DelegacaoPage() {
           getCostCenters(),
         ]);
 
+        console.log('Usuários retornados:', users);
+
         setPeriodos(Array.isArray(periods) ? periods : []);
         setUsuarios(Array.isArray(users) ? users : []);
         setUgs(Array.isArray(ugData) ? ugData : []);
         setCostCenters(Array.isArray(ccData) ? ccData : []);
+
+        // Debug: Ver estrutura dos usuários
+        if (users && users.length > 0) {
+          console.log('Primeiro usuário:', users[0]);
+        }
 
         if (periods && periods.length > 0) {
           const pid = periods[0].id;
@@ -655,11 +664,17 @@ export default function DelegacaoPage() {
                 <option value="">{t('all_reviewers') || 'Todos os revisores'}</option>
                 {Array.isArray(usuarios) && usuarios.length > 0 ? (
                   usuarios.map((u) => {
+                    // Tentar múltiplos campos possíveis para o nome
+                    let displayName = u.nome || u.name || u.full_name || u.nome_completo || u.username || u.login || `Usuário ${u.id}`;
+
                     // Extrair apenas o nome, removendo código se existir (ex: "000001 - Fulano" -> "Fulano")
-                    let displayName = u.nome || u.username || `Usuário ${u.id}`;
-                    if (displayName.includes(' - ')) {
-                      displayName = displayName.split(' - ')[1] || displayName;
+                    if (displayName && typeof displayName === 'string' && displayName.includes(' - ')) {
+                      const parts = displayName.split(' - ');
+                      if (parts.length > 1) {
+                        displayName = parts.slice(1).join(' - '); // Pega tudo depois do primeiro " - "
+                      }
                     }
+
                     return (
                       <option key={u.id} value={u.id}>
                         {displayName}
