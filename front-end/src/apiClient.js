@@ -492,7 +492,8 @@ export async function uploadReviewBase(periodoId, file) {
   const form = new FormData();
   form.append('file', file);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  // Timeout de 10 minutos para uploads grandes
+  const timeoutId = setTimeout(() => controller.abort(), 600000);
   try {
     const res = await fetch(url, {
       method: 'POST',
