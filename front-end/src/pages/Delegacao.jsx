@@ -654,11 +654,18 @@ export default function DelegacaoPage() {
               >
                 <option value="">{t('all_reviewers') || 'Todos os revisores'}</option>
                 {Array.isArray(usuarios) && usuarios.length > 0 ? (
-                  usuarios.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nome || u.username || `Usuário ${u.id}`}
-                    </option>
-                  ))
+                  usuarios.map((u) => {
+                    // Extrair apenas o nome, removendo código se existir (ex: "000001 - Fulano" -> "Fulano")
+                    let displayName = u.nome || u.username || `Usuário ${u.id}`;
+                    if (displayName.includes(' - ')) {
+                      displayName = displayName.split(' - ')[1] || displayName;
+                    }
+                    return (
+                      <option key={u.id} value={u.id}>
+                        {displayName}
+                      </option>
+                    );
+                  })
                 ) : (
                   <option disabled>Carregando usuários...</option>
                 )}
