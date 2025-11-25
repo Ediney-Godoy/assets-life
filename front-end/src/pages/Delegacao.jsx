@@ -28,7 +28,6 @@ export default function DelegacaoPage() {
   const [delegacoes, setDelegacoes] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
 
-  const [revisorId, setRevisorId] = useState('');
   const [queryLeft, setQueryLeft] = useState('');
   const [queryRight, setQueryRight] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,6 +44,7 @@ export default function DelegacaoPage() {
   const [filterRightValue, setFilterRightValue] = useState('');
   const [valorMinRight, setValorMinRight] = useState('');
   const [valorMaxRight, setValorMaxRight] = useState('');
+  const [selectedRevisorId, setSelectedRevisorId] = useState('');
 
   const refreshLists = async (pid) => {
     if (!pid) return;
@@ -213,6 +213,11 @@ export default function DelegacaoPage() {
   const filteredRight = useMemo(() => {
     let list = Array.isArray(delegacoes) ? delegacoes : [];
 
+    // Filtro por revisor
+    if (selectedRevisorId) {
+      list = list.filter((d) => String(d.revisor_id) === String(selectedRevisorId));
+    }
+
     // Filtro por tipo
     if (filterRightType === 'cc' && filterRightValue) {
       const fv = filterRightValue.toLowerCase();
@@ -244,7 +249,7 @@ export default function DelegacaoPage() {
       );
     }
     return list;
-  }, [delegacoes, queryRight, filterRightType, filterRightValue, valorMinRight, valorMaxRight, itemById]);
+  }, [delegacoes, queryRight, filterRightType, filterRightValue, valorMinRight, valorMaxRight, itemById, selectedRevisorId]);
 
   const allSelected = useMemo(() => {
     const ids = new Set(selectedItemIds);
@@ -323,15 +328,21 @@ export default function DelegacaoPage() {
 
   const onDelegateSelected = async () => {
     if (!selectedPeriodoId) { toast.error(t('select_period_msg')); return; }
-    if (!revisorId) { toast.error(t('select_reviewer_msg')); return; }
     if (selectedItemIds.length === 0) { toast.error(t('no_items_selected')); return; }
+
+    // Se não há revisor selecionado no filtro, pedir ao usuário
+    if (!selectedRevisorId) {
+      toast.error(t('select_reviewer_msg') || 'Por favor, selecione um revisor no lado direito');
+      return;
+    }
+
     try {
       setLoading(true);
       const payloads = selectedItemIds.map((id) => ({
         periodo_id: selectedPeriodoId,
         ativo_id: id,
-        revisor_id: Number(revisorId),
-        atribuido_por: periodoInfo?.responsavel_id || Number(revisorId),
+        revisor_id: Number(selectedRevisorId),
+        atribuido_por: periodoInfo?.responsavel_id || Number(selectedRevisorId),
       }));
       await Promise.all(payloads.map((p) => createReviewDelegation(p).catch((err) => { console.error(err); })));
       toast.success(t('delegations_created_by_asset'));
@@ -528,31 +539,12 @@ export default function DelegacaoPage() {
               </div>
             </div>
 
-            {/* Seletor de Revisor */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                {t('reviewer_label') || 'Revisor'}
-              </label>
-              <select
-                className="select w-full"
-                value={revisorId}
-                onChange={(e) => setRevisorId(e.target.value)}
-              >
-                <option value="">{t('select_reviewer') || 'Selecione um revisor'}</option>
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nome || u.username}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             {/* Botão de delegação */}
             <Button
               variant="primary"
               className="btn-md w-full"
               onClick={onDelegateSelected}
-              disabled={selectedItemIds.length === 0 || !revisorId}
+              disabled={selectedItemIds.length === 0}
             >
               <ArrowRight size={18} />
               <span>{t('delegation_delegate_selected') || 'Delegar Selecionados'} ({selectedItemIds.length})</span>
@@ -638,6 +630,25 @@ export default function DelegacaoPage() {
 
           {/* Controles organizados */}
           <div className="space-y-3 mb-4">
+            {/* Seletor de Revisor */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                {t('reviewer_label') || 'Revisor'}
+              </label>
+              <select
+                className="select w-full"
+                value={selectedRevisorId}
+                onChange={(e) => setSelectedRevisorId(e.target.value)}
+              >
+                <option value="">{t('all_reviewers') || 'Todos os revisores'}</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome || u.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Seletor de tipo de filtro */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
