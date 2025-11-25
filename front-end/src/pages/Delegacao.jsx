@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { UserPlus, Trash2, Search, ArrowRight, ArrowLeft } from 'lucide-react';
+import { UserPlus, Trash2, ArrowRight, ArrowLeft, Search } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -202,10 +202,30 @@ export default function DelegacaoPage() {
 
   const filteredRight = useMemo(() => {
     let list = Array.isArray(delegacoes) ? delegacoes : [];
-    if (revisorId) {
+
+    // Filtro por tipo
+    if (filterRightType === 'revisor' && revisorId) {
       const target = String(revisorId);
       list = list.filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === target);
+    } else if (filterRightType === 'cc' && filterValue) {
+      const fv = filterValue.toLowerCase();
+      list = list.filter((d) => String(d.centro_custo || '').toLowerCase().includes(fv));
+    } else if (filterRightType === 'ug' && filterValue) {
+      const fv = filterValue.toLowerCase();
+      list = list.filter((d) => {
+        const cc = ccByCodigo.get(String(d.centro_custo || ''));
+        const ugId = cc?.ug_id ? Number(cc.ug_id) : null;
+        const ug = ugId ? ugById.get(ugId) : null;
+        const codigo = String(ug?.codigo || '').toLowerCase();
+        const nome = String(ug?.nome || '').toLowerCase();
+        return ug && (codigo.includes(fv) || nome.includes(fv));
+      });
+    } else if (filterRightType === 'classe' && filterValue) {
+      const fv = filterValue.toLowerCase();
+      list = list.filter((d) => String(d.classe || '').toLowerCase().includes(fv));
     }
+
+    // Busca textual
     const q = (queryRight || '').toLowerCase();
     if (q) {
       list = list.filter((d) =>
@@ -215,7 +235,7 @@ export default function DelegacaoPage() {
       );
     }
     return list;
-  }, [delegacoes, queryRight, revisorId]);
+  }, [delegacoes, queryRight, revisorId, filterRightType, filterValue, ccByCodigo, ugById]);
 
   const allSelected = useMemo(() => {
     const ids = new Set(selectedItemIds);
@@ -477,14 +497,14 @@ export default function DelegacaoPage() {
             {/* Campo de busca */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                {t('search') || 'Buscar'}
+                Pesquisar
               </label>
-              <div className="relative flex items-center">
-                <Search size={16} className="absolute left-3 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder={filterType === 'valor' ? (t('exact_value_placeholder') || 'Valor exato') : (t('search_item_placeholder') || 'Buscar item...')}
+                  placeholder={filterType === 'valor' ? 'Valor exato' : 'Pesquisar item'}
                   value={queryLeft}
                   onChange={(e) => setQueryLeft(e.target.value)}
                 />
@@ -582,21 +602,25 @@ export default function DelegacaoPage() {
 
           {/* Controles organizados */}
           <div className="space-y-3 mb-4">
-            {/* Seletor de filtro por revisor */}
+            {/* Seletor de tipo de filtro */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                {t('filter_by') || 'Filtrar por'}
+                Filtrar por
               </label>
               <select
                 className="select w-full"
                 value={filterRightType}
                 onChange={(e) => {
                   setFilterRightType(e.target.value);
-                  if (e.target.value === 'todos') setRevisorId('');
+                  setRevisorId('');
+                  setFilterValue('');
                 }}
               >
                 <option value="todos">Todos os itens</option>
                 <option value="revisor">Revisor</option>
+                <option value="cc">Centro de Custos</option>
+                <option value="ug">Unidade Gerencial</option>
+                <option value="classe">Classe</option>
               </select>
             </div>
 
@@ -604,7 +628,7 @@ export default function DelegacaoPage() {
             {filterRightType === 'revisor' && (
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  {t('reviewer_label') || 'Revisor'}
+                  Revisor
                 </label>
                 <select
                   className="select w-full"
@@ -621,17 +645,62 @@ export default function DelegacaoPage() {
               </div>
             )}
 
+            {/* Seletor de Centro de Custos */}
+            {filterRightType === 'cc' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  Centro de Custos
+                </label>
+                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                  <option value="">Todos</option>
+                  {uniqueCCs.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Seletor de UG */}
+            {filterRightType === 'ug' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  Unidade Gerencial
+                </label>
+                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                  <option value="">Todos</option>
+                  {uniqueUGs.map((u) => (
+                    <option key={u.id} value={u.codigo}>{u.codigo} - {u.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Seletor de Classe */}
+            {filterRightType === 'classe' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  Classe
+                </label>
+                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                  <option value="">Todos</option>
+                  {uniqueClasses.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Campo de busca */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                {t('search') || 'Buscar'}
+                Pesquisar
               </label>
-              <div className="relative flex items-center">
-                <Search size={16} className="absolute left-3 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder={t('delegation_search_placeholder') || 'Buscar delegação...'}
+                  placeholder="Pesquisar delegação"
                   value={queryRight}
                   onChange={(e) => setQueryRight(e.target.value)}
                 />
@@ -646,7 +715,7 @@ export default function DelegacaoPage() {
               disabled={selectedDelegacaoIds.length === 0}
             >
               <ArrowLeft size={18} />
-              <span>{t('delegation_send_left') || 'Remover Selecionados'} ({selectedDelegacaoIds.length})</span>
+              <span>Remover Selecionados ({selectedDelegacaoIds.length})</span>
             </Button>
           </div>
 
@@ -670,9 +739,10 @@ export default function DelegacaoPage() {
                   <UserPlus size={24} style={{ color: 'var(--text-muted)' }} />
                 </div>
                 <p style={{ color: 'var(--text-tertiary)' }}>
-                  {filterRightType === 'revisor' && !revisorId
-                    ? (t('select_reviewer_to_view') || 'Selecione um revisor para filtrar')
-                    : (t('delegation_none_found') || 'Nenhuma delegação encontrada')}
+                  {(filterRightType === 'revisor' && !revisorId) ||
+                   ((filterRightType === 'cc' || filterRightType === 'ug' || filterRightType === 'classe') && !filterValue)
+                    ? 'Selecione um filtro para visualizar'
+                    : 'Nenhuma delegação encontrada'}
                 </p>
               </div>
             ) : (
