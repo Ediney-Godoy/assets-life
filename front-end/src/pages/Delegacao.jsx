@@ -412,7 +412,7 @@ export default function DelegacaoPage() {
                   {t('filter_class') || 'Classe'}
                 </label>
                 <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">{t('all') || 'Todos'}</option>
+                  <option value="">Todos</option>
                   {uniqueClasses.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -425,7 +425,7 @@ export default function DelegacaoPage() {
                   {t('filter_cc') || 'Centro de Custo'}
                 </label>
                 <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">{t('all') || 'Todos'}</option>
+                  <option value="">Todos</option>
                   {uniqueCCs.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -438,7 +438,7 @@ export default function DelegacaoPage() {
                   {t('filter_ug') || 'Unidade Gerencial'}
                 </label>
                 <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">{t('all') || 'Todos'}</option>
+                  <option value="">Todos</option>
                   {uniqueUGs.map((u) => (
                     <option key={u.id} value={u.codigo}>{u.codigo} - {u.nome}</option>
                   ))}
@@ -479,10 +479,11 @@ export default function DelegacaoPage() {
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
                 {t('search') || 'Buscar'}
               </label>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" style={{ color: 'var(--text-muted)' }} />
+              <div className="relative flex items-center">
+                <Search size={16} className="absolute left-3 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 <input
-                  className="input w-full pl-10"
+                  type="text"
+                  className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder={filterType === 'valor' ? (t('exact_value_placeholder') || 'Valor exato') : (t('search_item_placeholder') || 'Buscar item...')}
                   value={queryLeft}
                   onChange={(e) => setQueryLeft(e.target.value)}
@@ -594,8 +595,8 @@ export default function DelegacaoPage() {
                   if (e.target.value === 'todos') setRevisorId('');
                 }}
               >
-                <option value="todos">{t('all_items') || 'Todos os itens'}</option>
-                <option value="revisor">{t('reviewer_label') || 'Revisor'}</option>
+                <option value="todos">Todos os itens</option>
+                <option value="revisor">Revisor</option>
               </select>
             </div>
 
@@ -610,7 +611,7 @@ export default function DelegacaoPage() {
                   value={revisorId}
                   onChange={(e) => setRevisorId(e.target.value)}
                 >
-                  <option value="">{t('all') || 'Todos'}</option>
+                  <option value="">Todos</option>
                   {usuarios.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.codigo} - {u.nome_completo}
@@ -625,10 +626,11 @@ export default function DelegacaoPage() {
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
                 {t('search') || 'Buscar'}
               </label>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" style={{ color: 'var(--text-muted)' }} />
+              <div className="relative flex items-center">
+                <Search size={16} className="absolute left-3 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 <input
-                  className="input w-full pl-10"
+                  type="text"
+                  className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder={t('delegation_search_placeholder') || 'Buscar delegação...'}
                   value={queryRight}
                   onChange={(e) => setQueryRight(e.target.value)}
