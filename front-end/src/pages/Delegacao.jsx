@@ -121,6 +121,11 @@ export default function DelegacaoPage() {
     return vals.sort();
   }, [availableItems]);
 
+  const uniqueContas = useMemo(() => {
+    const vals = Array.from(new Set((availableItems || []).map((i) => i.conta_contabil).filter(Boolean)));
+    return vals.sort();
+  }, [availableItems]);
+
   const uniqueClassesDelegated = useMemo(() => {
     const vals = Array.from(new Set((delegacoes || []).map((d) => d.classe).filter(Boolean)));
     return vals.sort();
@@ -169,54 +174,41 @@ export default function DelegacaoPage() {
   };
 
   const filteredLeft = useMemo(() => {
-    const qRaw = (queryLeft || '');
-    const qLower = qRaw.toLowerCase();
-    const qNum = parseDecimal(qRaw);
     let list = availableItems;
 
-    if (qRaw) {
-      list = list.filter((i) => {
-        const textMatch = (i.numero_imobilizado || '').toLowerCase().includes(qLower)
-          || (i.descricao || '').toLowerCase().includes(qLower)
-          || (i.centro_custo || '').toLowerCase().includes(qLower);
-        const valueMatch = qNum !== null ? Number(i.valor_contabil || 0) === qNum : false;
-        return textMatch || valueMatch;
-      });
-    }
-
+    // Filtro por tipo
     if (filterType === 'cc' && filterValue) {
       const fv = filterValue.toLowerCase();
       list = list.filter((i) => String(i.centro_custo || '').toLowerCase().includes(fv));
-    } else if (filterType === 'ug' && filterValue) {
-      const fv = filterValue.toLowerCase();
-      list = list.filter((i) => {
-        const cc = ccByCodigo.get(String(i.centro_custo || ''));
-        const ugId = cc?.ug_id ? Number(cc.ug_id) : null;
-        const ug = ugId ? ugById.get(ugId) : null;
-        const codigo = String(ug?.codigo || '').toLowerCase();
-        const nome = String(ug?.nome || '').toLowerCase();
-        return ug && (codigo.includes(fv) || nome.includes(fv));
-      });
     } else if (filterType === 'classe' && filterValue) {
       const fv = filterValue.toLowerCase();
       list = list.filter((i) => String(i.classe || '').toLowerCase().includes(fv));
+    } else if (filterType === 'conta' && filterValue) {
+      const fv = filterValue.toLowerCase();
+      list = list.filter((i) => String(i.conta_contabil || '').toLowerCase().includes(fv));
     } else if (filterType === 'valor') {
       const minParsed = parseDecimal(valorMin);
       const maxParsed = parseDecimal(valorMax);
-      const min = minParsed !== null ? minParsed : (qNum !== null ? qNum : null);
-      const max = maxParsed !== null ? maxParsed : (qNum !== null ? qNum : null);
       list = list.filter((i) => {
         const v = Number(i.valor_contabil || 0);
-        const okMin = min === null || v >= min;
-        const okMax = max === null || v <= max;
+        const okMin = minParsed === null || v >= minParsed;
+        const okMax = maxParsed === null || v <= maxParsed;
         return okMin && okMax;
       });
-    } else if (filterType === 'selecao') {
-      const setSel = new Set(selectedItemIds);
-      list = list.filter((i) => setSel.has(i.id));
     }
+
+    // Busca textual
+    const q = (queryLeft || '').toLowerCase();
+    if (q) {
+      list = list.filter((i) =>
+        (i.numero_imobilizado || '').toLowerCase().includes(q) ||
+        (i.descricao || '').toLowerCase().includes(q) ||
+        (i.centro_custo || '').toLowerCase().includes(q)
+      );
+    }
+
     return list;
-  }, [availableItems, queryLeft, filterType, filterValue, valorMin, valorMax, selectedItemIds, ccByCodigo, ugById]);
+  }, [availableItems, queryLeft, filterType, filterValue, valorMin, valorMax]);
 
   const filteredRight = useMemo(() => {
     let list = Array.isArray(delegacoes) ? delegacoes : [];
@@ -432,13 +424,18 @@ export default function DelegacaoPage() {
               <select
                 className="select w-full"
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
+                onChange={(e) => {
+                  setFilterType(e.target.value);
+                  setFilterValue('');
+                  setValorMin('');
+                  setValorMax('');
+                }}
               >
-                <option value="ug">{t('filter_ug') || 'Unidade Gerencial'}</option>
-                <option value="cc">{t('filter_cc') || 'Centro de Custo'}</option>
+                <option value="todos">Todos os itens</option>
                 <option value="classe">{t('filter_class') || 'Classe'}</option>
-                <option value="valor">{t('filter_value') || 'Valor'}</option>
-                <option value="selecao">{t('filter_selection') || 'Seleção'}</option>
+                <option value="conta">Conta Contábil</option>
+                <option value="cc">{t('filter_cc') || 'Centro de Custos'}</option>
+                <option value="valor">{t('filter_value') || 'Valor Contábil'}</option>
               </select>
             </div>
 
@@ -446,7 +443,7 @@ export default function DelegacaoPage() {
             {filterType === 'classe' && (
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  {t('filter_class') || 'Classe'}
+                  Classe
                 </label>
                 <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
                   <option value="">Todos</option>
@@ -456,10 +453,25 @@ export default function DelegacaoPage() {
                 </select>
               </div>
             )}
+
+            {filterType === 'conta' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  Conta Contábil
+                </label>
+                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                  <option value="">Todos</option>
+                  {uniqueContas.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {filterType === 'cc' && (
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  {t('filter_cc') || 'Centro de Custo'}
+                  Centro de Custos
                 </label>
                 <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
                   <option value="">Todos</option>
@@ -469,28 +481,16 @@ export default function DelegacaoPage() {
                 </select>
               </div>
             )}
-            {filterType === 'ug' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  {t('filter_ug') || 'Unidade Gerencial'}
-                </label>
-                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueUGs.map((u) => (
-                    <option key={u.id} value={u.codigo}>{u.codigo} - {u.nome}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+
             {filterType === 'valor' && (
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                    {t('min_label') || 'Mínimo'}
+                    Mínimo
                   </label>
                   <input
                     type="number"
-                    className="input w-full"
+                    className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     value={valorMin}
                     onChange={(e) => setValorMin(e.target.value)}
                     placeholder="0"
@@ -498,11 +498,11 @@ export default function DelegacaoPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                    {t('max_label') || 'Máximo'}
+                    Máximo
                   </label>
                   <input
                     type="number"
-                    className="input w-full"
+                    className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     value={valorMax}
                     onChange={(e) => setValorMax(e.target.value)}
                     placeholder="999999"
