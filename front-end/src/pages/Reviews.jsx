@@ -251,7 +251,16 @@ export default function ReviewsPage() {
         await getReviewItems(editingId);
       } catch {}
     } catch (err) {
-      toast.error(err.message || t('upload_failed') || 'Falha no upload');
+      // Detectar erro CORS
+      const isCorsError = err.message?.includes('CORS') ||
+                         err.message?.includes('Access-Control-Allow-Origin') ||
+                         err.name === 'TypeError' && err.message?.includes('Failed to fetch');
+
+      if (isCorsError) {
+        toast.error('Erro de configuração do servidor. O backend não está permitindo requisições do frontend. Entre em contato com o administrador do sistema.');
+      } else {
+        toast.error(err.message || t('upload_failed') || 'Falha no upload');
+      }
     } finally {
       setIsUploading(false);
     }
