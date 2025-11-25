@@ -665,7 +665,7 @@ export default function DelegacaoPage() {
                 {Array.isArray(usuarios) && usuarios.length > 0 ? (
                   usuarios.map((u) => {
                     // Tentar múltiplos campos possíveis para o nome
-                    let displayName = u.nome || u.name || u.full_name || u.nome_completo || u.username || u.login || `Usuário ${u.id}`;
+                    let displayName = u.nome_completo;
 
                     // Extrair apenas o nome, removendo código se existir (ex: "000001 - Fulano" -> "Fulano")
                     if (displayName && typeof displayName === 'string' && displayName.includes(' - ')) {
