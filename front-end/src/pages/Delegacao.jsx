@@ -69,16 +69,28 @@ export default function DelegacaoPage() {
     const init = async () => {
       try {
         setLoading(true); setError(false);
+
+        // Obter empresa selecionada
+        const empresaId = (() => {
+          try {
+            return localStorage.getItem('assetlife_empresa');
+          } catch {
+            return null;
+          }
+        })();
+
         const [periods, users, ugData, ccData] = await Promise.all([
           getReviewPeriods(),
-          getUsers(),
+          getUsers(empresaId),
           getManagementUnits(),
           getCostCenters(),
         ]);
+
         setPeriodos(Array.isArray(periods) ? periods : []);
         setUsuarios(Array.isArray(users) ? users : []);
         setUgs(Array.isArray(ugData) ? ugData : []);
         setCostCenters(Array.isArray(ccData) ? ccData : []);
+
         if (periods && periods.length > 0) {
           const pid = periods[0].id;
           setSelectedPeriodoId(pid);
@@ -87,7 +99,7 @@ export default function DelegacaoPage() {
         }
       } catch (err) {
         setError(true);
-        console.error(err);
+        console.error('Erro ao carregar dados:', err);
       } finally {
         setLoading(false);
       }
@@ -641,11 +653,15 @@ export default function DelegacaoPage() {
                 onChange={(e) => setSelectedRevisorId(e.target.value)}
               >
                 <option value="">{t('all_reviewers') || 'Todos os revisores'}</option>
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nome || u.username}
-                  </option>
-                ))}
+                {Array.isArray(usuarios) && usuarios.length > 0 ? (
+                  usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome || u.username || u.email || `Usuário ${u.id}`}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>Carregando usuários...</option>
+                )}
               </select>
             </div>
 
