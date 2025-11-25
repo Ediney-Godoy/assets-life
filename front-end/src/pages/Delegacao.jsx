@@ -41,6 +41,7 @@ export default function DelegacaoPage() {
   const [selectedDelegacaoIds, setSelectedDelegacaoIds] = useState([]);
   const [ugs, setUgs] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
+  const [filterRightType, setFilterRightType] = useState('todos');
 
   const refreshLists = async (pid) => {
     if (!pid) return;
@@ -334,8 +335,6 @@ export default function DelegacaoPage() {
     <div className="space-y-4">
       {/* Header com select de período */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('delegation_title')}</h2>
-
         <div className="card p-4">
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
             <div className="flex-1 min-w-[200px]">
@@ -582,24 +581,44 @@ export default function DelegacaoPage() {
 
           {/* Controles organizados */}
           <div className="space-y-3 mb-4">
-            {/* Seletor de revisor */}
+            {/* Seletor de filtro por revisor */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                {t('reviewer_label') || 'Revisor'}
+                {t('filter_by') || 'Filtrar por'}
               </label>
               <select
                 className="select w-full"
-                value={revisorId}
-                onChange={(e) => setRevisorId(e.target.value)}
+                value={filterRightType}
+                onChange={(e) => {
+                  setFilterRightType(e.target.value);
+                  if (e.target.value === 'todos') setRevisorId('');
+                }}
               >
-                <option value="">{t('all_reviewers') || 'Todos os revisores'}</option>
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.codigo} - {u.nome_completo}
-                  </option>
-                ))}
+                <option value="todos">{t('all_items') || 'Todos os itens'}</option>
+                <option value="revisor">{t('reviewer_label') || 'Revisor'}</option>
               </select>
             </div>
+
+            {/* Seletor de revisor */}
+            {filterRightType === 'revisor' && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  {t('reviewer_label') || 'Revisor'}
+                </label>
+                <select
+                  className="select w-full"
+                  value={revisorId}
+                  onChange={(e) => setRevisorId(e.target.value)}
+                >
+                  <option value="">{t('all') || 'Todos'}</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.codigo} - {u.nome_completo}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Campo de busca */}
             <div>
@@ -649,9 +668,9 @@ export default function DelegacaoPage() {
                   <UserPlus size={24} style={{ color: 'var(--text-muted)' }} />
                 </div>
                 <p style={{ color: 'var(--text-tertiary)' }}>
-                  {revisorId
-                    ? (t('delegation_none_found') || 'Nenhuma delegação encontrada')
-                    : (t('select_reviewer_to_view') || 'Selecione um revisor para visualizar delegações')}
+                  {filterRightType === 'revisor' && !revisorId
+                    ? (t('select_reviewer_to_view') || 'Selecione um revisor para filtrar')
+                    : (t('delegation_none_found') || 'Nenhuma delegação encontrada')}
                 </p>
               </div>
             ) : (
