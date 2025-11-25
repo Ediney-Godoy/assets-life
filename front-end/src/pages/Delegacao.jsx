@@ -656,7 +656,7 @@ export default function DelegacaoPage() {
                 {Array.isArray(usuarios) && usuarios.length > 0 ? (
                   usuarios.map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.nome || u.username || u.email || `Usuário ${u.id}`}
+                      {u.nome || u.username || `Usuário ${u.id}`}
                     </option>
                   ))
                 ) : (
