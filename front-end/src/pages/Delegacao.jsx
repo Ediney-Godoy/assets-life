@@ -521,11 +521,30 @@ export default function DelegacaoPage() {
                 <input
                   type="text"
                   className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder={filterType === 'valor' ? 'Valor exato' : 'Pesquisar item'}
+                  placeholder="Pesquisar item"
                   value={queryLeft}
                   onChange={(e) => setQueryLeft(e.target.value)}
                 />
               </div>
+            </div>
+
+            {/* Seletor de Revisor */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                {t('reviewer_label') || 'Revisor'}
+              </label>
+              <select
+                className="select w-full"
+                value={revisorId}
+                onChange={(e) => setRevisorId(e.target.value)}
+              >
+                <option value="">{t('select_reviewer') || 'Selecione um revisor'}</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome || u.username}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Botão de delegação */}
