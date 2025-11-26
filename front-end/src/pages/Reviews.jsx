@@ -250,16 +250,26 @@ export default function ReviewsPage() {
       try {
         await getReviewItems(editingId);
       } catch {}
-    } catch (err) {
-      const isTimeout = err?.name === 'AbortError' || /Tempo limite|aborted|AbortError/i.test(String(err?.message || ''));
-      const msg = isTimeout
-        ? (t('timeout_error') || 'Tempo limite atingido. Tente novamente ou reduza o tamanho do arquivo.')
-        : (err?.message || t('upload_failed') || 'Falha no upload');
-      toast.error(msg);
-    } finally {
-      setIsUploading(false);
-    }
-  };
+          } catch (err) {
+            const raw = String(err?.message || '');
+            const isTimeout = err?.name === 'AbortError' || /Tempo limite|aborted|AbortError/i.test(raw);
+            const netFail = /Failed to fetch|net::ERR_FAILED/i.test(raw);
+            const fileChanged = /ERR_UPLOAD_FILE_CHANGED/i.test(raw);
+            let msg = '';
+            if (isTimeout) {
+              msg = t('timeout_error') || 'Tempo limite atingido. Tente novamente ou reduza o tamanho do arquivo.';
+            } else if (fileChanged) {
+              msg = t('upload_file_changed') || 'O arquivo foi alterado após a seleção. Feche-o e selecione novamente.';
+            } else if (netFail) {
+              msg = t('network_failed') || 'Falha de rede ao enviar. Verifique proxy/extensões/antivírus ou tente outro navegador.';
+            } else {
+              msg = raw && raw.length >= 4 ? raw : (t('upload_failed') || 'Falha no upload');
+            }
+            toast.error(msg);
+          } finally {
+            setIsUploading(false);
+          }
+        };
 
   const filtered = (periods || [])
     .filter((p) => !statusFilter || p.status === statusFilter)

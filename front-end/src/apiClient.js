@@ -28,6 +28,9 @@ const IS_PROD = (() => {
 let HOST_BASE = null;
 let HOST_BASE_ALT_PORT = null;
 let ACTIVE_BASE = null;
+const DEBUG_API = (() => {
+  try { return (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('debug_api') === '1'); } catch { return false; }
+})();
 try {
   if (typeof window !== 'undefined' && window.location?.hostname) {
     HOST_BASE = `http://${window.location.hostname}:8000`;
@@ -86,18 +89,18 @@ const BASE_CANDIDATES = [
 const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//i.test(String(b)));
 
 async function resolveBase() {
-  console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
+  if (DEBUG_API) console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
   try {
     if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
       ACTIVE_BASE = PRIMARY_BASE;
       try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
-      console.log('[apiClient] resolveBase() - Forçando PRIMARY_BASE via env:', PRIMARY_BASE);
+      if (DEBUG_API) console.log('[apiClient] resolveBase() - Forçando PRIMARY_BASE via env:', PRIMARY_BASE);
       return PRIMARY_BASE;
     }
   } catch {}
   // Se já temos uma base ativa, reutiliza
   if (ACTIVE_BASE) {
-    console.log('[apiClient] Usando ACTIVE_BASE existente:', ACTIVE_BASE);
+    if (DEBUG_API) console.log('[apiClient] Usando ACTIVE_BASE existente:', ACTIVE_BASE);
     return ACTIVE_BASE;
   }
   
