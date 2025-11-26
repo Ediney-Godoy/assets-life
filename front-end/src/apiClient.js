@@ -87,6 +87,14 @@ const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//
 
 async function resolveBase() {
   console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
+  try {
+    if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
+      ACTIVE_BASE = PRIMARY_BASE;
+      try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
+      console.log('[apiClient] resolveBase() - Forçando PRIMARY_BASE via env:', PRIMARY_BASE);
+      return PRIMARY_BASE;
+    }
+  } catch {}
   // Se já temos uma base ativa, reutiliza
   if (ACTIVE_BASE) {
     console.log('[apiClient] Usando ACTIVE_BASE existente:', ACTIVE_BASE);
@@ -499,9 +507,13 @@ export async function uploadReviewBase(periodoId, file) {
       method: 'POST',
       body: form,
       signal: controller.signal,
+      mode: 'cors',
+      credentials: 'omit',
       headers: (() => {
         const t = getToken();
-        return t ? { Authorization: `Bearer ${t}` } : undefined;
+        const h = { Accept: 'application/json' };
+        if (t) h.Authorization = `Bearer ${t}`;
+        return h;
       })(),
       // Não definir Content-Type explicitamente para permitir boundary correto
     });
@@ -524,12 +536,11 @@ export async function uploadReviewBase(periodoId, file) {
     return res.json();
   } catch (err) {
     clearTimeout(timeoutId);
-    throw err;
+      throw err;
+    }
   }
-}
-
-// Listar itens importados de um período específico
-export async function getReviewItems(periodoId) {
+  // Listar itens importados de um período específico
+  export async function getReviewItems(periodoId) {
   // Carregamento pode ser pesado; aumentar timeout para evitar abort precoce
   return request(`/revisoes/itens/${periodoId}`, { timeout: 20000 });
 }

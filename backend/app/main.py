@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
+import re
+from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
@@ -65,14 +67,13 @@ if _frontend_origin:
         if origin and origin not in origins:
             origins.append(origin)
 
+ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$|^https?://([a-zA-Z0-9-]+\.)+?(vercel\.app|koyeb\.app|fly\.dev|run\.app|cloudfunctions\.net)(:443)?/?$"
+origin_re = re.compile(ORIGIN_REGEX)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    # Permite origens de redes privadas comuns além de localhost/127.0.0.1
-    # e amplia para subdomínios em vercel.app, koyeb.app, fly.dev, etc em produção
-    # Regex simplificada e corrigida para evitar erros de sintaxe
-    # Suporta múltiplos níveis de subdomínios (ex: sub1.sub2.vercel.app)
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$|^https?://([a-zA-Z0-9-]+\.)+?(vercel\.app|koyeb\.app|fly\.dev|run\.app|cloudfunctions\.net)(:443)?/?$",
+    allow_origin_regex=ORIGIN_REGEX,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     allow_credentials=True,
@@ -91,10 +92,32 @@ async def allow_private_network(request: Request, call_next):
     try:
         if request.headers.get("access-control-request-private-network") == "true":
             response.headers["Access-Control-Allow-Private-Network"] = "true"
+        origin = request.headers.get("origin")
+        if origin and (origin in origins or origin_re.match(origin)):
+            if not response.headers.get("Access-Control-Allow-Origin"):
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Vary"] = "Origin"
+            if not response.headers.get("Access-Control-Allow-Credentials"):
+                response.headers["Access-Control-Allow-Credentials"] = "true"
     except Exception:
-        # Não falhar caso não seja possível ajustar o cabeçalho
         pass
     return response
+
+@app.options("/{path:path}")
+async def cors_preflight(request: Request, path: str):
+    origin = request.headers.get("origin")
+    headers_req = request.headers.get("access-control-request-headers", "*")
+    allow = origin and (origin in origins or origin_re.match(origin))
+    headers = {}
+    if allow:
+        headers = {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": headers_req,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
+    return Response(status_code=200, headers=headers)
 
 # -----------------------------
 # Auth (JWT) e Segurança
@@ -1646,10 +1669,20 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
     from datetime import datetime as dt
     import calendar
 
-    def parse_date(s: str) -> date:
-        s = (s or "").strip()
+    def parse_date_any(x) -> date:
+        if isinstance(x, date):
+            return x
+        s = str(x or "").strip()
         if not s:
             return None
+        # Excel serial date (1900 date system): number of days since 1899-12-30
+        try:
+            n = float(s)
+            if n > 20000 and n < 80000:
+                from datetime import timedelta
+                return date(1899, 12, 30) + timedelta(days=int(round(n)))
+        except Exception:
+            pass
         for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"):
             try:
                 return dt.strptime(s, fmt).date()
@@ -1713,7 +1746,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                     raise ValueError("Campos chave vazios")
 
                 data_inicio = row.get("data_inicio_depreciacao")
-                data_inicio = parse_date(str(data_inicio)) if not isinstance(data_inicio, date) else data_inicio
+                data_inicio = parse_date_any(data_inicio)
 
                 vida_util_anos = int(str(row.get("vida_util_anos", "")).strip())
                 vida_util_periodos = int(str(row.get("vida_util_periodos", "")).strip())
@@ -1732,7 +1765,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                 descricao_cc = str(row.get("descricao_conta_contabil", "")).strip()
 
                 data_fim = row.get("data_fim_depreciacao")
-                data_fim = parse_date(str(data_fim)) if (data_fim and not isinstance(data_fim, date)) else data_fim
+                data_fim = parse_date_any(data_fim)
                 if not data_fim and data_inicio and vida_util_periodos:
                     data_fim = add_months(data_inicio, vida_util_periodos)
 
