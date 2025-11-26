@@ -1661,6 +1661,14 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
             'vida_util_anos': 'vida_util_anos',
             'vida_util_periodos': 'vida_util_periodos',
             'data_fim_depreciacao': 'data_fim_depreciacao',
+            # auxiliares opcionais
+            'auxiliar_1': 'auxiliar2',
+            'aux_1': 'auxiliar2',
+            'auxiliar1': 'auxiliar2',
+            'auxiliar_2': 'auxiliar3',
+            'aux_2': 'auxiliar3',
+            'auxiliar2': 'auxiliar2',
+            'auxiliar3': 'auxiliar3',
         }
         return synonyms.get(nk, nk)
 
