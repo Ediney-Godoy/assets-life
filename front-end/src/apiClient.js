@@ -501,7 +501,22 @@ export async function uploadReviewBase(periodoId, file) {
   }
   const url = `${base}/revisoes/upload_base/${periodoId}`;
   const form = new FormData();
-  form.append('file', file);
+  let toSend = file;
+  try {
+    const n = String(file?.name || '').toLowerCase();
+    const t = String(file?.type || '').toLowerCase();
+    if (n.endsWith('.xlsx') || /sheet|xlsx/.test(t)) {
+      const XLSX = await import('xlsx');
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const baseName = n.replace(/\.xlsx$/, '') || 'base';
+      toSend = new File([blob], `${baseName}.csv`, { type: 'text/csv' });
+    }
+  } catch {}
+  form.append('file', toSend);
   const controller = new AbortController();
   // Timeout de 10 minutos para uploads grandes
   const timeoutId = setTimeout(() => controller.abort(), 600000);
