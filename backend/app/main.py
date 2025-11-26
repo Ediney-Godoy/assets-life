@@ -1669,10 +1669,20 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
     from datetime import datetime as dt
     import calendar
 
-    def parse_date(s: str) -> date:
-        s = (s or "").strip()
+    def parse_date_any(x) -> date:
+        if isinstance(x, date):
+            return x
+        s = str(x or "").strip()
         if not s:
             return None
+        # Excel serial date (1900 date system): number of days since 1899-12-30
+        try:
+            n = float(s)
+            if n > 20000 and n < 80000:
+                from datetime import timedelta
+                return date(1899, 12, 30) + timedelta(days=int(round(n)))
+        except Exception:
+            pass
         for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"):
             try:
                 return dt.strptime(s, fmt).date()
@@ -1736,7 +1746,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                     raise ValueError("Campos chave vazios")
 
                 data_inicio = row.get("data_inicio_depreciacao")
-                data_inicio = parse_date(str(data_inicio)) if not isinstance(data_inicio, date) else data_inicio
+                data_inicio = parse_date_any(data_inicio)
 
                 vida_util_anos = int(str(row.get("vida_util_anos", "")).strip())
                 vida_util_periodos = int(str(row.get("vida_util_periodos", "")).strip())
@@ -1755,7 +1765,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                 descricao_cc = str(row.get("descricao_conta_contabil", "")).strip()
 
                 data_fim = row.get("data_fim_depreciacao")
-                data_fim = parse_date(str(data_fim)) if (data_fim and not isinstance(data_fim, date)) else data_fim
+                data_fim = parse_date_any(data_fim)
                 if not data_fim and data_inicio and vida_util_periodos:
                     data_fim = add_months(data_inicio, vida_util_periodos)
 
