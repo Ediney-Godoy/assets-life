@@ -324,6 +324,9 @@
   "sending": "Enviando...",
 
   "delegation_title": "Delegação de Revisão",
+  "available_items": "Itens disponíveis",
+  "delegated_items": "Itens delegados",
+  "filters": "Filtros",
   "filter_ug": "Unidade Gerencial",
   "filter_cc": "Centro de Custos",
   "filter_class": "Classe Contábil",
@@ -354,6 +357,7 @@
   "error_removing_delegation": "Erro ao remover delegação",
   "error_loading_period_data": "Erro ao carregar dados do período",
   "reviewer_label": "Revisor",
+  "all_reviewers": "Todos os Avaliadores",
   "assigned_at": "Atribuído em",
   "col_class": "Classe",
   "loading": "Carregando...",

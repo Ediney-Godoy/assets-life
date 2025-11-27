@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { UserPlus, Trash2, ArrowRight, ArrowLeft, Search } from 'lucide-react';
+import { UserPlus, Trash2, ArrowRight, ArrowLeft, Search, ChevronDown } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -45,6 +45,8 @@ export default function DelegacaoPage() {
   const [valorMinRight, setValorMinRight] = useState('');
   const [valorMaxRight, setValorMaxRight] = useState('');
   const [selectedRevisorId, setSelectedRevisorId] = useState('');
+  const [leftFiltersOpen, setLeftFiltersOpen] = useState(true);
+  const [rightFiltersOpen, setRightFiltersOpen] = useState(true);
 
   const refreshLists = async (pid) => {
     if (!pid) return;
@@ -416,7 +418,7 @@ export default function DelegacaoPage() {
   return (
     <div className="space-y-4">
       {/* Header com select de período */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 mt-2">
         <div className="card p-4">
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
             <div className="flex-1 min-w-[200px]">
@@ -460,128 +462,135 @@ export default function DelegacaoPage() {
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--border-primary)' }}>
             <h3 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
-              {t('available_items') || 'Itens Disponíveis'}
+              {t('available_items') || 'Itens disponíveis'}
             </h3>
             <span className="badge badge-secondary">
               {filteredLeft.length} / {availableItems.length}
             </span>
           </div>
 
-          {/* Filtros organizados */}
-          <div className="space-y-3 mb-4">
-            {/* Seletor de tipo de filtro */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                {t('filter_by') || 'Filtrar por'}
-              </label>
-              <select
-                className="select w-full"
-                value={filterType}
-                onChange={(e) => {
-                  setFilterType(e.target.value);
-                  setFilterValue('');
-                  setValorMin('');
-                  setValorMax('');
-                }}
-              >
-                <option value="todos">Todos os itens</option>
-                <option value="classe">{t('filter_class') || 'Classe'}</option>
-                <option value="conta">Conta Contábil</option>
-                <option value="cc">{t('filter_cc') || 'Centro de Custos'}</option>
-                <option value="valor">{t('filter_value') || 'Valor Contábil'}</option>
-              </select>
-            </div>
-
-            {/* Valor do filtro dinâmico */}
-            {filterType === 'classe' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Classe
-                </label>
-                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueClasses.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {filterType === 'conta' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Conta Contábil
-                </label>
-                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueContas.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {filterType === 'cc' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Centro de Custos
-                </label>
-                <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueCCs.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {filterType === 'valor' && (
-              <div className="grid grid-cols-2 gap-2">
+          {/* Filtros organizados com colapso vertical */}
+          <div className="mb-3">
+            <button className="w-full flex items-center justify-between px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700" onClick={() => setLeftFiltersOpen((v) => !v)}>
+              <span className="text-sm font-medium">{t('filters') || 'Filtros'}</span>
+              <ChevronDown size={16} className={`${leftFiltersOpen ? 'rotate-180' : ''} transition-transform`} />
+            </button>
+            {leftFiltersOpen && (
+              <div className="space-y-3 mt-3">
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                    Mínimo
+                    {t('filter_by') || 'Filtrar por'}
                   </label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    value={valorMin}
-                    onChange={(e) => setValorMin(e.target.value)}
-                    placeholder="0"
-                  />
+                  <select
+                    className="select w-full"
+                    value={filterType}
+                    onChange={(e) => {
+                      setFilterType(e.target.value);
+                      setFilterValue('');
+                      setValorMin('');
+                      setValorMax('');
+                    }}
+                  >
+                    <option value="todos">Todos os itens</option>
+                    <option value="classe">{t('filter_class') || 'Classe'}</option>
+                    <option value="conta">Conta Contábil</option>
+                    <option value="cc">{t('filter_cc') || 'Centro de Custos'}</option>
+                    <option value="valor">{t('filter_value') || 'Valor Contábil'}</option>
+                  </select>
                 </div>
+
+                {filterType === 'classe' && (
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                      Classe
+                    </label>
+                    <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                      <option value="">Todos</option>
+                      {uniqueClasses.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {filterType === 'conta' && (
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                      Conta Contábil
+                    </label>
+                    <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                      <option value="">Todos</option>
+                      {uniqueContas.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {filterType === 'cc' && (
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                      Centro de Custos
+                    </label>
+                    <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
+                      <option value="">Todos</option>
+                      {uniqueCCs.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {filterType === 'valor' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                        Mínimo
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        value={valorMin}
+                        onChange={(e) => setValorMin(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                        Máximo
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        value={valorMax}
+                        onChange={(e) => setValorMax(e.target.value)}
+                        placeholder="999999"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                    Máximo
+                    Pesquisar
                   </label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    value={valorMax}
-                    onChange={(e) => setValorMax(e.target.value)}
-                    placeholder="999999"
-                  />
+                  <div className="relative">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      placeholder="Pesquisar item"
+                      value={queryLeft}
+                      onChange={(e) => setQueryLeft(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Campo de busca */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Pesquisar
-              </label>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="Pesquisar item"
-                  value={queryLeft}
-                  onChange={(e) => setQueryLeft(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Botão de delegação */}
+          {/* Botão de delegação sempre visível */}
+          <div className="mb-4">
             <Button
               variant="primary"
               className="btn-md w-full"
@@ -663,167 +672,164 @@ export default function DelegacaoPage() {
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3 pb-3 border-b" style={{ borderColor: 'var(--border-primary)' }}>
             <h3 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
-              {t('delegated_items') || 'Itens Delegados'}
+              {t('delegated_items') || 'Itens delegados'}
             </h3>
             <span className="badge badge-primary">
               {filteredRight.length} / {delegacoes.length}
             </span>
           </div>
 
-          {/* Controles organizados */}
-          <div className="space-y-3 mb-4">
-            {/* Seletor de Revisor */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                {t('reviewer_label') || 'Revisor'}
-              </label>
-              <select
-                className="select w-full"
-                value={selectedRevisorId}
-                onChange={(e) => setSelectedRevisorId(e.target.value)}
-              >
-                <option value="">{t('all_reviewers') || 'Todos os revisores'}</option>
-                {Array.isArray(usuarios) && usuarios.length > 0 ? (
-                  usuarios.map((u) => {
-                    // Tentar múltiplos campos possíveis para o nome
-                    let displayName = u.nome_completo;
+          {/* Controles organizados com colapso vertical */}
+          <div className="mb-3">
+            <button className="w-full flex items-center justify-between px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700" onClick={() => setRightFiltersOpen((v) => !v)}>
+              <span className="text-sm font-medium">{t('filters') || 'Filtros'}</span>
+              <ChevronDown size={16} className={`${rightFiltersOpen ? 'rotate-180' : ''} transition-transform`} />
+            </button>
+            {rightFiltersOpen && (
+              <div className="space-y-3 mt-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                    {t('reviewer_label') || 'Revisor'}
+                  </label>
+                  <select
+                    className="select w-full"
+                    value={selectedRevisorId}
+                    onChange={(e) => setSelectedRevisorId(e.target.value)}
+                  >
+                    <option value="">{t('all_reviewers') || 'Todos os Avaliadores'}</option>
+                    {Array.isArray(usuarios) && usuarios.length > 0 ? (
+                      usuarios.map((u) => {
+                        let displayName = u.nome_completo;
+                        if (displayName && typeof displayName === 'string' && displayName.includes(' - ')) {
+                          const parts = displayName.split(' - ');
+                          if (parts.length > 1) displayName = parts.slice(1).join(' - ');
+                        }
+                        return (
+                          <option key={u.id} value={u.id}>
+                            {displayName}
+                          </option>
+                        );
+                      })
+                    ) : (
+                      <option disabled>Carregando usuários...</option>
+                    )}
+                  </select>
+                </div>
 
-                    // Extrair apenas o nome, removendo código se existir (ex: "000001 - Fulano" -> "Fulano")
-                    if (displayName && typeof displayName === 'string' && displayName.includes(' - ')) {
-                      const parts = displayName.split(' - ');
-                      if (parts.length > 1) {
-                        displayName = parts.slice(1).join(' - '); // Pega tudo depois do primeiro " - "
-                      }
-                    }
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                    Filtrar por
+                  </label>
+                  <select
+                    className="select w-full"
+                    value={filterRightType}
+                    onChange={(e) => {
+                      setFilterRightType(e.target.value);
+                      setFilterRightValue('');
+                      setValorMinRight('');
+                      setValorMaxRight('');
+                    }}
+                  >
+                    <option value="todos">Todos os itens</option>
+                    <option value="classe">Classe</option>
+                    <option value="conta">Conta Contábil</option>
+                    <option value="cc">Centro de Custos</option>
+                    <option value="valor">Valor Contábil</option>
+                  </select>
+                </div>
 
-                    return (
-                      <option key={u.id} value={u.id}>
-                        {displayName}
-                      </option>
-                    );
-                  })
-                ) : (
-                  <option disabled>Carregando usuários...</option>
+                {filterRightType === 'classe' && (
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                      Classe
+                    </label>
+                    <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
+                      <option value="">Todos</option>
+                      {uniqueClassesDelegated.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
                 )}
-              </select>
-            </div>
 
-            {/* Seletor de tipo de filtro */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Filtrar por
-              </label>
-              <select
-                className="select w-full"
-                value={filterRightType}
-                onChange={(e) => {
-                  setFilterRightType(e.target.value);
-                  setFilterRightValue('');
-                  setValorMinRight('');
-                  setValorMaxRight('');
-                }}
-              >
-                <option value="todos">Todos os itens</option>
-                <option value="classe">Classe</option>
-                <option value="conta">Conta Contábil</option>
-                <option value="cc">Centro de Custos</option>
-                <option value="valor">Valor Contábil</option>
-              </select>
-            </div>
+                {filterRightType === 'conta' && (
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                      Conta Contábil
+                    </label>
+                    <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
+                      <option value="">Todos</option>
+                      {uniqueContasDelegated.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-            {/* Seletor de Classe */}
-            {filterRightType === 'classe' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Classe
-                </label>
-                <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueClassesDelegated.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+                {filterRightType === 'cc' && (
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                      Centro de Custos
+                    </label>
+                    <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
+                      <option value="">Todos</option>
+                      {uniqueCCsDelegated.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-            {/* Seletor de Conta Contábil */}
-            {filterRightType === 'conta' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Conta Contábil
-                </label>
-                <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueContasDelegated.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+                {filterRightType === 'valor' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                        Mínimo
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        value={valorMinRight}
+                        onChange={(e) => setValorMinRight(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                        Máximo
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        value={valorMaxRight}
+                        onChange={(e) => setValorMaxRight(e.target.value)}
+                        placeholder="999999"
+                      />
+                    </div>
+                  </div>
+                )}
 
-            {/* Seletor de Centro de Custos */}
-            {filterRightType === 'cc' && (
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Centro de Custos
-                </label>
-                <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
-                  <option value="">Todos</option>
-                  {uniqueCCsDelegated.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Seletor de Valor Contábil */}
-            {filterRightType === 'valor' && (
-              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                    Mínimo
+                    Pesquisar
                   </label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    value={valorMinRight}
-                    onChange={(e) => setValorMinRight(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                    Máximo
-                  </label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    value={valorMaxRight}
-                    onChange={(e) => setValorMaxRight(e.target.value)}
-                    placeholder="999999"
-                  />
+                  <div className="relative">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      placeholder="Pesquisar delegação"
+                      value={queryRight}
+                      onChange={(e) => setQueryRight(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Campo de busca */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Pesquisar
-              </label>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  className="w-full pl-10 pr-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="Pesquisar delegação"
-                  value={queryRight}
-                  onChange={(e) => setQueryRight(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Botão de remoção */}
+          {/* Botão de remoção sempre visível */}
+          <div className="mb-4">
             <Button
               variant="secondary"
               className="btn-md w-full"
