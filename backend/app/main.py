@@ -1708,6 +1708,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
     imported = 0
     rejected = 0
     errors_log = []
+    warnings_log = []
 
     try:
         content = file.file.read()
@@ -1774,6 +1775,8 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                     vida_util_periodos = vida_util_anos * 12
                 if vida_util_anos == 0 and vida_util_periodos > 0:
                     vida_util_anos = max(0, round(vida_util_periodos / 12))
+                if str(row.get("vida_util_anos", "")).strip() == "":
+                    warnings_log.append(f"Linha {idx}: vida_util_anos vazio")
 
                 def parse_decimal(x):
                     x = (str(x).replace(".", "").replace(",", ".") if x is not None else "0")
@@ -1825,6 +1828,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
             "importados": imported,
             "rejeitados": rejected,
             "erros": errors_log,
+            "alertas": warnings_log,
         }
     finally:
         try:
