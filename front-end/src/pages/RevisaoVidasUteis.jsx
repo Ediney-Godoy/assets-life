@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 import Table from '../components/ui/Table';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { getReviewPeriods, getReviewItems, updateReviewItem, getManagementUnits, getCostCenters, listarComentariosRVU, responderComentarioRVU } from '../apiClient';
+import { getReviewPeriods, getReviewItems, updateReviewItem, getManagementUnits, getCostCenters, listarComentariosRVU, responderComentarioRVU, getReviewDelegations } from '../apiClient';
 
 export default function RevisaoVidasUteis() {
   const { t } = useTranslation();
   const [periodos, setPeriodos] = React.useState([]);
   const [periodoId, setPeriodoId] = React.useState(null);
   const [items, setItems] = React.useState([]);
+  const [delegacoes, setDelegacoes] = React.useState([]);
   // Filtros avançados (mesmos da tela de Revisões em Massa)
   const [filterType, setFilterType] = React.useState('cc'); // 'ug' | 'cc' | 'classe' | 'valor'
   const [filterValue, setFilterValue] = React.useState('');
@@ -67,11 +68,15 @@ export default function RevisaoVidasUteis() {
       setLoading(true);
       setError('');
       try {
-        const data = await getReviewItems(periodoId);
+        const [data, ds] = await Promise.all([
+          getReviewItems(periodoId),
+          getReviewDelegations(periodoId),
+        ]);
         setItems(data);
-        // dados do período já carregados via getReviewPeriods
+        setDelegacoes(Array.isArray(ds) ? ds : []);
       } catch (err) {
         setError(String(err?.message || err));
+        setDelegacoes([]);
       } finally {
         setLoading(false);
       }
@@ -170,8 +175,7 @@ export default function RevisaoVidasUteis() {
   const motivosReducao = t('review_reasons_decrease', { returnObjects: true }) || [];
 
   const isItemRevisado = (it) => {
-    // Considera revisado se status for 'Revisado', ou se houve alteração, ou se tem justificativa/condição física preenchida
-    return (it.status === 'Revisado') || Boolean(it.alterado) || Boolean(it.justificativa) || Boolean(it.condicao_fisica);
+    return (it.status === 'Revisado' || it.status === 'Aprovado') || Boolean(it.alterado);
   };
 
   const columns = [
@@ -271,8 +275,9 @@ export default function RevisaoVidasUteis() {
   }, [items, ccByCodigo, ugById]);
 
   const filteredByTab = React.useMemo(() => {
-    return items.filter((it) => (activeTab === 'revisados' ? isItemRevisado(it) : !isItemRevisado(it)));
-  }, [items, activeTab]);
+    const base = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
+    return base.filter((it) => (activeTab === 'revisados' ? isItemRevisado(it) : !isItemRevisado(it)));
+  }, [items, activeTab, myItemIds]);
 
   const filtered = React.useMemo(() => {
     let list = [...filteredByTab];
@@ -823,3 +828,10 @@ export default function RevisaoVidasUteis() {
     </section>
   );
 }
+  const currentUserId = React.useMemo(() => { try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null')?.id || null; } catch { return null; } }, []);
+  const myItemIds = React.useMemo(() => {
+    const uid = currentUserId;
+    if (!uid) return new Set();
+    const list = Array.isArray(delegacoes) ? delegacoes : [];
+    return new Set(list.filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === String(uid)).map((d) => d.ativo_id));
+  }, [delegacoes, currentUserId]);

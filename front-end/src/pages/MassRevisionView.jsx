@@ -145,7 +145,7 @@ export default function MassRevisionView() {
     return { anos: Math.floor(m / 12), meses: m % 12 };
   };
   const isItemRevisado = (it) => {
-    return (it.status === 'Revisado') || Boolean(it.alterado) || Boolean(it.justificativa) || Boolean(it.condicao_fisica);
+    return (it.status === 'Revisado' || it.status === 'Aprovado') || Boolean(it.alterado);
   };
 
   const retryLoad = async () => {
