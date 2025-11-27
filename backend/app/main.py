@@ -1777,6 +1777,8 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                     vida_util_anos = max(0, round(vida_util_periodos / 12))
                 if str(row.get("vida_util_anos", "")).strip() == "":
                     warnings_log.append(f"Linha {idx}: vida_util_anos vazio")
+                if str(row.get("vida_util_anos", "")).strip() == "" and str(row.get("vida_util_periodos", "")).strip() == "":
+                    raise ValueError("Vida útil em branco: informe anos ou períodos")
 
                 def parse_decimal(x):
                     x = (str(x).replace(".", "").replace(",", ".") if x is not None else "0")
@@ -2306,6 +2308,10 @@ class DelegacaoOut(BaseModel):
     numero_imobilizado: Optional[str] = None
     descricao: Optional[str] = None
     revisor_nome: Optional[str] = None
+    classe: Optional[str] = None
+    conta_contabil: Optional[str] = None
+    centro_custo: Optional[str] = None
+    valor_contabil: Optional[float] = None
 
 class DelegacaoCreate(BaseModel):
     periodo_id: int
@@ -2336,6 +2342,10 @@ def list_revisao_delegacoes(rev_id: int, db: Session = Depends(get_db)):
                 numero_imobilizado=item.numero_imobilizado if item else None,
                 descricao=item.descricao if item else None,
                 revisor_nome=revisor.nome_completo if revisor else None,
+                classe=item.classe if item else None,
+                conta_contabil=item.conta_contabil if item else None,
+                centro_custo=item.centro_custo if item else None,
+                valor_contabil=(float(item.valor_contabil) if (hasattr(item, 'valor_contabil') and item.valor_contabil is not None) else None),
             )
         )
     return result
@@ -2427,6 +2437,10 @@ def create_revisao_delegacao(payload: DelegacaoCreate, db: Session = Depends(get
         numero_imobilizado=item.numero_imobilizado,
         descricao=item.descricao,
         revisor_nome=revisor.nome_completo,
+        classe=item.classe,
+        conta_contabil=item.conta_contabil,
+        centro_custo=item.centro_custo,
+        valor_contabil=(float(item.valor_contabil) if item.valor_contabil is not None else None),
     )
 
 @app.delete("/revisoes/delegacoes/{delegacao_id}")
