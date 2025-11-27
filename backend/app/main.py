@@ -1756,8 +1756,24 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                 data_inicio = row.get("data_inicio_depreciacao")
                 data_inicio = parse_date_any(data_inicio)
 
-                vida_util_anos = int(str(row.get("vida_util_anos", "")).strip())
-                vida_util_periodos = int(str(row.get("vida_util_periodos", "")).strip())
+                def parse_int(x):
+                    s = str(x).strip()
+                    if s == "":
+                        return 0
+                    try:
+                        return int(s)
+                    except Exception:
+                        try:
+                            return int(float(s.replace(',', '.')))
+                        except Exception:
+                            raise ValueError(f"Valor inteiro inválido: {x}")
+
+                vida_util_anos = parse_int(row.get("vida_util_anos"))
+                vida_util_periodos = parse_int(row.get("vida_util_periodos"))
+                if vida_util_periodos == 0 and vida_util_anos > 0:
+                    vida_util_periodos = vida_util_anos * 12
+                if vida_util_anos == 0 and vida_util_periodos > 0:
+                    vida_util_anos = max(0, round(vida_util_periodos / 12))
 
                 def parse_decimal(x):
                     x = (str(x).replace(".", "").replace(",", ".") if x is not None else "0")
