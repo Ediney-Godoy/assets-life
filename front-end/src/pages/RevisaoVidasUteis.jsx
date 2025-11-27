@@ -274,6 +274,14 @@ export default function RevisaoVidasUteis() {
     return result;
   }, [items, ccByCodigo, ugById]);
 
+  const currentUserId = React.useMemo(() => { try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null')?.id || null; } catch { return null; } }, []);
+  const myItemIds = React.useMemo(() => {
+    const uid = currentUserId;
+    if (!uid) return new Set();
+    const list = Array.isArray(delegacoes) ? delegacoes : [];
+    return new Set(list.filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === String(uid)).map((d) => d.ativo_id));
+  }, [delegacoes, currentUserId]);
+
   const filteredByTab = React.useMemo(() => {
     const base = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
     return base.filter((it) => (activeTab === 'revisados' ? isItemRevisado(it) : !isItemRevisado(it)));
@@ -828,10 +836,3 @@ export default function RevisaoVidasUteis() {
     </section>
   );
 }
-  const currentUserId = React.useMemo(() => { try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null')?.id || null; } catch { return null; } }, []);
-  const myItemIds = React.useMemo(() => {
-    const uid = currentUserId;
-    if (!uid) return new Set();
-    const list = Array.isArray(delegacoes) ? delegacoes : [];
-    return new Set(list.filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === String(uid)).map((d) => d.ativo_id));
-  }, [delegacoes, currentUserId]);

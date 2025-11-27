@@ -77,25 +77,32 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// Não usar URLs hardcoded em produção - sempre usar VITE_API_URL configurada no Vercel
-// Mas adiciona fallback temporário enquanto VITE_API_URL não é aplicada
-const BASE_CANDIDATES = [
-  PRIMARY_BASE, 
-  // Fallback temporário: usa URL atual se PRIMARY_BASE não estiver configurada e estamos em produção
-  (!PRIMARY_BASE && IS_HTTPS ? CURRENT_BACKEND_URL : null),
-  HOST_BASE, 
-  'http://127.0.0.1:8000'
-].filter(Boolean);
-const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => !IS_HTTPS || /^https:\/\//i.test(String(b)));
+const BASE_CANDIDATES = (() => {
+  const list = [];
+  if (PRIMARY_BASE) list.push(PRIMARY_BASE);
+  // Sempre incluir uma alternativa remota segura quando PRIMARY_BASE não estiver disponível
+  if (!PRIMARY_BASE) list.push(CURRENT_BACKEND_URL);
+  return list;
+})();
+// Em qualquer ambiente, priorizar apenas candidatos HTTPS para evitar Mixed Content
+const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => /^https:\/\//i.test(String(b)));
 
 async function resolveBase() {
   if (DEBUG_API) console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
   try {
     if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
-      ACTIVE_BASE = PRIMARY_BASE;
-      try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
-      if (DEBUG_API) console.log('[apiClient] resolveBase() - Forçando PRIMARY_BASE via env:', PRIMARY_BASE);
-      return PRIMARY_BASE;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(`${PRIMARY_BASE}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          ACTIVE_BASE = PRIMARY_BASE;
+          try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
+          if (DEBUG_API) console.log('[apiClient] resolveBase() - PRIMARY_BASE OK:', PRIMARY_BASE);
+          return PRIMARY_BASE;
+        }
+      } catch {}
     }
   } catch {}
   // Se já temos uma base ativa, reutiliza
@@ -105,15 +112,7 @@ async function resolveBase() {
   }
   
   console.log('[apiClient] resolveBase() - SAFE_CANDIDATES.length:', SAFE_CANDIDATES.length);
-  // Se SAFE_CANDIDATES está vazio mas temos PRIMARY_BASE HTTPS, usar ela diretamente
   if (SAFE_CANDIDATES.length === 0) {
-    console.log('[apiClient] resolveBase() - SAFE_CANDIDATES vazio, verificando PRIMARY_BASE HTTPS');
-    if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
-      ACTIVE_BASE = PRIMARY_BASE;
-      console.log('[apiClient] resolveBase() - Usando PRIMARY_BASE HTTPS:', PRIMARY_BASE);
-      try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
-      return PRIMARY_BASE;
-    }
     // Se não há candidatos seguros, retorna null para evitar loop
     console.log('[apiClient] resolveBase() - Nenhuma base disponível, retornando null');
     return null;

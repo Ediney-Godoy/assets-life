@@ -863,7 +863,7 @@ export default function ReviewsPage() {
                 <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setBlankConfirmOpen(false)}><X size={18} /></button>
               </div>
               <div className="p-4 space-y-3">
-                <div className="text-slate-700 dark:text-slate-300">{t('confirm_blank_years_msg', { count: blankYearsCount }) || `Foram encontrados ${blankYearsCount} itens com Vida útil (anos) em branco. Deseja prosseguir?`}</div>
+                <div className="text-slate-700 dark:text-slate-300">{t('confirm_blank_years_msg', { count: blankYearsCount }) || `Foram encontrados ${blankYearsCount} itens com Vida útil (anos) em branco. Eles serão rejeitados. Deseja prosseguir?`}</div>
                 {blankYearsSamples && blankYearsSamples.length > 0 && (
                   <div className="text-xs text-slate-600 dark:text-slate-300">
                     {t('lines_example') || 'Exemplos de linhas:'} {blankYearsSamples.join(', ')}
