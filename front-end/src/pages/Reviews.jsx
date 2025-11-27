@@ -49,6 +49,9 @@ export default function ReviewsPage() {
   const [uploadFile, setUploadFile] = React.useState(null);
   const [uploadResult, setUploadResult] = React.useState(null);
   const [isUploading, setIsUploading] = React.useState(false);
+  const [blankYearsCount, setBlankYearsCount] = React.useState(0);
+  const [blankYearsSamples, setBlankYearsSamples] = React.useState([]);
+  const [blankConfirmOpen, setBlankConfirmOpen] = React.useState(false);
 
   const [form, setForm] = React.useState({
     descricao: '',
@@ -238,7 +241,41 @@ export default function ReviewsPage() {
     if (f) handleFilePicked(f);
   };
 
-  const startUpload = async () => {
+  const normalize = (s) => {
+    try { s = s.normalize('NFD').replace(/\p{Diacritic}/gu, ''); } catch {}
+    s = String(s || '').trim().toLowerCase();
+    s = s.replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+    return s;
+  };
+
+  const scanFileForBlankYears = async (file) => {
+    try {
+      const XLSX = await import('xlsx');
+      let wb;
+      const name = String(file?.name || '').toLowerCase();
+      if (name.endsWith('.csv')) {
+        const text = await file.text();
+        wb = XLSX.read(text, { type: 'string' });
+      } else {
+        const buf = await file.arrayBuffer();
+        wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+      }
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (!rows || rows.length < 2) return { count: 0, samples: [] };
+      const headers = rows[0].map((h) => normalize(String(h)));
+      const idxAnos = headers.findIndex((h) => h === 'vida_util_anos');
+      if (idxAnos === -1) return { count: 0, samples: [] };
+      let count = 0; const samples = [];
+      for (let i = 1; i < rows.length; i++) {
+        const val = String(rows[i][idxAnos] ?? '').trim();
+        if (val === '') { count++; if (samples.length < 10) samples.push(i + 1); }
+      }
+      return { count, samples };
+    } catch { return { count: 0, samples: [] }; }
+  };
+
+  const doUpload = async () => {
     if (!editingId) return toast.error(t('select_period_msg') || 'Selecione um período');
     if (!uploadFile) return toast.error(t('select_file_msg') || 'Selecione um arquivo');
     try {
@@ -272,6 +309,19 @@ export default function ReviewsPage() {
             setIsUploading(false);
           }
         };
+
+  const startUpload = async () => {
+    if (!editingId) return toast.error(t('select_period_msg') || 'Selecione um período');
+    if (!uploadFile) return toast.error(t('select_file_msg') || 'Selecione um arquivo');
+    const res = await scanFileForBlankYears(uploadFile);
+    if (res.count > 0) {
+      setBlankYearsCount(res.count);
+      setBlankYearsSamples(res.samples);
+      setBlankConfirmOpen(true);
+      return;
+    }
+    await doUpload();
+  };
 
   const filtered = (periods || [])
     .filter((p) => !statusFilter || p.status === statusFilter)
@@ -711,8 +761,8 @@ export default function ReviewsPage() {
         </div>
       )}
  
-        {uploadModalOpen && (
-         <div className="fixed inset-0 z-50">
+      {uploadModalOpen && (
+        <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => setUploadModalOpen(false)} />
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-xl bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
@@ -798,6 +848,31 @@ export default function ReviewsPage() {
                     )}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
+      {blankConfirmOpen && (
+        <div className="fixed inset-0 z-[60]">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setBlankConfirmOpen(false)} />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('confirm_blank_years_title') || 'Confirmar vida útil em branco'}</div>
+                <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setBlankConfirmOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="text-slate-700 dark:text-slate-300">{t('confirm_blank_years_msg', { count: blankYearsCount }) || `Foram encontrados ${blankYearsCount} itens com Vida útil (anos) em branco. Deseja prosseguir?`}</div>
+                {blankYearsSamples && blankYearsSamples.length > 0 && (
+                  <div className="text-xs text-slate-600 dark:text-slate-300">
+                    {t('lines_example') || 'Exemplos de linhas:'} {blankYearsSamples.join(', ')}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setBlankConfirmOpen(false)} className="px-3 py-2">{t('cancel') || 'Cancelar'}</Button>
+                  <Button variant="primary" onClick={() => { setBlankConfirmOpen(false); doUpload(); }} className="px-3 py-2">{t('proceed') || 'Prosseguir'}</Button>
+                </div>
               </div>
             </motion.div>
           </div>
