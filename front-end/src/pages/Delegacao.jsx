@@ -133,9 +133,13 @@ export default function DelegacaoPage() {
   }, [availableItems]);
 
   const uniqueCCsDelegated = useMemo(() => {
-    const vals = Array.from(new Set((delegacoes || []).map((d) => d.centro_custo).filter(Boolean)));
-    return vals.sort();
-  }, [delegacoes]);
+    const set = new Set();
+    (delegacoes || []).forEach((d) => {
+      const cc = d?.centro_custo ?? itemById.get(d.ativo_id)?.centro_custo ?? '';
+      if (cc) set.add(cc);
+    });
+    return Array.from(set).sort();
+  }, [delegacoes, itemById]);
 
   const uniqueClasses = useMemo(() => {
     const vals = Array.from(new Set((availableItems || []).map((i) => i.classe).filter(Boolean)));
@@ -157,9 +161,13 @@ export default function DelegacaoPage() {
   }, [delegacoes, itemById]);
 
   const uniqueContasDelegated = useMemo(() => {
-    const vals = Array.from(new Set((delegacoes || []).map((d) => d.conta_contabil).filter(Boolean)));
-    return vals.sort();
-  }, [delegacoes]);
+    const set = new Set();
+    (delegacoes || []).forEach((d) => {
+      const conta = d?.conta_contabil ?? itemById.get(d.ativo_id)?.conta_contabil ?? '';
+      if (conta) set.add(conta);
+    });
+    return Array.from(set).sort();
+  }, [delegacoes, itemById]);
 
   const ccByCodigo = useMemo(() => {
     const m = new Map();
@@ -246,7 +254,10 @@ export default function DelegacaoPage() {
     // Filtro por tipo
     if (filterRightType === 'cc' && filterRightValue) {
       const fv = filterRightValue.toLowerCase();
-      list = list.filter((d) => String(d.centro_custo || '').toLowerCase().includes(fv));
+      list = list.filter((d) => {
+        const cc = d?.centro_custo ?? itemById.get(d.ativo_id)?.centro_custo ?? '';
+        return String(cc).toLowerCase().includes(fv);
+      });
     } else if (filterRightType === 'classe' && filterRightValue) {
       const fv = filterRightValue.toLowerCase();
       list = list.filter((d) => {
@@ -255,7 +266,10 @@ export default function DelegacaoPage() {
       });
     } else if (filterRightType === 'conta' && filterRightValue) {
       const fv = filterRightValue.toLowerCase();
-      list = list.filter((d) => String(d.conta_contabil || '').toLowerCase().includes(fv));
+      list = list.filter((d) => {
+        const conta = d?.conta_contabil ?? itemById.get(d.ativo_id)?.conta_contabil ?? '';
+        return String(conta).toLowerCase().includes(fv);
+      });
     } else if (filterRightType === 'valor') {
       const minParsed = parseDecimal(valorMinRight);
       const maxParsed = parseDecimal(valorMaxRight);
