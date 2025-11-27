@@ -148,9 +148,13 @@ export default function DelegacaoPage() {
   }, [availableItems]);
 
   const uniqueClassesDelegated = useMemo(() => {
-    const vals = Array.from(new Set((delegacoes || []).map((d) => d.classe).filter(Boolean)));
-    return vals.sort();
-  }, [delegacoes]);
+    const set = new Set();
+    (delegacoes || []).forEach((d) => {
+      const cls = d?.classe ?? itemById.get(d.ativo_id)?.classe ?? '';
+      if (cls) set.add(cls);
+    });
+    return Array.from(set).sort();
+  }, [delegacoes, itemById]);
 
   const uniqueContasDelegated = useMemo(() => {
     const vals = Array.from(new Set((delegacoes || []).map((d) => d.conta_contabil).filter(Boolean)));
@@ -245,7 +249,10 @@ export default function DelegacaoPage() {
       list = list.filter((d) => String(d.centro_custo || '').toLowerCase().includes(fv));
     } else if (filterRightType === 'classe' && filterRightValue) {
       const fv = filterRightValue.toLowerCase();
-      list = list.filter((d) => String(d.classe || '').toLowerCase().includes(fv));
+      list = list.filter((d) => {
+        const cls = d?.classe ?? itemById.get(d.ativo_id)?.classe ?? '';
+        return String(cls).toLowerCase().includes(fv);
+      });
     } else if (filterRightType === 'conta' && filterRightValue) {
       const fv = filterRightValue.toLowerCase();
       list = list.filter((d) => String(d.conta_contabil || '').toLowerCase().includes(fv));
@@ -855,6 +862,9 @@ export default function DelegacaoPage() {
                           {t('col_description') || 'Descrição'}
                         </th>
                         <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_class') || 'Classe'}
+                        </th>
+                        <th className="hidden xl:table-cell px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                           {t('reviewer_label') || 'Revisor'}
                         </th>
                         <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
@@ -870,7 +880,8 @@ export default function DelegacaoPage() {
                           </td>
                           <td className="px-3 py-2.5 font-medium" style={{ color: 'var(--text-primary)' }}>{d.numero_imobilizado}</td>
                           <td className="px-3 py-2.5 truncate max-w-[250px]" style={{ color: 'var(--text-secondary)' }} title={d.descricao}>{d.descricao}</td>
-                          <td className="hidden lg:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d.revisor_nome || d.revisor_id}</td>
+                          <td className="hidden lg:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d?.classe ?? itemById.get(d.ativo_id)?.classe}</td>
+                          <td className="hidden xl:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d.revisor_nome || d.revisor_id}</td>
                           <td className="px-3 py-2.5 text-right tabular-nums font-medium" style={{ color: 'var(--text-primary)' }}>
                             {Number(itemById.get(d.ativo_id)?.valor_contabil ?? d.valor_contabil ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
