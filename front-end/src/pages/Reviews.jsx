@@ -243,9 +243,11 @@ export default function ReviewsPage() {
     if (!uploadFile) return toast.error(t('select_file_msg') || 'Selecione um arquivo');
     try {
       setIsUploading(true);
-      const result = await uploadReviewBase(editingId, uploadFile);
-      setUploadResult(result);
-      toast.success(t('import_summary', { imported: result.importados, rejected: result.rejeitados }) || `Importação: ${result.importados} importados, ${result.rejeitados} rejeitados.`);
+            const result = await uploadReviewBase(editingId, uploadFile);
+            setUploadResult(result);
+            const warns = Array.isArray(result.alertas) ? result.alertas.length : 0;
+            const summary = `Importação: ${result.importados} importados, ${result.rejeitados} rejeitados` + (warns ? `, ${warns} alertas` : '.');
+            toast.success(summary);
       // Opcional: buscar itens
       try {
         await getReviewItems(editingId);
@@ -779,6 +781,16 @@ export default function ReviewsPage() {
                         <summary className="cursor-pointer text-slate-600">{t('view_errors') || 'Ver erros'}</summary>
                         <ul className="mt-2 max-h-40 overflow-y-auto text-xs list-disc pl-5">
                           {uploadResult.erros.slice(0, 50).map((e, idx) => (
+                            <li key={idx}>{e}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                    {uploadResult.alertas && uploadResult.alertas.length > 0 && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-slate-600">{t('view_warnings') || 'Ver alertas'}</summary>
+                        <ul className="mt-2 max-h-40 overflow-y-auto text-xs list-disc pl-5">
+                          {uploadResult.alertas.slice(0, 50).map((e, idx) => (
                             <li key={idx}>{e}</li>
                           ))}
                         </ul>
