@@ -287,6 +287,16 @@ export default function RevisaoVidasUteis() {
     return base.filter((it) => (activeTab === 'revisados' ? isItemRevisado(it) : !isItemRevisado(it)));
   }, [items, activeTab, myItemIds]);
 
+  const pendingCount = React.useMemo(() => {
+    const base = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
+    return base.filter((it) => !isItemRevisado(it)).length;
+  }, [items, myItemIds]);
+
+  const reviewedCount = React.useMemo(() => {
+    const base = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
+    return base.filter((it) => isItemRevisado(it)).length;
+  }, [items, myItemIds]);
+
   const filtered = React.useMemo(() => {
     let list = [...filteredByTab];
     // Complemento via campo editável (mesmo padrão da tela de Massa)
@@ -503,12 +513,12 @@ export default function RevisaoVidasUteis() {
             type="button"
             onClick={() => setActiveTab('pendentes')}
             className={`px-4 py-2 text-sm font-medium border ${activeTab === 'pendentes' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_to_review')}</button>
+          >{t('tab_to_review')} ({pendingCount})</button>
           <button
             type="button"
             onClick={() => setActiveTab('revisados')}
             className={`px-4 py-2 text-sm font-medium border -ml-px ${activeTab === 'revisados' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_reviewed')}</button>
+          >{t('tab_reviewed')} ({reviewedCount})</button>
       </div>
       </div>
 
@@ -578,6 +588,10 @@ export default function RevisaoVidasUteis() {
             {loading ? (
               <div className="p-4 text-slate-700 dark:text-slate-300">{t('loading_items')}</div>
             ) : (
+              <>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-slate-700 dark:text-slate-300">Itens: {sorted.length}</div>
+              </div>
               <Table
                 columns={columns}
                 data={sorted}
@@ -590,6 +604,7 @@ export default function RevisaoVidasUteis() {
                   return isSoon ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' : '';
                 }}
               />
+              </>
             )}
           </div>
         </div>
