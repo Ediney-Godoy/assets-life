@@ -7,14 +7,13 @@ Thumbs.db
 .idea/
 
 # Node/React (Vite)
-frontend/node_modules/
-frontend/dist/
-frontend/.env
-frontend/.env.local
-frontend/.cache/
-frontend/.vite/
-frontend/.eslintcache
 front-end/node_modules/
+front-end/dist/
+front-end/.env
+front-end/.env.local
+front-end/.cache/
+front-end/.vite/
+front-end/.eslintcache
 
 # Logs
 **/*.log
@@ -22,7 +21,7 @@ logs/
 npm-debug.log*
 
 # Python
-backend/.venv/
+.venv/
 backend/__pycache__/
 backend/.pytest_cache/
 backend/*.pyc
@@ -31,7 +30,7 @@ backend/*.pyc
 
 # Env files
 backend/.env
-frontend/.env
+front-end/.env
 KOYEB_ENV_VARS.md
 
 # Coverage
