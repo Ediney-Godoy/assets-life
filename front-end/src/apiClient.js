@@ -80,12 +80,14 @@ if (typeof window !== 'undefined') {
 const BASE_CANDIDATES = (() => {
   const list = [];
   if (PRIMARY_BASE) list.push(PRIMARY_BASE);
-  // Sempre incluir uma alternativa remota segura quando PRIMARY_BASE não estiver disponível
-  if (!PRIMARY_BASE) list.push(CURRENT_BACKEND_URL);
-  return list;
+  list.push(CURRENT_BACKEND_URL);
+  if (!IS_HTTPS && HOST_BASE) list.push(HOST_BASE);
+  if (!IS_HTTPS && HOST_BASE_ALT_PORT) list.push(HOST_BASE_ALT_PORT);
+  return list.filter(Boolean);
 })();
-// Em qualquer ambiente, priorizar apenas candidatos HTTPS para evitar Mixed Content
-const SAFE_CANDIDATES = BASE_CANDIDATES.filter((b) => /^https:\/\//i.test(String(b)));
+const SAFE_CANDIDATES = IS_HTTPS
+  ? BASE_CANDIDATES.filter((b) => /^https:\/\//i.test(String(b)))
+  : BASE_CANDIDATES;
 
 async function resolveBase() {
   if (DEBUG_API) console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);

@@ -187,46 +187,46 @@ export default function RelatoriosRVUView() {
       <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm mb-1">{t('company_label')}</label>
-            <select className="input" value={filters.empresa_id} onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}>
+            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('company_label')}</label>
+            <select className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.empresa_id} onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm mb-1">{t('filter_ug')}</label>
-            <select className="input" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
+            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('filter_ug')}</label>
+            <select className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm mb-1">{t('filter_class')}</label>
-            <select className="input" value={filters.classe_id} onChange={(e) => setFilters((f) => ({ ...f, classe_id: e.target.value }))}>
+            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('filter_class')}</label>
+            <select className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.classe_id} onChange={(e) => setFilters((f) => ({ ...f, classe_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {classes.map((cl) => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm mb-1">{t('reviewer_label')}</label>
-            <select className="input" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
+            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('reviewer_label')}</label>
+            <select className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {revisores.map((r) => <option key={r.id} value={r.id}>{r.nome_completo}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-sm mb-1">{t('period_start_label')}</label>
-              <input type="date" className="input" value={filters.periodo_inicio} onChange={(e) => setFilters((f) => ({ ...f, periodo_inicio: e.target.value }))} />
+              <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('period_start_label')}</label>
+              <input type="date" className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.periodo_inicio} onChange={(e) => setFilters((f) => ({ ...f, periodo_inicio: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm mb-1">{t('period_end_label')}</label>
-              <input type="date" className="input" value={filters.periodo_fim} onChange={(e) => setFilters((f) => ({ ...f, periodo_fim: e.target.value }))} />
+              <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('period_end_label')}</label>
+              <input type="date" className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.periodo_fim} onChange={(e) => setFilters((f) => ({ ...f, periodo_fim: e.target.value }))} />
             </div>
           </div>
           <div>
-            <label className="block text-sm mb-1">{t('status')}</label>
-            <select className="input" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
+            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('status')}</label>
+            <select className="px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
               <option value="Todos">{t('all')}</option>
               <option value="Revisado">{t('status_reviewed')}</option>
               <option value="Pendente">{t('status_pending')}</option>
@@ -245,17 +245,17 @@ export default function RelatoriosRVUView() {
         {error && <div className="text-red-600 mb-2">{error}</div>}
         {!loading && !error && (
           <div className="overflow-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm text-slate-800 dark:text-slate-200">
               <thead>
                 <tr className="text-left border-b">
-                  {columns.map((c) => <th key={c.key} className="p-2 font-semibold">{c.header}</th>)}
+                  {columns.map((c) => <th key={c.key} className="p-2 font-semibold text-slate-900 dark:text-slate-100">{c.header}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {sortedRows.map((r, idx) => (
                   <tr key={idx} className="border-b hover:bg-slate-50 dark:hover:bg-slate-900">
                     {columns.map((c) => (
-                      <td key={c.key} className="p-2">{c.render ? c.render(r[c.key], r) : (r[c.key] ?? '—')}</td>
+                      <td key={c.key} className="p-2 text-slate-800 dark:text-slate-200">{c.render ? c.render(r[c.key], r) : (r[c.key] ?? '—')}</td>
                     ))}
                   </tr>
                 ))}
