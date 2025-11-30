@@ -281,6 +281,16 @@ export default function MassRevisionView() {
     return result;
   }, [items, ccByCodigo, ugById]);
 
+  const delegatedCount = React.useMemo(() => {
+    return (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id)).length;
+  }, [items, myItemIds]);
+  const availableCount = React.useMemo(() => {
+    return (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id) && !isItemRevisado(i)).length;
+  }, [items, myItemIds]);
+  const reviewedCount = React.useMemo(() => {
+    return (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id) && isItemRevisado(i)).length;
+  }, [items, myItemIds]);
+
   const filtered = React.useMemo(() => {
     // Sempre restringe aos itens delegados ao usuário atual
     let list = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
@@ -535,12 +545,12 @@ export default function MassRevisionView() {
             type="button"
             onClick={() => setActiveTab('pendentes')}
             className={`px-4 py-2 text-sm font-medium border ${activeTab === 'pendentes' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_to_review')}</button>
+          >{t('tab_to_review')} {availableCount}/{delegatedCount}</button>
           <button
             type="button"
             onClick={() => setActiveTab('revisados')}
             className={`px-4 py-2 text-sm font-medium border -ml-px ${activeTab === 'revisados' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_reviewed')}</button>
+          >{t('tab_reviewed')} {reviewedCount}/{delegatedCount}</button>
         </div>
       </div>
 
@@ -600,10 +610,13 @@ export default function MassRevisionView() {
         )}
         <Input label="" name="advQuery" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={advancedQuery} onChange={(e) => setAdvancedQuery(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
 
-        {/* Contagem de selecionados apenas na aba "A Revisar" */}
-        {activeTab === 'pendentes' && (
-          <div className="ml-auto text-sm text-slate-700 dark:text-slate-300">{t('selected_count', { count: selected.size })}</div>
-        )}
+        {/* Indicadores à direita: razão visível quando painel está colapsado */}
+        <div className="ml-auto flex items-center gap-4 text-sm text-slate-700 dark:text-slate-300">
+          <div>{activeTab === 'pendentes' ? `${availableCount}/${delegatedCount}` : `${reviewedCount}/${delegatedCount}`}</div>
+          {activeTab === 'pendentes' && (
+            <div>{t('selected_count', { count: selected.size })}</div>
+          )}
+        </div>
       </div>
         {error && (
           <div className="flex items-center gap-2 text-red-600 text-sm">
