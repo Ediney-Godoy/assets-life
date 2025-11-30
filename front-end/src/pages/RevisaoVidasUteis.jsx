@@ -287,15 +287,54 @@ export default function RevisaoVidasUteis() {
     return base.filter((it) => (activeTab === 'revisados' ? isItemRevisado(it) : !isItemRevisado(it)));
   }, [items, activeTab, myItemIds]);
 
-  const pendingCount = React.useMemo(() => {
-    const base = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
-    return base.filter((it) => !isItemRevisado(it)).length;
-  }, [items, myItemIds]);
+  const delegatedFilteredBase = React.useMemo(() => {
+    let list = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
+    const qLower = (advancedQuery || '').trim().toLowerCase();
+    const qNum = parseDecimal(advancedQuery);
+    list = list.filter((i) => {
+      const baseMatch = !qLower ? true : (
+        String(i.numero_imobilizado).toLowerCase().includes(qLower) ||
+        String(i.descricao).toLowerCase().includes(qLower) ||
+        String(i.centro_custo || '').toLowerCase().includes(qLower)
+      );
+      const valueMatch = qNum !== null ? Number(i.valor_contabil || 0) === qNum : false;
+      return baseMatch || valueMatch;
+    });
+    const fv = String(filterValue || '').trim().toLowerCase();
+    if (filterType === 'cc' && fv) {
+      list = list.filter((i) => String(i.centro_custo || '').toLowerCase().includes(fv));
+    } else if (filterType === 'classe' && fv) {
+      list = list.filter((i) => String(i.classe || '').toLowerCase().includes(fv));
+    } else if (filterType === 'ug' && fv) {
+      list = list.filter((i) => {
+        const directCode = String(i.ug_codigo || i.unidade_gerencial || i.ug || '').toLowerCase();
+        const directName = String(i.ug_nome || i.unidade_gerencial_nome || '').toLowerCase();
+        if (directCode || directName) {
+          return directCode.includes(fv) || directName.includes(fv);
+        }
+        const cc = ccByCodigo.get(String(i.centro_custo || '').toLowerCase());
+        const ugId = cc?.ug_id ? Number(cc.ug_id) : null;
+        const ug = ugId ? ugById.get(ugId) : null;
+        const codigo = String(ug?.codigo || '').toLowerCase();
+        const nome = String(ug?.nome || '').toLowerCase();
+        return !!ug && (codigo.includes(fv) || nome.includes(fv));
+      });
+    } else if (filterType === 'valor') {
+      const minParsed = parseDecimal(valorMin);
+      const maxParsed = parseDecimal(valorMax);
+      list = list.filter((i) => {
+        const v = Number(i.valor_contabil || 0);
+        const byMin = minParsed !== null ? v >= minParsed : true;
+        const byMax = maxParsed !== null ? v <= maxParsed : true;
+        return byMin && byMax;
+      });
+    }
+    return list;
+  }, [items, myItemIds, advancedQuery, filterType, filterValue, valorMin, valorMax, ccByCodigo, ugById]);
 
-  const reviewedCount = React.useMemo(() => {
-    const base = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
-    return base.filter((it) => isItemRevisado(it)).length;
-  }, [items, myItemIds]);
+  const delegatedFilteredCount = React.useMemo(() => delegatedFilteredBase.length, [delegatedFilteredBase]);
+  const availableFilteredCount = React.useMemo(() => delegatedFilteredBase.filter((it) => !isItemRevisado(it)).length, [delegatedFilteredBase]);
+  const reviewedFilteredCount = React.useMemo(() => delegatedFilteredBase.filter((it) => isItemRevisado(it)).length, [delegatedFilteredBase]);
 
   const filtered = React.useMemo(() => {
     let list = [...filteredByTab];
@@ -513,12 +552,12 @@ export default function RevisaoVidasUteis() {
             type="button"
             onClick={() => setActiveTab('pendentes')}
             className={`px-4 py-2 text-sm font-medium border ${activeTab === 'pendentes' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_to_review')} ({pendingCount})</button>
+          >{t('tab_to_review')} {availableFilteredCount}/{delegatedFilteredCount}</button>
           <button
             type="button"
             onClick={() => setActiveTab('revisados')}
             className={`px-4 py-2 text-sm font-medium border -ml-px ${activeTab === 'revisados' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_reviewed')} ({reviewedCount})</button>
+          >{t('tab_reviewed')} {reviewedFilteredCount}/{delegatedFilteredCount}</button>
       </div>
       </div>
 
@@ -576,6 +615,9 @@ export default function RevisaoVidasUteis() {
             </div>
           )}
           <Input label="" name="advQuery" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={advancedQuery} onChange={(e) => setAdvancedQuery(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
+          <div className="ml-auto text-sm text-slate-700 dark:text-slate-300">
+            {activeTab === 'pendentes' ? `${availableFilteredCount}/${delegatedFilteredCount}` : `${reviewedFilteredCount}/${delegatedFilteredCount}`}
+          </div>
         </div>
 
         {error && <div className="text-red-600 text-sm">{error}</div>}
