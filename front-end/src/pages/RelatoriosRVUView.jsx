@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { getCompanies, getManagementUnits, getAccountingClasses, getEmployees, getReviewPeriods, getRelatoriosResumo, getRelatoriosExcel, getRelatoriosPdf, listRelatoriosLog } from '../apiClient';
+import { getCompanies, getManagementUnits, getAccountingClasses, getUsers, getReviewPeriods, getRelatoriosResumo, getRelatoriosExcel, getRelatoriosPdf, listRelatoriosLog } from '../apiClient';
 
 function formatCurrencyBRL(value) {
   try {
@@ -54,7 +54,7 @@ export default function RelatoriosRVUView() {
           getCompanies(),
           getManagementUnits(),
           getAccountingClasses ? getAccountingClasses() : Promise.resolve([]),
-          getEmployees(),
+          getUsers(filters.empresa_id || undefined),
           getReviewPeriods ? getReviewPeriods() : Promise.resolve([]),
         ]);
         setCompanies(emp || []);
@@ -78,6 +78,27 @@ export default function RelatoriosRVUView() {
       setLogs(res || []);
     } catch {}
   };
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const list = await getUsers(filters.empresa_id || undefined);
+        if (!active) return;
+        setRevisores(list || []);
+        setFilters((f) => {
+          if (!f.revisor_id) return f;
+          const exists = (list || []).some((u) => String(u.id) === String(f.revisor_id));
+          return exists ? f : { ...f, revisor_id: '' };
+        });
+      } catch {
+        if (!active) return;
+        setRevisores([]);
+        setFilters((f) => ({ ...f, revisor_id: '' }));
+      }
+    })();
+    return () => { active = false; };
+  }, [filters.empresa_id]);
 
   const applyFilters = async () => {
     setLoading(true);
@@ -189,14 +210,14 @@ export default function RelatoriosRVUView() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('company_label')}</label>
-            <select className="min-w-[240px] w-[280px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.empresa_id} onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}>
+            <select className="min-w-[280px] w-[340px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.empresa_id} onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('filter_ug')}</label>
-            <select className="min-w-[180px] w-[220px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
+            <select className="min-w-[360px] w-[380px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
             </select>
@@ -210,12 +231,12 @@ export default function RelatoriosRVUView() {
           </div>
           <div>
             <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('reviewer_label')}</label>
-            <select className="min-w-[240px] w-[280px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
+            <select className="min-w-[280px] w-[340px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {revisores.map((r) => <option key={r.id} value={r.id}>{r.full_name || r.nome_completo || r.nome}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-2 gap-[4px]">
             <div>
               <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('period_start_label')}</label>
               <input type="date" className="w-[180px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.periodo_inicio} onChange={(e) => setFilters((f) => ({ ...f, periodo_inicio: e.target.value }))} />
@@ -227,7 +248,7 @@ export default function RelatoriosRVUView() {
           </div>
           <div>
             <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('status')}</label>
-            <select className="min-w-[140px] w-[180px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
+            <select className="min-w-[180px] w-[220px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
               <option value="Todos">{t('all')}</option>
               <option value="Revisado">{t('status_reviewed')}</option>
               <option value="Pendente">{t('status_pending')}</option>
