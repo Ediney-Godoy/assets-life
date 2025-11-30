@@ -69,7 +69,23 @@ export default function PermissionsPage() {
       setGroups(Array.isArray(gs) ? gs : []);
       setCompanies(Array.isArray(cs) ? cs : []);
       setUsers(Array.isArray(us) ? us : []);
-      setTransactions(Array.isArray(ts) ? ts : []);
+      let baseTx = Array.isArray(ts) ? ts : [];
+      const requiredRoutes = new Set([
+        '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis',
+        '/notifications','/notifications/new'
+      ]);
+      const existingRoutes = new Set(baseTx.map((tr) => String(tr.rota || '')));
+      const missing = Array.from(requiredRoutes).filter((r) => !existingRoutes.has(r));
+      for (const r of missing) {
+        try {
+          const nome = r === '/notifications' ? 'Notificações' : r === '/notifications/new' ? 'Enviar Notificação' : r;
+          await createTransaction({ nome_tela: nome, rota: r });
+        } catch {}
+      }
+      if (missing.length > 0) {
+        try { baseTx = (await getTransactions()) || baseTx; } catch {}
+      }
+      setTransactions(Array.isArray(baseTx) ? baseTx : []);
     } catch (err) {
       setError(true);
       console.error(err);
@@ -106,6 +122,25 @@ export default function PermissionsPage() {
       setGroupCompanies(Array.isArray(gc) ? gc : []);
       setGroupUsers(Array.isArray(gu) ? gu : []);
       setGroupTransactions(Array.isArray(gt) ? gt : []);
+      try {
+        let tx = transactions.length ? transactions : (await getTransactions()) || [];
+        const requiredRoutes = new Set([
+          '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis',
+          '/notifications','/notifications/new'
+        ]);
+        const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));
+        const missing = Array.from(requiredRoutes).filter((r) => !existingRoutes.has(r));
+        for (const r of missing) {
+          try {
+            const nome = r === '/notifications' ? 'Notificações' : r === '/notifications/new' ? 'Enviar Notificação' : r;
+            await createTransaction({ nome_tela: nome, rota: r });
+          } catch {}
+        }
+        if (missing.length > 0) {
+          tx = (await getTransactions()) || tx;
+          setTransactions(Array.isArray(tx) ? tx : transactions);
+        }
+      } catch {}
       toast.success(t('open') || 'Aberto');
     } catch (err) {
       console.error(err);
