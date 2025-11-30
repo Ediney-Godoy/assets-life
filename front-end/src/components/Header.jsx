@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
-import { Building2, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe, Check } from 'lucide-react';
+import { Building2, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe, Check, ChevronDown } from 'lucide-react';
 
 export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
   const { t } = useTranslation();
@@ -9,6 +9,7 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
     try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch { return null; }
   });
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+  const [langOpen, setLangOpen] = React.useState(false);
 
   const initials = React.useMemo(() => {
     const name = String(user?.nome || '').trim();
@@ -52,20 +53,39 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
 
       {/* Right side */}
       <div className="flex items-center gap-1">
-        {/* Language selector */}
+        {/* Language selector (custom dropdown with SVG flags) */}
         <div className="relative">
-          <Globe size={14} className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none z-0" style={{ color: 'var(--text-muted)' }} />
-          <select
-            className="select h-8 pl-10 pr-8 text-sm bg-transparent border-none hover:bg-[var(--bg-hover)] cursor-pointer"
-            value={language}
-            onChange={(e) => onLanguageChange(e.target.value)}
-            style={{ backgroundPosition: 'right 0.25rem center' }}
+          <button
+            type="button"
+            onClick={() => setLangOpen((prev) => !prev)}
+            className="btn btn-ghost h-8 px-2 flex items-center gap-2"
+            aria-haspopup="menu"
+            aria-expanded={langOpen ? 'true' : 'false'}
             title={t('change_language') || 'Idioma'}
           >
-            <option value="en">🇬🇧</option>
-            <option value="pt">🇧🇷</option>
-            <option value="es">🇪🇸</option>
-          </select>
+            <Globe size={14} style={{ color: 'var(--text-muted)' }} />
+            <span aria-hidden>{language === 'pt' ? (
+              <svg width="18" height="12" viewBox="0 0 18 12"><rect width="18" height="12" fill="#009C3B"/><rect x="6" width="12" height="12" fill="#FFDF00"/><path d="M9 6a3 3 0 1 1 6 0 3 3 0 0 1-6 0Z" fill="#002776"/></svg>
+            ) : language === 'en' ? (
+              <svg width="18" height="12" viewBox="0 0 18 12"><rect width="18" height="12" fill="#012169"/><path d="M0 0l7 4.5L0 9V12l9-6 9 6V9L11 4.5 18 0h-3L9 3 3 0H0Z" fill="#FFF"/><path d="M0 0l7 4.5L0 9V10.2L8.1 6 0 1.8V0Zm18 0v1.8L9.9 6 18 10.2V9l-7-4.5L18 0Z" fill="#C8102E"/><path d="M7 0v12h4V0H7Z" fill="#FFF"/><path d="M8 0v12h2V0H8Zm-8 5h18v2H0V5Z" fill="#C8102E"/></svg>
+            ) : (
+              <svg width="18" height="12" viewBox="0 0 18 12"><rect width="18" height="12" fill="#AA151B"/><rect width="18" height="4" y="4" fill="#F1BF00"/></svg>
+            )}</span>
+            <ChevronDown size={14} style={{ color: 'var(--text-muted)' }} />
+          </button>
+          {langOpen && (
+            <div className="absolute right-0 mt-1 w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md shadow-md z-20">
+              <button type="button" className="w-full px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center" onClick={() => { onLanguageChange('en'); setLangOpen(false); }} aria-label="English">
+                <svg width="20" height="13" viewBox="0 0 18 12"><rect width="18" height="12" fill="#012169"/><path d="M0 0l7 4.5L0 9V12l9-6 9 6V9L11 4.5 18 0h-3L9 3 3 0H0Z" fill="#FFF"/><path d="M0 0l7 4.5L0 9V10.2L8.1 6 0 1.8V0Zm18 0v1.8L9.9 6 18 10.2V9l-7-4.5L18 0Z" fill="#C8102E"/><path d="M7 0v12h4V0H7Z" fill="#FFF"/><path d="M8 0v12h2V0H8Zm-8 5h18v2H0V5Z" fill="#C8102E"/></svg>
+              </button>
+              <button type="button" className="w-full px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center" onClick={() => { onLanguageChange('pt'); setLangOpen(false); }} aria-label="Português">
+                <svg width="20" height="13" viewBox="0 0 18 12"><rect width="18" height="12" fill="#009C3B"/><rect x="6" width="12" height="12" fill="#FFDF00"/><path d="M9 6a3 3 0 1 1 6 0 3 3 0 0 1-6 0Z" fill="#002776"/></svg>
+              </button>
+              <button type="button" className="w-full px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center" onClick={() => { onLanguageChange('es'); setLangOpen(false); }} aria-label="Español">
+                <svg width="20" height="13" viewBox="0 0 18 12"><rect width="18" height="12" fill="#AA151B"/><rect width="18" height="4" y="4" fill="#F1BF00"/></svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {user && (
