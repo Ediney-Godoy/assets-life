@@ -10,6 +10,15 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
   });
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [langOpen, setLangOpen] = React.useState(false);
+  const [bellOpen, setBellOpen] = React.useState(false);
+  const [notifications, setNotifications] = React.useState(() => {
+    try {
+      const raw = localStorage.getItem('assetlife_notifications');
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  });
+  const unreadCount = React.useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   const initials = React.useMemo(() => {
     const name = String(user?.nome || '').trim();
@@ -72,7 +81,16 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
                 <rect x="6.7" y="5.2" width="4.6" height="1" transform="rotate(-20 9 6)" fill="#FFFFFF"/>
               </svg>
             ) : language === 'en' ? (
-              <svg width="18" height="12" viewBox="0 0 18 12"><rect width="18" height="12" fill="#012169"/><path d="M0 0l7 4.5L0 9V12l9-6 9 6V9L11 4.5 18 0h-3L9 3 3 0H0Z" fill="#FFF"/><path d="M0 0l7 4.5L0 9V10.2L8.1 6 0 1.8V0Zm18 0v1.8L9.9 6 18 10.2V9l-7-4.5L18 0Z" fill="#C8102E"/><path d="M7 0v12h4V0H7Z" fill="#FFF"/><path d="M8 0v12h2V0H8Zm-8 5h18v2H0V5Z" fill="#C8102E"/></svg>
+              <svg width="18" height="12" viewBox="0 0 18 12">
+                <rect width="18" height="12" fill="#B22234"/>
+                <rect y="1" width="18" height="1" fill="#FFFFFF"/>
+                <rect y="3" width="18" height="1" fill="#FFFFFF"/>
+                <rect y="5" width="18" height="1" fill="#FFFFFF"/>
+                <rect y="7" width="18" height="1" fill="#FFFFFF"/>
+                <rect y="9" width="18" height="1" fill="#FFFFFF"/>
+                <rect y="11" width="18" height="1" fill="#FFFFFF"/>
+                <rect width="7" height="7" fill="#3C3B6E"/>
+              </svg>
             ) : (
               <svg width="18" height="12" viewBox="0 0 18 12"><rect width="18" height="12" fill="#AA151B"/><rect width="18" height="4" y="4" fill="#F1BF00"/></svg>
             )}</span>
@@ -81,7 +99,16 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
           {langOpen && (
             <div className="absolute right-0 mt-1 w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md shadow-md z-20">
               <button type="button" className="w-full px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center" onClick={() => { onLanguageChange('en'); setLangOpen(false); }} aria-label="English">
-                <svg width="20" height="13" viewBox="0 0 18 12"><rect width="18" height="12" fill="#012169"/><path d="M0 0l7 4.5L0 9V12l9-6 9 6V9L11 4.5 18 0h-3L9 3 3 0H0Z" fill="#FFF"/><path d="M0 0l7 4.5L0 9V10.2L8.1 6 0 1.8V0Zm18 0v1.8L9.9 6 18 10.2V9l-7-4.5L18 0Z" fill="#C8102E"/><path d="M7 0v12h4V0H7Z" fill="#FFF"/><path d="M8 0v12h2V0H8Zm-8 5h18v2H0V5Z" fill="#C8102E"/></svg>
+                <svg width="20" height="13" viewBox="0 0 18 12">
+                  <rect width="18" height="12" fill="#B22234"/>
+                  <rect y="1" width="18" height="1" fill="#FFFFFF"/>
+                  <rect y="3" width="18" height="1" fill="#FFFFFF"/>
+                  <rect y="5" width="18" height="1" fill="#FFFFFF"/>
+                  <rect y="7" width="18" height="1" fill="#FFFFFF"/>
+                  <rect y="9" width="18" height="1" fill="#FFFFFF"/>
+                  <rect y="11" width="18" height="1" fill="#FFFFFF"/>
+                  <rect width="7" height="7" fill="#3C3B6E"/>
+                </svg>
               </button>
               <button type="button" className="w-full px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center" onClick={() => { onLanguageChange('pt'); setLangOpen(false); }} aria-label="Português">
                 <svg width="20" height="13" viewBox="0 0 18 12">
@@ -119,15 +146,41 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             {/* Theme toggle */}
             <ThemeToggle />
 
-            {/* Notifications icon (replaces change company) */}
-            <button
-              type="button"
-              className="btn btn-ghost p-2"
-              title={t('notifications') || 'Notificações'}
-              aria-label={t('notifications') || 'Notificações'}
-            >
-              <Bell size={18} />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setBellOpen((prev) => !prev)}
+                className="btn btn-ghost p-2 relative"
+                title={t('notifications') || 'Notificações'}
+                aria-label={t('notifications') || 'Notificações'}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              {bellOpen && (
+                <div className="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md shadow-md z-20">
+                  <div className="px-3 py-2 font-semibold text-slate-900 dark:text-slate-100">
+                    {t('notifications') || 'Notificações'}
+                  </div>
+                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
+                    {notifications.length === 0 ? (
+                      <div className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300">{t('no_notifications') || 'Sem notificações'}</div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div key={n.id} className="px-3 py-2 text-sm">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{n.title || n.text || 'Notificação'}</div>
+                          {n.date && (<div className="text-xs text-slate-500">{new Date(n.date).toLocaleString('pt-BR')}</div>)}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Backend status */}
             <div
