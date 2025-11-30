@@ -342,6 +342,12 @@ export default function MassRevisionView() {
         const byMax = maxParsed !== null ? v <= maxParsed : true;
         return byMin && byMax;
       });
+    } else if (filterType === 'vencimento') {
+      list = list.filter((i) => {
+        const target = parseDate(i.data_fim_revisada) || parseDate(i.data_fim_depreciacao);
+        const m = monthsUntil(target);
+        return m >= 0 && m <= 18;
+      });
     }
 
     // (Removido Filtro Rápido)
@@ -418,6 +424,21 @@ export default function MassRevisionView() {
   };
 
   const baseColumns = [
+    {
+      key: '__alert',
+      header: t('alert_label', { defaultValue: 'Alerta' }),
+      width: '90px',
+      render: (_v, row) => {
+        const target = parseDate(row.data_fim_revisada) || parseDate(row.data_fim_depreciacao);
+        const m = monthsUntil(target);
+        if (m >= 0 && m <= 18) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">⚠️ ≤ 18m</span>
+          );
+        }
+        return '';
+      },
+    },
     { key: 'numero_imobilizado', header: t('col_asset_number') },
     { key: 'sub_numero', header: t('col_sub_number') },
     { key: 'descricao', header: t('col_description') },
@@ -576,6 +597,7 @@ export default function MassRevisionView() {
           <option value="cc">{t('filter_cc')}</option>
           <option value="classe">{t('filter_class')}</option>
           <option value="valor">{t('filter_value')}</option>
+          <option value="vencimento">{t('filter_due_18m') || 'Vencimento \u2264 18 meses'}</option>
         </Select>
 
         {filterType === 'classe' && (
@@ -610,11 +632,19 @@ export default function MassRevisionView() {
         )}
         <Input label="" name="advQuery" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={advancedQuery} onChange={(e) => setAdvancedQuery(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
 
-        {/* Indicadores à direita: razão visível quando painel está colapsado */}
-        <div className="ml-auto flex items-center gap-4 text-sm text-slate-700 dark:text-slate-300">
-          <div>{activeTab === 'pendentes' ? `${availableCount}/${delegatedCount}` : `${reviewedCount}/${delegatedCount}`}</div>
+        {/* Indicadores à direita como badges (estilo Delegações) */}
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            className="badge badge-primary"
+            title={activeTab === 'pendentes' ? (t('to_review_count_tooltip') || 'A revisar / Delegados') : (t('reviewed_count_tooltip') || 'Revisados / Delegados')}
+            aria-label={activeTab === 'pendentes' ? (t('to_review_count_tooltip') || 'A revisar / Delegados') : (t('reviewed_count_tooltip') || 'Revisados / Delegados')}
+          >{activeTab === 'pendentes' ? `${availableCount}/${delegatedCount}` : `${reviewedCount}/${delegatedCount}`}</span>
           {activeTab === 'pendentes' && (
-            <div>{t('selected_count', { count: selected.size })}</div>
+            <span
+              className="badge badge-secondary"
+              title={t('selected_items_tooltip') || 'Selecionados'}
+              aria-label={t('selected_items_tooltip') || 'Selecionados'}
+            >{selected.size}</span>
           )}
         </div>
       </div>

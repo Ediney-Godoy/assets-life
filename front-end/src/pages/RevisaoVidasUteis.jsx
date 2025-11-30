@@ -179,6 +179,21 @@ export default function RevisaoVidasUteis() {
   };
 
   const columns = [
+    {
+      key: '__alert',
+      header: t('alert_label', { defaultValue: 'Alerta' }),
+      width: '90px',
+      render: (_v, row) => {
+        const target = parseDate(row.data_fim_revisada) || parseDate(row.data_fim_depreciacao);
+        const m = monthsUntil(target);
+        if (m >= 0 && m <= 18) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">⚠️ ≤ 18m</span>
+          );
+        }
+        return '';
+      },
+    },
     { key: 'numero_imobilizado', header: t('col_asset_number') },
     { key: 'sub_numero', header: t('col_sub_number') },
     { key: 'descricao', header: t('col_description') },
@@ -328,6 +343,12 @@ export default function RevisaoVidasUteis() {
         const byMax = maxParsed !== null ? v <= maxParsed : true;
         return byMin && byMax;
       });
+    } else if (filterType === 'vencimento') {
+      list = list.filter((i) => {
+        const target = parseDate(i.data_fim_revisada) || parseDate(i.data_fim_depreciacao);
+        const m = monthsUntil(target);
+        return m >= 0 && m <= 18;
+      });
     }
     return list;
   }, [items, myItemIds, advancedQuery, filterType, filterValue, valorMin, valorMax, ccByCodigo, ugById]);
@@ -379,6 +400,12 @@ export default function RevisaoVidasUteis() {
         const byMin = minParsed !== null ? v >= minParsed : true;
         const byMax = maxParsed !== null ? v <= maxParsed : true;
         return byMin && byMax;
+      });
+    } else if (filterType === 'vencimento') {
+      list = list.filter((i) => {
+        const target = parseDate(i.data_fim_revisada) || parseDate(i.data_fim_depreciacao);
+        const m = monthsUntil(target);
+        return m >= 0 && m <= 18;
       });
     }
 
@@ -552,12 +579,12 @@ export default function RevisaoVidasUteis() {
             type="button"
             onClick={() => setActiveTab('pendentes')}
             className={`px-4 py-2 text-sm font-medium border ${activeTab === 'pendentes' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_to_review')} {availableFilteredCount}/{delegatedFilteredCount}</button>
+          >{t('tab_to_review')}</button>
           <button
             type="button"
             onClick={() => setActiveTab('revisados')}
             className={`px-4 py-2 text-sm font-medium border -ml-px ${activeTab === 'revisados' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_reviewed')} {reviewedFilteredCount}/{delegatedFilteredCount}</button>
+          >{t('tab_reviewed')}</button>
       </div>
       </div>
 
@@ -582,6 +609,7 @@ export default function RevisaoVidasUteis() {
             <option value="cc">{t('filter_cc')}</option>
             <option value="classe">{t('filter_class')}</option>
             <option value="valor">{t('filter_value')}</option>
+            <option value="vencimento">{t('filter_due_18m') || 'Vencimento \u2264 18 meses'}</option>
           </Select>
 
           {filterType === 'classe' && (
@@ -615,8 +643,17 @@ export default function RevisaoVidasUteis() {
             </div>
           )}
           <Input label="" name="advQuery" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={advancedQuery} onChange={(e) => setAdvancedQuery(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
-          <div className="ml-auto text-sm text-slate-700 dark:text-slate-300">
-            {activeTab === 'pendentes' ? `${availableFilteredCount}/${delegatedFilteredCount}` : `${reviewedFilteredCount}/${delegatedFilteredCount}`}
+          <div className="ml-auto flex items-center gap-2">
+            <span
+              className="badge badge-primary"
+              title={t('to_review_count_tooltip') || 'A revisar / Delegados'}
+              aria-label={t('to_review_count_tooltip') || 'A revisar / Delegados'}
+            >{availableFilteredCount}/{delegatedFilteredCount}</span>
+            <span
+              className="badge badge-secondary"
+              title={t('reviewed_count_tooltip') || 'Revisados / Delegados'}
+              aria-label={t('reviewed_count_tooltip') || 'Revisados / Delegados'}
+            >{reviewedFilteredCount}/{delegatedFilteredCount}</span>
           </div>
         </div>
 
