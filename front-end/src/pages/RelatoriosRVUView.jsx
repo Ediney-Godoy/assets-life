@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Filter } from 'lucide-react';
+import { Filter, Search, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getCompanies, getManagementUnits, getAccountingClasses, getUsers, getReviewPeriods, getRelatoriosResumo, getRelatoriosExcel, getRelatoriosPdf, listRelatoriosLog } from '../apiClient';
 
@@ -299,11 +299,45 @@ export default function RelatoriosRVUView() {
       </div>
 
       {/* Ações */}
-      <div className="flex gap-2 mb-6">
-        <button className="btn btn-secondary" onClick={onGeneratePdf} disabled={loadingGen}>📄 {t('generate_pdf')}</button>
-        <button className="btn btn-secondary" onClick={onGenerateExcel} disabled={loadingGen}>📊 {t('export_excel')}</button>
-        <button className="btn" onClick={applyFilters}>🔍 {t('view_preview')}</button>
-        <button className="btn" onClick={refreshLogs}>🕓 {t('reports_history')}</button>
+      <div className="flex items-center gap-2 mb-6">
+        <button
+          type="button"
+          onClick={onGeneratePdf}
+          disabled={loadingGen}
+          className="p-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          title={t('generate_pdf')}
+          aria-label={t('generate_pdf')}
+        >
+          <img src="/Pdf.svg" alt="" className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onGenerateExcel}
+          disabled={loadingGen}
+          className="p-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          title={t('export_excel')}
+          aria-label={t('export_excel')}
+        >
+          <img src="/Excel.svg" alt="" className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={applyFilters}
+          className="p-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          title={t('view_preview')}
+          aria-label={t('view_preview')}
+        >
+          <Search size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={refreshLogs}
+          className="p-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          title={t('reports_history')}
+          aria-label={t('reports_history')}
+        >
+          <Clock size={18} />
+        </button>
       </div>
 
       {successMsg && <div className="text-green-700 mb-4">{successMsg}</div>}
