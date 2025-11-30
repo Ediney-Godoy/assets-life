@@ -54,16 +54,17 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
       <div className="flex items-center gap-1">
         {/* Language selector */}
         <div className="relative">
-          <Globe size={14} className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none z-10" style={{ color: 'var(--text-muted)' }} />
+          <Globe size={14} className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none z-0" style={{ color: 'var(--text-muted)' }} />
           <select
-            className="select h-8 pl-7 pr-8 text-xs bg-transparent border-none hover:bg-[var(--bg-hover)] cursor-pointer"
+            className="select h-8 pl-10 pr-8 text-sm bg-transparent border-none hover:bg-[var(--bg-hover)] cursor-pointer"
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}
             style={{ backgroundPosition: 'right 0.25rem center' }}
+            title={t('change_language') || 'Idioma'}
           >
-            <option value="en">EN</option>
-            <option value="pt">PT</option>
-            <option value="es">ES</option>
+            <option value="en">🇬🇧</option>
+            <option value="pt">🇧🇷</option>
+            <option value="es">🇪🇸</option>
           </select>
         </div>
 
