@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
-import { Building2, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe, Check, ChevronDown } from 'lucide-react';
+import { Bell, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe, Check, ChevronDown } from 'lucide-react';
 
 export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
   const { t } = useTranslation();
@@ -65,7 +65,12 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
           >
             <Globe size={14} style={{ color: 'var(--text-muted)' }} />
             <span aria-hidden>{language === 'pt' ? (
-              <svg width="18" height="12" viewBox="0 0 18 12"><rect width="18" height="12" fill="#009C3B"/><rect x="6" width="12" height="12" fill="#FFDF00"/><path d="M9 6a3 3 0 1 1 6 0 3 3 0 0 1-6 0Z" fill="#002776"/></svg>
+              <svg width="18" height="12" viewBox="0 0 18 12">
+                <rect width="18" height="12" fill="#009B3A"/>
+                <polygon points="9,2 15,6 9,10 3,6" fill="#FFDF00"/>
+                <circle cx="9" cy="6" r="3" fill="#002776"/>
+                <rect x="6.7" y="5.2" width="4.6" height="1" transform="rotate(-20 9 6)" fill="#FFFFFF"/>
+              </svg>
             ) : language === 'en' ? (
               <svg width="18" height="12" viewBox="0 0 18 12"><rect width="18" height="12" fill="#012169"/><path d="M0 0l7 4.5L0 9V12l9-6 9 6V9L11 4.5 18 0h-3L9 3 3 0H0Z" fill="#FFF"/><path d="M0 0l7 4.5L0 9V10.2L8.1 6 0 1.8V0Zm18 0v1.8L9.9 6 18 10.2V9l-7-4.5L18 0Z" fill="#C8102E"/><path d="M7 0v12h4V0H7Z" fill="#FFF"/><path d="M8 0v12h2V0H8Zm-8 5h18v2H0V5Z" fill="#C8102E"/></svg>
             ) : (
@@ -79,7 +84,12 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
                 <svg width="20" height="13" viewBox="0 0 18 12"><rect width="18" height="12" fill="#012169"/><path d="M0 0l7 4.5L0 9V12l9-6 9 6V9L11 4.5 18 0h-3L9 3 3 0H0Z" fill="#FFF"/><path d="M0 0l7 4.5L0 9V10.2L8.1 6 0 1.8V0Zm18 0v1.8L9.9 6 18 10.2V9l-7-4.5L18 0Z" fill="#C8102E"/><path d="M7 0v12h4V0H7Z" fill="#FFF"/><path d="M8 0v12h2V0H8Zm-8 5h18v2H0V5Z" fill="#C8102E"/></svg>
               </button>
               <button type="button" className="w-full px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center" onClick={() => { onLanguageChange('pt'); setLangOpen(false); }} aria-label="Português">
-                <svg width="20" height="13" viewBox="0 0 18 12"><rect width="18" height="12" fill="#009C3B"/><rect x="6" width="12" height="12" fill="#FFDF00"/><path d="M9 6a3 3 0 1 1 6 0 3 3 0 0 1-6 0Z" fill="#002776"/></svg>
+                <svg width="20" height="13" viewBox="0 0 18 12">
+                  <rect width="18" height="12" fill="#009B3A"/>
+                  <polygon points="9,2 15,6 9,10 3,6" fill="#FFDF00"/>
+                  <circle cx="9" cy="6" r="3" fill="#002776"/>
+                  <rect x="6.7" y="5.2" width="4.6" height="1" transform="rotate(-20 9 6)" fill="#FFFFFF"/>
+                </svg>
               </button>
               <button type="button" className="w-full px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center" onClick={() => { onLanguageChange('es'); setLangOpen(false); }} aria-label="Español">
                 <svg width="20" height="13" viewBox="0 0 18 12"><rect width="18" height="12" fill="#AA151B"/><rect width="18" height="4" y="4" fill="#F1BF00"/></svg>
@@ -109,18 +119,15 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             {/* Theme toggle */}
             <ThemeToggle />
 
-            {/* Change company */}
-            {onChangeCompany && (
-              <button
-                type="button"
-                onClick={onChangeCompany}
-                className="btn btn-ghost p-2"
-                title={t('change_company') || 'Trocar de Empresa'}
-                aria-label={t('change_company') || 'Trocar de Empresa'}
-              >
-                <Building2 size={18} />
-              </button>
-            )}
+            {/* Notifications icon (replaces change company) */}
+            <button
+              type="button"
+              className="btn btn-ghost p-2"
+              title={t('notifications') || 'Notificações'}
+              aria-label={t('notifications') || 'Notificações'}
+            >
+              <Bell size={18} />
+            </button>
 
             {/* Backend status */}
             <div
