@@ -545,12 +545,12 @@ export default function MassRevisionView() {
             type="button"
             onClick={() => setActiveTab('pendentes')}
             className={`px-4 py-2 text-sm font-medium border ${activeTab === 'pendentes' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_to_review')} {availableCount}/{delegatedCount}</button>
+          >{t('tab_to_review')}</button>
           <button
             type="button"
             onClick={() => setActiveTab('revisados')}
             className={`px-4 py-2 text-sm font-medium border -ml-px ${activeTab === 'revisados' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'}`}
-          >{t('tab_reviewed')} {reviewedCount}/{delegatedCount}</button>
+          >{t('tab_reviewed')}</button>
         </div>
       </div>
 
