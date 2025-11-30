@@ -631,9 +631,6 @@ export default function RevisaoVidasUteis() {
               <div className="p-4 text-slate-700 dark:text-slate-300">{t('loading_items')}</div>
             ) : (
               <>
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-slate-700 dark:text-slate-300">Itens: {sorted.length}</div>
-              </div>
               <Table
                 columns={columns}
                 data={sorted}
