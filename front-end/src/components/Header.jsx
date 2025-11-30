@@ -2,23 +2,20 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
 import { Bell, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe, Check, ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { getNotifications } from '../apiClient';
 
 export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [user, setUser] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch { return null; }
   });
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [langOpen, setLangOpen] = React.useState(false);
   const [bellOpen, setBellOpen] = React.useState(false);
-  const [notifications, setNotifications] = React.useState(() => {
-    try {
-      const raw = localStorage.getItem('assetlife_notifications');
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
-    } catch { return []; }
-  });
-  const unreadCount = React.useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const [notifications, setNotifications] = React.useState([]);
+  const unreadCount = React.useMemo(() => notifications.filter((n) => String(n.status).toLowerCase() === 'pendente').length, [notifications]);
 
   const initials = React.useMemo(() => {
     const name = String(user?.nome || '').trim();
@@ -35,6 +32,25 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
   }, []);
+
+  React.useEffect(() => {
+    if (!bellOpen) return;
+    let active = true;
+    (async () => {
+      try {
+        const list = await getNotifications({ status: 'pendente', limit: 50 });
+        if (active) setNotifications(Array.isArray(list) ? list : []);
+      } catch {
+        try {
+          const raw = localStorage.getItem('assetlife_notifications');
+          const arr = raw ? JSON.parse(raw) : [];
+          const pend = Array.isArray(arr) ? arr.filter((n) => !n.read && String(n.status || '').toLowerCase() !== 'arquivada') : [];
+          setNotifications(pend);
+        } catch { setNotifications([]); }
+      }
+    })();
+    return () => { active = false; };
+  }, [bellOpen]);
 
   return (
     <header className="header flex items-center justify-between px-4 md:px-6 h-14">
@@ -167,20 +183,19 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
                     {t('notifications') || 'Notificações'}
                   </div>
                   <div className="max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
-                    {notifications.length === 0 ? (
-                      <div className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300">{t('no_notifications') || 'Sem notificações'}</div>
-                    ) : (
+                  {notifications.length === 0 ? (
+                    <div className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300">{t('no_notifications') || 'Sem notificações'}</div>
+                  ) : (
                       notifications.map((n) => (
-                        <div key={n.id} className="px-3 py-2 text-sm">
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{n.title || n.text || 'Notificação'}</div>
-                          {n.date && (<div className="text-xs text-slate-500">{new Date(n.date).toLocaleString('pt-BR')}</div>)}
-                        </div>
+                        <button key={n.id} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800" onClick={() => { setBellOpen(false); navigate(`/notifications/${n.id}`); }}>
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{n.titulo || n.title || 'Notificação'}</div>
+                        </button>
                       ))
-                    )}
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
             {/* Backend status */}
             <div

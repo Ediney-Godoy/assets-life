@@ -16,6 +16,7 @@ import {
   getCompanies,
   getUsers,
   getTransactions,
+  createTransaction,
   listGroupCompanies,
   addGroupCompany,
   removeGroupCompany,
@@ -128,8 +129,20 @@ export default function PermissionsPage() {
 
         // Vincular transações padrão de Revisões automaticamente
         try {
-          const tx = transactions.length ? transactions : (await getTransactions()) || [];
-          const requiredRoutes = new Set(['/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis']);
+          let tx = transactions.length ? transactions : (await getTransactions()) || [];
+          const requiredRoutes = new Set([
+            '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis',
+            '/notifications','/notifications/new'
+          ]);
+          const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));
+          const missing = Array.from(requiredRoutes).filter((r) => !existingRoutes.has(r));
+          for (const r of missing) {
+            try {
+              const nome = r === '/notifications' ? 'Notificações' : r === '/notifications/new' ? 'Enviar Notificação' : r;
+              await createTransaction({ nome_tela: nome, rota: r });
+            } catch {}
+          }
+          tx = (await getTransactions()) || [];
           const toLink = tx.filter((tr) => requiredRoutes.has(String(tr.rota || '')));
           for (const tr of toLink) {
             try { await addGroupTransaction(created.id, tr.id); } catch {}

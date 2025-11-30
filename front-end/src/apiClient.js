@@ -686,6 +686,27 @@ export async function deletePermissionGroup(id) {
   return request(`/permissoes/grupos/${id}`, { method: 'DELETE' });
 }
 
+export async function getNotifications(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  return request(`/notificacoes${q ? `?${q}` : ''}`);
+}
+
+export async function getNotification(id) {
+  return request(`/notificacoes/${id}`);
+}
+
+export async function createNotification(payload) {
+  return request('/notificacoes', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function markNotificationRead(id) {
+  return request(`/notificacoes/${id}/lida`, { method: 'POST' });
+}
+
+export async function archiveNotification(id) {
+  return request(`/notificacoes/${id}/arquivar`, { method: 'POST' });
+}
+
 // Vínculos: Empresas
 export async function listGroupCompanies(grupoId) {
   return request(`/permissoes/grupos/${grupoId}/empresas`);

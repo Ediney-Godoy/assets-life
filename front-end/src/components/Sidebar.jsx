@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info, HelpCircle, Bell } from 'lucide-react';
 import { getRole, getVisibleMenuForRole } from '../permissions';
 
 export default function Sidebar({ collapsed = false }) {
@@ -27,6 +27,7 @@ export default function Sidebar({ collapsed = false }) {
     { to: '/reviews', label: t('nav_reviews'), icon: ClipboardList },
     { to: '/supervisao-rvu', label: t('nav_supervisao') || 'Supervisão', icon: UserCheck },
     { to: '/reports', label: t('nav_reports'), icon: BarChart3 },
+    { to: '/notifications', label: t('notifications') || 'Notificações', icon: Bell },
     { to: '/permissions', label: t('nav_permissions'), icon: Shield },
     { to: '/about', label: t('nav_about'), icon: Info },
     { to: '/help', label: t('nav_help'), icon: HelpCircle },
@@ -53,6 +54,7 @@ export default function Sidebar({ collapsed = false }) {
     '/supervisao-rvu': ['/supervisao/rvu','/supervisao-rvu'],
     '/permissions': ['/permissions','/permissions/groups'],
     '/cadastros': ['/companies','/ugs','/cost-centers','/users','/asset-species','/employees','/cadastros'],
+    '/notifications': ['/notifications','/notifications/new'],
   };
 
   const hasChildrenAllowed = (parent) => {

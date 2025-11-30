@@ -53,8 +53,12 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       '/permissions': t('nav_permissions') || 'Permissões',
       '/tabs-demo': 'Abas',
       '/users': 'Usuários',
+      '/notifications': t('notifications') || 'Notificações',
+      '/notifications/new': (t('new') || 'Nova') + ' ' + ((t('notifications') || 'Notificações')),
     };
-    return map[path];
+    if (map[path]) return map[path];
+    if (path.startsWith('/notifications/')) return t('notification') || 'Notificação';
+    return undefined;
   }, [t]);
 
   // Sincroniza a rota e, se for navegação do usuário (PUSH), atualiza o título da aba ativa

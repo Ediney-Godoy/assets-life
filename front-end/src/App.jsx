@@ -28,6 +28,9 @@ import AssetSpeciesPage from './pages/AssetSpecies';
 import ReportUsefulLifePage from './pages/ReportUsefulLife';
 import ReportsMenu from './pages/ReportsMenu';
 import PermissionsMenu from './pages/PermissionsMenu';
+import NotificationsPage from './pages/Notifications';
+import NotificationDetailPage from './pages/NotificationDetail';
+import NotificationSendPage from './pages/NotificationSend';
 import AboutPage from './pages/About';
 import HelpPage from './pages/Help';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -232,6 +235,9 @@ export default function App() {
               <Route path="/reports/vida-util" element={<RequireAuth><RequireCompany><ReportUsefulLifePage /></RequireCompany></RequireAuth>} />
               <Route path="/permissions" element={<RequireAuth><RequireCompany><PermissionsMenu /></RequireCompany></RequireAuth>} />
               <Route path="/permissions/groups" element={<RequireAuth><RequireCompany><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireCompany></RequireAuth>} />
+              <Route path="/notifications" element={<RequireAuth><RequireCompany><NotificationsPage /></RequireCompany></RequireAuth>} />
+              <Route path="/notifications/new" element={<RequireAuth><RequireCompany><NotificationSendPage /></RequireCompany></RequireAuth>} />
+              <Route path="/notifications/:id" element={<RequireAuth><RequireCompany><NotificationDetailPage /></RequireCompany></RequireAuth>} />
               <Route path="/users" element={<RequireAuth><RequireCompany><UsersPage /></RequireCompany></RequireAuth>} />
               <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
               <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
