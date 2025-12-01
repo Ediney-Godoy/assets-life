@@ -12,7 +12,7 @@ export default function NotificationSendPage() {
   const navigate = useNavigate();
   const [companies, setCompanies] = React.useState([]);
   const [users, setUsers] = React.useState([]);
-  const [form, setForm] = React.useState({ titulo: '', mensagem: '', empresa_ids: [], usuario_ids: [], enviar_email: false });
+  const [form, setForm] = React.useState({ titulo: '', mensagem: '', empresa_ids: [], usuario_ids: [], enviar_email: false, notificar_todos: false });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
 
@@ -35,11 +35,22 @@ export default function NotificationSendPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
     try {
+      const empresasSelecionadas = form.empresa_ids.map((x) => Number(x));
+      const usuariosSelecionados = form.usuario_ids.map((x) => Number(x));
+      if (!form.notificar_todos && usuariosSelecionados.length === 0) {
+        toast.error(t('select_users_or_notify_all') || 'Selecione ao menos um usuário ou marque "Notificar todos"');
+        return;
+      }
+      if (form.notificar_todos && empresasSelecionadas.length === 0) {
+        toast.error(t('select_companies_for_notify_all') || 'Selecione ao menos uma empresa para "Notificar todos"');
+        return;
+      }
       const payload = {
         titulo: form.titulo,
         mensagem: form.mensagem,
-        empresa_ids: form.empresa_ids.map((x) => Number(x)),
-        usuario_ids: form.usuario_ids.map((x) => Number(x)),
+        empresa_ids: empresasSelecionadas,
+        usuario_ids: form.notificar_todos ? [] : usuariosSelecionados,
+        notificar_todos: !!form.notificar_todos,
         enviar_email: !!form.enviar_email,
       };
       await createNotification(payload);
@@ -72,9 +83,16 @@ export default function NotificationSendPage() {
         </div>
         <div>
           <label className="block text-sm mb-1">{t('users') || 'Usuários'}</label>
-          <select multiple className="select w-full h-40" value={form.usuario_ids} onChange={(e) => setForm((f) => ({ ...f, usuario_ids: Array.from(e.target.selectedOptions).map((o) => o.value) }))}>
+          <select multiple className="select w-full h-40" disabled={form.notificar_todos} value={form.usuario_ids} onChange={(e) => setForm((f) => ({ ...f, usuario_ids: Array.from(e.target.selectedOptions).map((o) => o.value) }))}>
             {users.map((u) => <option key={u.id} value={u.id}>{u.nome_completo}</option>)}
           </select>
+          {form.notificar_todos && (
+            <p className="text-xs text-slate-500 mt-1">{t('notify_all_hint') || 'Todos os usuários das empresas selecionadas serão notificados.'}</p>
+          )}
+        </div>
+        <div className="md:col-span-2 flex items-center gap-2">
+          <input type="checkbox" checked={form.notificar_todos} onChange={(e) => setForm((f) => ({ ...f, notificar_todos: e.target.checked }))} />
+          <span>{t('notify_all_users') || 'Notificar todos os usuários'}</span>
         </div>
         <div className="md:col-span-2 flex items-center gap-2">
           <input type="checkbox" checked={form.enviar_email} onChange={(e) => setForm((f) => ({ ...f, enviar_email: e.target.checked }))} />
@@ -87,4 +105,3 @@ export default function NotificationSendPage() {
     </section>
   );
 }
-
