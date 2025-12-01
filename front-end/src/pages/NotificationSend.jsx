@@ -63,9 +63,6 @@ export default function NotificationSendPage() {
     }
   };
 
-  if (loading) return <p className="text-slate-500">{t('loading') || 'Carregando...'}</p>;
-  if (error) return <p className="text-red-600">{error}</p>;
-
   const usersFiltered = React.useMemo(() => {
     const ids = Array.isArray(form.empresa_ids) ? form.empresa_ids : [];
     const empresas = new Set(ids.map((x) => Number(x)));
@@ -75,6 +72,9 @@ export default function NotificationSendPage() {
       return empresas.has(companyId);
     });
   }, [users, form.empresa_ids]);
+
+  if (loading) return <p className="text-slate-500">{t('loading') || 'Carregando...'}</p>;
+  if (error) return <p className="text-red-600">{error}</p>;
 
   return (
     <section>
