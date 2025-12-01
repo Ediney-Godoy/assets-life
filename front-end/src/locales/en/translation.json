@@ -407,6 +407,7 @@
   "read": "Read",
   "archived": "Archived",
   "sent_by_me": "Sent",
+  "received": "Received",
   "sender": "Sender",
   "date": "Date",
   "send_notification": "Send Notification",

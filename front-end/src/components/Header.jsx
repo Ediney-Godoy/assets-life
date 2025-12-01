@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
-import { Bell, LogOut, PanelLeftClose, PanelLeft, CheckCircle2, AlertCircle, Loader2, Globe, Check, ChevronDown } from 'lucide-react';
+import { Bell, LogOut, PanelLeftClose, PanelLeft, Wifi, WifiOff, Loader2, Globe, Check, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getNotifications } from '../apiClient';
 
@@ -201,20 +201,20 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             {/* Backend status */}
             <div
               className="p-2 rounded-md"
-            title={
+              title={
                 backendStatus === 'ok' ? tt('backend_ok', 'Online')
                 : backendStatus === 'checking' ? tt('backend_checking', 'Verificando...')
                 : tt('backend_error', 'Offline')
               }
-          >
+            >
               {backendStatus === 'ok' && (
-                <CheckCircle2 size={18} style={{ color: 'var(--accent-primary)' }} />
+                <Wifi size={18} className="text-emerald-500" />
               )}
               {backendStatus === 'checking' && (
-                <Loader2 size={18} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+                <Loader2 size={18} className="animate-spin text-slate-500" />
               )}
               {backendStatus === 'error' && (
-                <AlertCircle size={18} className="text-red-500" />
+                <WifiOff size={18} className="text-red-500" />
               )}
             </div>
 
