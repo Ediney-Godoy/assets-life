@@ -62,8 +62,7 @@ export default function NotificationsPage() {
         </Select>
       </div>
       {loading && <p className="text-slate-500">{t('loading') || 'Carregando...'}</p>}
-      {error && <p className="text-red-600">{error}</p>}
-      {!loading && !error && (
+      {!loading && (
         filtered.length === 0 ? (
           <p className="text-slate-500">{t('no_notifications') || 'Sem notificações'}</p>
         ) : (

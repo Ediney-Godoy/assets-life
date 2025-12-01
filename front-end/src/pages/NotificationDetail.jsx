@@ -21,7 +21,7 @@ export default function NotificationDetailPage() {
         if (active) setItem(data || null);
         try { await markNotificationRead(id); } catch {}
       } catch (err) {
-        setError(String(err?.message || err));
+        setError('');
       } finally {
         setLoading(false);
       }
@@ -34,12 +34,12 @@ export default function NotificationDetailPage() {
       await archiveNotification(id);
       navigate('/notifications', { replace: true });
     } catch (err) {
-      setError(String(err?.message || err));
+      setError('');
     }
   };
 
   if (loading) return <p className="text-slate-500">{t('loading') || 'Carregando...'}</p>;
-  if (error) return <p className="text-red-600">{error}</p>;
+  if (error) return <p className="text-slate-500">{t('no_notifications') || 'Sem notificações'}</p>;
   if (!item) return <p className="text-slate-500">{t('not_found') || 'Não encontrada'}</p>;
 
   return (
@@ -62,4 +62,3 @@ export default function NotificationDetailPage() {
     </section>
   );
 }
-
