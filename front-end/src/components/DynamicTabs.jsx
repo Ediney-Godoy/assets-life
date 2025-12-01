@@ -54,7 +54,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       '/tabs-demo': 'Abas',
       '/users': 'Usuários',
       '/notifications': t('notifications') || 'Notificações',
-      '/notifications/new': (t('new') || 'Nova') + ' ' + ((t('notifications') || 'Notificações')),
+      '/notifications/new': t('send_notification') || 'Enviar Notificação',
     };
     if (map[path]) return map[path];
     if (path.startsWith('/notifications/')) return t('notification') || 'Notificação';

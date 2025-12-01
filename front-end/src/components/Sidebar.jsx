@@ -6,6 +6,7 @@ import { getRole, getVisibleMenuForRole } from '../permissions';
 
 export default function Sidebar({ collapsed = false }) {
   const { t } = useTranslation();
+  const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const location = useLocation();
   const role = getRole();
   let visible = getVisibleMenuForRole(role);
@@ -22,15 +23,15 @@ export default function Sidebar({ collapsed = false }) {
   } catch {}
 
   const menu = [
-    { to: '/dashboard', label: t('nav_dashboard'), icon: LayoutDashboard },
-    { to: '/cadastros', label: t('nav_registrations'), icon: SquareStack },
-    { to: '/reviews', label: t('nav_reviews'), icon: ClipboardList },
-    { to: '/supervisao-rvu', label: t('nav_supervisao') || 'Supervisão', icon: UserCheck },
-    { to: '/reports', label: t('nav_reports'), icon: BarChart3 },
-    { to: '/notifications', label: t('notifications') || 'Notificações', icon: Bell },
-    { to: '/permissions', label: t('nav_permissions'), icon: Shield },
-    { to: '/about', label: t('nav_about'), icon: Info },
-    { to: '/help', label: t('nav_help'), icon: HelpCircle },
+    { to: '/dashboard', label: tt('nav_dashboard', 'Dashboard'), icon: LayoutDashboard },
+    { to: '/cadastros', label: tt('nav_registrations', 'Cadastros'), icon: SquareStack },
+    { to: '/reviews', label: tt('nav_reviews', 'Revisões'), icon: ClipboardList },
+    { to: '/supervisao-rvu', label: tt('nav_supervisao', 'Supervisão'), icon: UserCheck },
+    { to: '/reports', label: tt('nav_reports', 'Relatórios'), icon: BarChart3 },
+    { to: '/notifications', label: tt('notifications', 'Notificações'), icon: Bell },
+    { to: '/permissions', label: tt('nav_permissions', 'Permissões'), icon: Shield },
+    { to: '/about', label: tt('nav_about', 'Sobre'), icon: Info },
+    { to: '/help', label: tt('nav_help', 'Ajuda'), icon: HelpCircle },
   ];
 
   const allowed = (() => {

@@ -7,6 +7,7 @@ import { getNotifications } from '../apiClient';
 
 export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
   const { t } = useTranslation();
+  const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const navigate = useNavigate();
   const [user, setUser] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch { return null; }
@@ -61,8 +62,8 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             type="button"
             onClick={onToggleSidebar}
             className="btn btn-ghost p-2"
-            title={t('toggle_sidebar') || 'Alternar menu'}
-            aria-label={t('toggle_sidebar') || 'Alternar menu'}
+            title={tt('toggle_sidebar', 'Alternar menu')}
+            aria-label={tt('toggle_sidebar', 'Alternar menu')}
           >
             {collapsed ? (
               <PanelLeft size={18} />
@@ -72,7 +73,7 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
           </button>
         )}
         <h1 className="text-lg font-semibold hidden sm:block" style={{ color: 'var(--text-primary)' }}>
-          {t('app_title')}
+          {tt('app_title', 'Assets Life')}
         </h1>
       </div>
 
@@ -86,7 +87,7 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             className="btn btn-ghost h-8 px-2 flex items-center gap-2"
             aria-haspopup="menu"
             aria-expanded={langOpen ? 'true' : 'false'}
-            title={t('change_language') || 'Idioma'}
+            title={tt('change_language', 'Idioma')}
           >
             <Globe size={14} style={{ color: 'var(--text-muted)' }} />
             <span aria-hidden>{language === 'pt' ? (
@@ -166,9 +167,9 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
               <button
                 type="button"
                 onClick={() => setBellOpen((prev) => !prev)}
-                className="btn btn-ghost p-2 relative"
-                title={t('notifications') || 'Notificações'}
-                aria-label={t('notifications') || 'Notificações'}
+              className="btn btn-ghost p-2 relative"
+              title={tt('notifications', 'Notificações')}
+              aria-label={tt('notifications', 'Notificações')}
               >
                 <Bell size={18} />
                 {unreadCount > 0 && (
@@ -180,11 +181,11 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
               {bellOpen && (
                 <div className="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md shadow-md z-20">
                   <div className="px-3 py-2 font-semibold text-slate-900 dark:text-slate-100">
-                    {t('notifications') || 'Notificações'}
+                    {tt('notifications', 'Notificações')}
                   </div>
                   <div className="max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
                   {notifications.length === 0 ? (
-                    <div className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300">{t('no_notifications') || 'Sem notificações'}</div>
+                    <div className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300">{tt('no_notifications', 'Sem notificações')}</div>
                   ) : (
                       notifications.map((n) => (
                         <button key={n.id} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800" onClick={() => { setBellOpen(false); navigate(`/notifications/${n.id}`); }}>
@@ -200,12 +201,12 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
             {/* Backend status */}
             <div
               className="p-2 rounded-md"
-              title={
-                backendStatus === 'ok' ? (t('backend_ok') || 'Online')
-                : backendStatus === 'checking' ? (t('backend_checking') || 'Verificando...')
-                : (t('backend_error') || 'Offline')
+            title={
+                backendStatus === 'ok' ? tt('backend_ok', 'Online')
+                : backendStatus === 'checking' ? tt('backend_checking', 'Verificando...')
+                : tt('backend_error', 'Offline')
               }
-            >
+          >
               {backendStatus === 'ok' && (
                 <CheckCircle2 size={18} style={{ color: 'var(--accent-primary)' }} />
               )}
@@ -222,8 +223,8 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
               type="button"
               onClick={onLogout}
               className="btn btn-ghost p-2"
-              title={t('logout') || 'Sair'}
-              aria-label={t('logout') || 'Sair'}
+              title={tt('logout', 'Sair')}
+              aria-label={tt('logout', 'Sair')}
             >
               <LogOut size={18} />
             </button>
