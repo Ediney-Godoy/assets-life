@@ -89,7 +89,7 @@ export default function NotificationSendPage() {
       <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={onSubmit}>
         <div className="space-y-3">
           <Input label={t('title') || 'Título'} value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} />
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[300px]">
             <Input label={t('content') || 'Mensagem'} value={form.mensagem} onChange={(e) => setForm((f) => ({ ...f, mensagem: e.target.value }))} multiline rows={8} />
           </div>
         </div>
@@ -107,7 +107,7 @@ export default function NotificationSendPage() {
                 if (match) setForm((f) => ({ ...f, empresa_ids: Array.from(new Set([...(f.empresa_ids || []), String(match.id)])) }));
               }} icon={<Plus size={16} />}>{t('add') || 'Adicionar'}</Button>
             </div>
-            <div className="mt-3 h-64 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
+            <div className="mt-3 h-48 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
               {(form.empresa_ids || []).length === 0 ? (
                 <p className="text-sm text-slate-500">{t('no_companies_selected') || 'Nenhuma empresa selecionada.'}</p>
               ) : (
