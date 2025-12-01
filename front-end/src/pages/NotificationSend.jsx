@@ -87,15 +87,15 @@ export default function NotificationSendPage() {
         <Button variant="secondary" onClick={() => navigate('/notifications')}>{t('back') || 'Voltar'}</Button>
       </div>
       <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={onSubmit}>
-        <div className="space-y-3">
-          <Input label={t('title') || 'Título'} value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} />
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[300px]">
-            <Input label={t('content') || 'Mensagem'} value={form.mensagem} onChange={(e) => setForm((f) => ({ ...f, mensagem: e.target.value }))} multiline rows={8} />
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
+          <div className="space-y-3">
+            <Input label={t('title') || 'Título'} value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} />
+            <Input label={t('content') || 'Mensagem'} value={form.mensagem} onChange={(e) => setForm((f) => ({ ...f, mensagem: e.target.value }))} multiline rows={10} className="min-h-[220px]" />
           </div>
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <Input label={t('companies') || 'Empresa'} value={companyQuery} onChange={(e) => setCompanyQuery(e.target.value)} placeholder={t('all') || 'Todas'} />
@@ -107,7 +107,7 @@ export default function NotificationSendPage() {
                 if (match) setForm((f) => ({ ...f, empresa_ids: Array.from(new Set([...(f.empresa_ids || []), String(match.id)])) }));
               }} icon={<Plus size={16} />}>{t('add') || 'Adicionar'}</Button>
             </div>
-            <div className="mt-3 h-48 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
+            <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
               {(form.empresa_ids || []).length === 0 ? (
                 <p className="text-sm text-slate-500">{t('no_companies_selected') || 'Nenhuma empresa selecionada.'}</p>
               ) : (
@@ -130,7 +130,7 @@ export default function NotificationSendPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <Input label={t('users') || 'Usuário'} value={userQuery} onChange={(e) => setUserQuery(e.target.value)} placeholder={t('all') || 'Todos'} />
@@ -143,7 +143,7 @@ export default function NotificationSendPage() {
                 if (match) setForm((f) => ({ ...f, usuario_ids: Array.from(new Set([...(f.usuario_ids || []), String(match.id)])) }));
               }} icon={<Plus size={16} />}>{t('add') || 'Adicionar'}</Button>
             </div>
-            <div className="mt-3 h-40 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
+            <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
               {form.notificar_todos ? (
                 <p className="text-sm text-slate-600 dark:text-slate-300">{t('notify_all_hint') || 'Todos os usuários das empresas selecionadas serão notificados.'}</p>
               ) : (
@@ -172,7 +172,7 @@ export default function NotificationSendPage() {
         </div>
 
         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <Input label={t('cc') || 'Cc'} value={ccQuery} onChange={(e) => setCcQuery(e.target.value)} placeholder="fulano.tal@empresa.com" />
@@ -184,7 +184,7 @@ export default function NotificationSendPage() {
                 if (match) setForm((f) => ({ ...f, cc_usuario_ids: Array.from(new Set([...(f.cc_usuario_ids || []), String(match.id)])) }));
               }} icon={<Plus size={16} />}>{t('add') || 'Adicionar'}</Button>
             </div>
-            <div className="mt-3 h-32 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
+            <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
               {(form.cc_usuario_ids || []).length === 0 ? (
                 <p className="text-sm text-slate-500">{t('no_cc_selected') || 'Nenhum Cc adicionado.'}</p>
               ) : (
