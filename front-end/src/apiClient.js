@@ -769,18 +769,20 @@ export async function getNotifications(params = {}) {
 
 export async function getNotification(id) {
   try {
-    return await request(`/notifications/${id}`);
-  } catch (errEn) {
-    try { return await request(`/notificacoes/${id}`); } catch (errPt) {
-      try {
-        const raw = localStorage.getItem('assetlife_notifications');
-        const arr = raw ? JSON.parse(raw) : [];
-        const hit = arr.find((n) => String(n.id) === String(id));
-        return hit || null;
-      } catch {
-        return null;
-      }
-    }
+    const resEn = await request(`/notifications/${id}`);
+    if (resEn) return resEn;
+  } catch (errEn) {}
+  try {
+    const resPt = await request(`/notificacoes/${id}`);
+    if (resPt) return resPt;
+  } catch (errPt) {}
+  try {
+    const raw = localStorage.getItem('assetlife_notifications');
+    const arr = raw ? JSON.parse(raw) : [];
+    const hit = arr.find((n) => String(n.id) === String(id));
+    return hit || null;
+  } catch {
+    return null;
   }
 }
 
