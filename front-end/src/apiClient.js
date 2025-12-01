@@ -264,7 +264,7 @@ async function request(path, options = {}) {
         // Tratamento amigável para endpoints de notificações ausentes
         if (res.status === 404) {
           const p = String(path || '');
-          const isNotifications = p.startsWith('/notificacoes') || p.startsWith('/notifications');
+          const isNotifications = /notific/i.test(p);
           if (isNotifications) {
             const isDetail = /\/notificacoes\/.+|\/notifications\/.+/i.test(p);
             const isGet = String(options.method || 'GET').toUpperCase() === 'GET';
