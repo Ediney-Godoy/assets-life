@@ -12,7 +12,7 @@ export default function NotificationSendPage() {
   const navigate = useNavigate();
   const [companies, setCompanies] = React.useState([]);
   const [users, setUsers] = React.useState([]);
-  const [form, setForm] = React.useState({ titulo: '', mensagem: '', empresa_ids: [], usuario_ids: [], enviar_email: false, notificar_todos: false });
+  const [form, setForm] = React.useState({ titulo: '', mensagem: '', empresa_ids: [], usuario_ids: [], cc_usuario_ids: [], enviar_email: false, notificar_todos: false });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
 
@@ -37,6 +37,7 @@ export default function NotificationSendPage() {
     try {
       const empresasSelecionadas = form.empresa_ids.map((x) => Number(x));
       const usuariosSelecionados = form.usuario_ids.map((x) => Number(x));
+      const ccSelecionados = form.cc_usuario_ids.map((x) => Number(x));
       if (!form.notificar_todos && usuariosSelecionados.length === 0) {
         toast.error(t('select_users_or_notify_all') || 'Selecione ao menos um usuário ou marque "Notificar todos"');
         return;
@@ -50,6 +51,7 @@ export default function NotificationSendPage() {
         mensagem: form.mensagem,
         empresa_ids: empresasSelecionadas,
         usuario_ids: form.notificar_todos ? [] : usuariosSelecionados,
+        cc_usuario_ids: ccSelecionados,
         notificar_todos: !!form.notificar_todos,
         enviar_email: !!form.enviar_email,
       };
@@ -63,6 +65,15 @@ export default function NotificationSendPage() {
 
   if (loading) return <p className="text-slate-500">{t('loading') || 'Carregando...'}</p>;
   if (error) return <p className="text-red-600">{error}</p>;
+
+  const usersFiltered = React.useMemo(() => {
+    const empresas = new Set(form.empresa_ids.map((x) => Number(x)));
+    if (empresas.size === 0) return users;
+    return users.filter((u) => {
+      const companyId = Number(u.empresa_id ?? u.company_id ?? u.companyId ?? 0);
+      return empresas.has(companyId);
+    });
+  }, [users, form.empresa_ids]);
 
   return (
     <section>
@@ -84,11 +95,18 @@ export default function NotificationSendPage() {
         <div>
           <label className="block text-sm mb-1">{t('users') || 'Usuários'}</label>
           <select multiple className="select w-full h-40" disabled={form.notificar_todos} value={form.usuario_ids} onChange={(e) => setForm((f) => ({ ...f, usuario_ids: Array.from(e.target.selectedOptions).map((o) => o.value) }))}>
-            {users.map((u) => <option key={u.id} value={u.id}>{u.nome_completo}</option>)}
+            {usersFiltered.map((u) => <option key={u.id} value={u.id}>{u.nome_completo}</option>)}
           </select>
           {form.notificar_todos && (
             <p className="text-xs text-slate-500 mt-1">{t('notify_all_hint') || 'Todos os usuários das empresas selecionadas serão notificados.'}</p>
           )}
+        </div>
+        <div>
+          <label className="block text-sm mb-1">{t('cc') || 'Cc (com cópia)'}</label>
+          <select multiple className="select w-full h-32" value={form.cc_usuario_ids} onChange={(e) => setForm((f) => ({ ...f, cc_usuario_ids: Array.from(e.target.selectedOptions).map((o) => o.value) }))}>
+            {usersFiltered.map((u) => <option key={u.id} value={u.id}>{u.nome_completo}</option>)}
+          </select>
+          <p className="text-xs text-slate-500 mt-1">{t('cc_hint') || 'Opcional: superiores hierárquicos ou gestores que devem receber cópia.'}</p>
         </div>
         <div className="md:col-span-2 flex items-center gap-2">
           <input type="checkbox" checked={form.notificar_todos} onChange={(e) => setForm((f) => ({ ...f, notificar_todos: e.target.checked }))} />
