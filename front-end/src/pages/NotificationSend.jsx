@@ -35,9 +35,9 @@ export default function NotificationSendPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
     try {
-      const empresasSelecionadas = form.empresa_ids.map((x) => Number(x));
-      const usuariosSelecionados = form.usuario_ids.map((x) => Number(x));
-      const ccSelecionados = form.cc_usuario_ids.map((x) => Number(x));
+      const empresasSelecionadas = (Array.isArray(form.empresa_ids) ? form.empresa_ids : []).map((x) => Number(x));
+      const usuariosSelecionados = (Array.isArray(form.usuario_ids) ? form.usuario_ids : []).map((x) => Number(x));
+      const ccSelecionados = (Array.isArray(form.cc_usuario_ids) ? form.cc_usuario_ids : []).map((x) => Number(x));
       if (!form.notificar_todos && usuariosSelecionados.length === 0) {
         toast.error(t('select_users_or_notify_all') || 'Selecione ao menos um usuário ou marque "Notificar todos"');
         return;
@@ -67,7 +67,8 @@ export default function NotificationSendPage() {
   if (error) return <p className="text-red-600">{error}</p>;
 
   const usersFiltered = React.useMemo(() => {
-    const empresas = new Set(form.empresa_ids.map((x) => Number(x)));
+    const ids = Array.isArray(form.empresa_ids) ? form.empresa_ids : [];
+    const empresas = new Set(ids.map((x) => Number(x)));
     if (empresas.size === 0) return users;
     return users.filter((u) => {
       const companyId = Number(u.empresa_id ?? u.company_id ?? u.companyId ?? 0);
