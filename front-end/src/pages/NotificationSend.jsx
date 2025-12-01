@@ -91,7 +91,7 @@ export default function NotificationSendPage() {
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
             <div className="space-y-3">
               <Input label={t('title') || 'Título'} value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} />
-              <Input label={t('content') || 'Mensagem'} value={form.mensagem} onChange={(e) => setForm((f) => ({ ...f, mensagem: e.target.value }))} multiline rows={10} className="min-h-[220px]" />
+              <Input label={t('content') || 'Mensagem'} value={form.mensagem} onChange={(e) => setForm((f) => ({ ...f, mensagem: e.target.value }))} multiline rows={8} className="min-h-[180px]" />
             </div>
           </div>
 
