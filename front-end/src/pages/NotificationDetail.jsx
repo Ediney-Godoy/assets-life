@@ -58,7 +58,17 @@ export default function NotificationDetailPage() {
         <div className="whitespace-pre-wrap text-slate-900 dark:text-slate-100">{item.mensagem || item.message || ''}</div>
       </div>
       <div className="mt-4">
-        <Button variant="primary" onClick={() => markNotificationRead(id)}>{tt('mark_read', 'Marcar como lida')}</Button>
+        <Button
+          variant="primary"
+          onClick={async () => {
+            try {
+              const updated = await markNotificationRead(id);
+              setItem((prev) => updated || (prev ? { ...prev, status: 'lida', read: true } : prev));
+            } catch {}
+          }}
+        >
+          {tt('mark_read', 'Marcar como lida')}
+        </Button>
       </div>
     </section>
   );

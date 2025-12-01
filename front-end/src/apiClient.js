@@ -831,25 +831,51 @@ export async function createNotification(payload) {
 
 export async function markNotificationRead(id) {
   try {
-    return await request(`/notifications/${id}/read`, { method: 'POST' });
-  } catch (errEn) {
-    try { return await request(`/notificacoes/${id}/lida`, { method: 'POST' }); } catch (errPt) {
-      const msg = String(errPt?.message || '');
-      if (/HTTP 404/i.test(msg)) return null;
-      throw errPt;
+    const r = await request(`/notifications/${id}/read`, { method: 'POST' });
+    if (r) return r;
+  } catch {}
+  try {
+    const r2 = await request(`/notificacoes/${id}/lida`, { method: 'POST' });
+    if (r2) return r2;
+  } catch {}
+  try {
+    const raw = localStorage.getItem('assetlife_notifications');
+    const arr = raw ? JSON.parse(raw) : [];
+    const idx = arr.findIndex((n) => String(n.id) === String(id));
+    if (idx >= 0) {
+      const now = new Date().toISOString();
+      arr[idx] = { ...arr[idx], status: 'lida', read: true, updated_at: now };
+      localStorage.setItem('assetlife_notifications', JSON.stringify(arr));
+      return arr[idx];
     }
+    return null;
+  } catch {
+    return null;
   }
 }
 
 export async function archiveNotification(id) {
   try {
-    return await request(`/notifications/${id}/archive`, { method: 'POST' });
-  } catch (errEn) {
-    try { return await request(`/notificacoes/${id}/arquivar`, { method: 'POST' }); } catch (errPt) {
-      const msg = String(errPt?.message || '');
-      if (/HTTP 404/i.test(msg)) return null;
-      throw errPt;
+    const r = await request(`/notifications/${id}/archive`, { method: 'POST' });
+    if (r) return r;
+  } catch {}
+  try {
+    const r2 = await request(`/notificacoes/${id}/arquivar`, { method: 'POST' });
+    if (r2) return r2;
+  } catch {}
+  try {
+    const raw = localStorage.getItem('assetlife_notifications');
+    const arr = raw ? JSON.parse(raw) : [];
+    const idx = arr.findIndex((n) => String(n.id) === String(id));
+    if (idx >= 0) {
+      const now = new Date().toISOString();
+      arr[idx] = { ...arr[idx], status: 'arquivada', archived: true, updated_at: now };
+      localStorage.setItem('assetlife_notifications', JSON.stringify(arr));
+      return arr[idx];
     }
+    return null;
+  } catch {
+    return null;
   }
 }
 
