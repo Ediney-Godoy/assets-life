@@ -98,6 +98,41 @@ export default function NotificationSendPage() {
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
             <div className="flex items-end gap-2">
               <div className="flex-1">
+                <Input label={t('companies') || 'Empresa'} value={companyQuery} onChange={(e) => setCompanyQuery(e.target.value)} placeholder={t('all') || 'Todas'} />
+              </div>
+              <Button variant="secondary" size="sm" type="button" title="Buscar" icon={<Search size={16} />} />
+              <Button variant="primary" size="sm" type="button" onClick={() => {
+                const q = companyQuery.trim().toLowerCase();
+                const match = companies.find((c) => String(c.name || '').toLowerCase().includes(q) || String(c.cnpj || '').toLowerCase().includes(q));
+                if (match) setForm((f) => ({ ...f, empresa_ids: Array.from(new Set([...(f.empresa_ids || []), String(match.id)])) }));
+              }} icon={<Plus size={16} />}>{t('add') || 'Adicionar'}</Button>
+            </div>
+            <div className="mt-3 h-64 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
+              {(form.empresa_ids || []).length === 0 ? (
+                <p className="text-sm text-slate-500">{t('no_companies_selected') || 'Nenhuma empresa selecionada.'}</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {(form.empresa_ids || []).map((id) => {
+                    const c = companies.find((x) => String(x.id) === String(id));
+                    return (
+                      <div key={id} className="flex items-center justify-between px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <div className="text-sm">{c ? c.name : id}</div>
+                        <button type="button" className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setForm((f) => ({ ...f, empresa_ids: (f.empresa_ids || []).filter((x) => String(x) !== String(id)) }))}><X size={16} /></button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <Button variant="secondary" size="sm" type="button" onClick={() => setForm((f) => ({ ...f, empresa_ids: companies.map((c) => String(c.id)) }))}>{t('select_all_companies') || 'Selecionar todas'}</Button>
+              <Button variant="secondary" size="sm" type="button" onClick={() => setForm((f) => ({ ...f, empresa_ids: [] }))}>{t('clear') || 'Limpar'}</Button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
                 <Input label={t('users') || 'Usuário'} value={userQuery} onChange={(e) => setUserQuery(e.target.value)} placeholder={t('all') || 'Todos'} />
               </div>
               <Button variant="secondary" size="sm" type="button" title="Buscar" icon={<Search size={16} />} />
@@ -132,41 +167,6 @@ export default function NotificationSendPage() {
             <div className="mt-3 flex items-center gap-2">
               <input type="checkbox" checked={form.notificar_todos} onChange={(e) => setForm((f) => ({ ...f, notificar_todos: e.target.checked, usuario_ids: e.target.checked ? [] : f.usuario_ids }))} />
               <span className="text-sm">{t('notify_all_users') || 'Notificar todos os usuários'}</span>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Input label={t('companies') || 'Empresa'} value={companyQuery} onChange={(e) => setCompanyQuery(e.target.value)} placeholder={t('all') || 'Todas'} />
-              </div>
-              <Button variant="secondary" size="sm" type="button" title="Buscar" icon={<Search size={16} />} />
-              <Button variant="primary" size="sm" type="button" onClick={() => {
-                const q = companyQuery.trim().toLowerCase();
-                const match = companies.find((c) => String(c.name || '').toLowerCase().includes(q) || String(c.cnpj || '').toLowerCase().includes(q));
-                if (match) setForm((f) => ({ ...f, empresa_ids: Array.from(new Set([...(f.empresa_ids || []), String(match.id)])) }));
-              }} icon={<Plus size={16} />}>{t('add') || 'Adicionar'}</Button>
-            </div>
-            <div className="mt-3 h-40 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
-              {(form.empresa_ids || []).length === 0 ? (
-                <p className="text-sm text-slate-500">{t('no_companies_selected') || 'Nenhuma empresa selecionada.'}</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {(form.empresa_ids || []).map((id) => {
-                    const c = companies.find((x) => String(x.id) === String(id));
-                    return (
-                      <div key={id} className="flex items-center justify-between px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
-                        <div className="text-sm">{c ? c.name : id}</div>
-                        <button type="button" className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setForm((f) => ({ ...f, empresa_ids: (f.empresa_ids || []).filter((x) => String(x) !== String(id)) }))}><X size={16} /></button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <Button variant="secondary" size="sm" type="button" onClick={() => setForm((f) => ({ ...f, empresa_ids: companies.map((c) => String(c.id)) }))}>{t('select_all_companies') || 'Selecionar todas'}</Button>
-              <Button variant="secondary" size="sm" type="button" onClick={() => setForm((f) => ({ ...f, empresa_ids: [] }))}>{t('clear') || 'Limpar'}</Button>
             </div>
           </div>
         </div>
