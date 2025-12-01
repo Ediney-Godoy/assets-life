@@ -21,8 +21,14 @@ export default function NotificationsPage() {
       const data = await getNotifications({ status });
       setList(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(String(err?.message || err));
-      setList([]);
+      const msg = String(err?.message || err);
+      if (/HTTP 404/i.test(msg)) {
+        setList([]);
+        setError('');
+      } else {
+        setError(msg);
+        setList([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -73,4 +79,3 @@ export default function NotificationsPage() {
     </section>
   );
 }
-

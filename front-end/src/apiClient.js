@@ -693,7 +693,17 @@ export async function getNotifications(params = {}) {
   } catch (err) {
     const msg = String(err?.message || '');
     if (/HTTP 404/i.test(msg)) {
-      try { return await request(`/notifications${q ? `?${q}` : ''}`); } catch (err2) {
+      // Tenta em inglês com mapeamento de status
+      const mapStatus = (s) => {
+        if (s === 'pendente') return 'pending';
+        if (s === 'lida') return 'read';
+        if (s === 'arquivada') return 'archived';
+        return s;
+      };
+      const paramsEn = { ...params };
+      if (paramsEn.status) paramsEn.status = mapStatus(String(paramsEn.status));
+      const qEn = new URLSearchParams(Object.entries(paramsEn).filter(([_, v]) => v != null && v !== '')).toString();
+      try { return await request(`/notifications${qEn ? `?${qEn}` : ''}`); } catch (err2) {
         const msg2 = String(err2?.message || '');
         if (/HTTP 404/i.test(msg2)) return [];
         throw err2;
