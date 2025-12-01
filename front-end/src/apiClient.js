@@ -787,6 +787,19 @@ export async function getNotification(id) {
 }
 
 export async function createNotification(payload) {
+  try {
+    const permsRaw = localStorage.getItem('assetlife_permissoes');
+    const rotas = permsRaw ? JSON.parse(permsRaw)?.rotas : [];
+    const allowed = new Set(Array.isArray(rotas) ? rotas : []);
+    const canSend = (
+      allowed.size === 0
+        ? true
+        : (allowed.has('/notifications/new') || allowed.has('/notificacoes/nova'))
+    );
+    if (!canSend) {
+      throw new Error('Permissão insuficiente para enviar notificações');
+    }
+  } catch {}
   const body = JSON.stringify(payload);
   const candidates = [
     '/notifications',

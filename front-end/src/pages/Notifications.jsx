@@ -16,12 +16,28 @@ export default function NotificationsPage() {
   const [status, setStatus] = React.useState('pendente');
   const [query, setQuery] = React.useState('');
 
+  const canSend = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('assetlife_permissoes');
+      const rotas = raw ? JSON.parse(raw)?.rotas : [];
+      const allowed = new Set(Array.isArray(rotas) ? rotas : []);
+      return (
+        allowed.size === 0
+          ? true
+          : (allowed.has('/notifications/new') || allowed.has('/notificacoes/nova'))
+      );
+    } catch { return true; }
+  }, []);
+
   const load = React.useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = (status === 'enviadas')
+      const effectiveStatus = (!canSend && status === 'enviadas') ? 'pendente' : status;
+      const data = (effectiveStatus === 'enviadas')
         ? await getNotifications({ from_me: 1 })
-        : await getNotifications({ status });
+        : effectiveStatus === 'recebidas'
+          ? await getNotifications({})
+          : await getNotifications({ status: effectiveStatus });
       setList(Array.isArray(data) ? data : []);
     } catch (err) {
       setList([]);
@@ -29,7 +45,7 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, [status, canSend]);
 
   React.useEffect(() => { load(); }, [load]);
 
@@ -61,8 +77,10 @@ export default function NotificationsPage() {
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{tt('notifications', 'Notificações')}</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="primary" onClick={() => navigate('/notifications/new')}>{tt('new', 'Nova')}</Button>
+      <div className="flex items-center gap-2">
+          {canSend && (
+            <Button variant="primary" onClick={() => navigate('/notifications/new')}>{tt('new', 'Nova')}</Button>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2 mb-3">
@@ -71,8 +89,8 @@ export default function NotificationsPage() {
           <option value="pendente">{tt('pending', 'Pendente')}</option>
           <option value="lida">{tt('read', 'Lida')}</option>
           <option value="arquivada">{tt('archived', 'Arquivada')}</option>
-          <option value="enviadas">{tt('sent_by_me', 'Enviadas')}</option>
-          <option value="">{tt('all', 'Todas')}</option>
+          {canSend && <option value="enviadas">{tt('sent_by_me', 'Enviadas')}</option>}
+          <option value="recebidas">{tt('received', 'Recebidas')}</option>
         </Select>
       </div>
       {loading && <p className="text-slate-500">{tt('loading', 'Carregando...')}</p>}

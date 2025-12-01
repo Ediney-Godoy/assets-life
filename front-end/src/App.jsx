@@ -164,6 +164,8 @@ export default function App() {
         // RVU: aceitar rotas alternativas antigas e o menu de relatórios
         '/relatorios-rvu': ['/relatorios/rvu', '/reports', '/reports/vida-util'],
         '/reviews/vidas-uteis': ['/revisoes/vidas-uteis', '/revisao/vidas-uteis', '/reviews/rvu'],
+        // Notificações: permitir variação em PT
+        '/notifications/new': ['/notificacoes/nova'],
       };
       const alts = altList[route] || [];
       const ok = (
@@ -236,7 +238,7 @@ export default function App() {
               <Route path="/permissions" element={<RequireAuth><RequireCompany><PermissionsMenu /></RequireCompany></RequireAuth>} />
               <Route path="/permissions/groups" element={<RequireAuth><RequireCompany><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireCompany></RequireAuth>} />
               <Route path="/notifications" element={<RequireAuth><RequireCompany><NotificationsPage /></RequireCompany></RequireAuth>} />
-              <Route path="/notifications/new" element={<RequireAuth><RequireCompany><NotificationSendPage /></RequireCompany></RequireAuth>} />
+              <Route path="/notifications/new" element={<RequireAuth><RequireCompany><RequirePermission route="/notifications/new"><NotificationSendPage /></RequirePermission></RequireCompany></RequireAuth>} />
               <Route path="/notifications/:id" element={<RequireAuth><RequireCompany><NotificationDetailPage /></RequireCompany></RequireAuth>} />
               <Route path="/users" element={<RequireAuth><RequireCompany><UsersPage /></RequireCompany></RequireAuth>} />
               <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
