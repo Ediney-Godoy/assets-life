@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Save, Pencil, Trash2, Printer } from 'lucide-react';
+import { Plus, Save, Pencil, Printer, Trash2 } from 'lucide-react';
 import Button from './ui/Button';
 
 export default function ActionToolbar({

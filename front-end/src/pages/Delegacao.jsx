@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { UserPlus, Trash2, ArrowRight, ArrowLeft, Search, ChevronDown } from 'lucide-react';
+import { UserPlus, ArrowRight, ArrowLeft, Search, ChevronDown } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';

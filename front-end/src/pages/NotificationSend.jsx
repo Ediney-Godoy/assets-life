@@ -5,7 +5,7 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
 import { getCompanies, getUsers, getReviewPeriods, createNotification } from '../apiClient';
-import { Search, Plus, X } from 'lucide-react';
+import { Search, Plus, X, ChevronLeft, ListChecks, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function NotificationSendPage() {
@@ -124,7 +124,14 @@ export default function NotificationSendPage() {
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{tt('send_notification', 'Enviar Notificação')}</h2>
-        <Button variant="secondary" onClick={() => navigate('/notifications')}>{tt('back', 'Voltar')}</Button>
+        <Button
+          variant="secondary"
+          onClick={() => navigate('/notifications')}
+          title={tt('back', 'Voltar')}
+          aria-label={tt('back', 'Voltar')}
+          icon={<ChevronLeft size={18} />}
+          className="p-0 h-10 w-10 justify-center"
+        />
       </div>
       <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={onSubmit}>
         <div className="space-y-3">
@@ -140,12 +147,12 @@ export default function NotificationSendPage() {
               <div className="flex-1">
                 <Input label={tt('cc', 'Cc')} value={ccQuery} onChange={(e) => setCcQuery(e.target.value)} placeholder={tt('cc_placeholder', 'fulano.tal@empresa.com')} />
               </div>
-              <Button variant="secondary" size="sm" type="button" title={tt('search', 'Buscar')} onClick={() => setCcModalOpen(true)} icon={<Search size={16} />} />
-              <Button variant="primary" size="sm" type="button" onClick={() => {
+              <Button variant="secondary" size="sm" type="button" title={tt('search', 'Buscar')} aria-label={tt('search', 'Buscar')} className="p-0 h-9 w-9 justify-center" onClick={() => setCcModalOpen(true)} icon={<Search size={16} />} />
+              <Button variant="primary" size="sm" type="button" title={tt('add', 'Adicionar')} aria-label={tt('add', 'Adicionar')} className="p-0 h-9 w-9 justify-center" onClick={() => {
                 const q = ccQuery.trim().toLowerCase();
                 const match = usersFiltered.find((u) => String(u.nome_completo || '').toLowerCase().includes(q) || String(u.email_corporativo || u.email || '').toLowerCase().includes(q));
                 if (match) setForm((f) => ({ ...f, cc_usuario_ids: Array.from(new Set([...(f.cc_usuario_ids || []), String(match.id)])) }));
-              }} icon={<Plus size={16} />}>{tt('add', 'Adicionar')}</Button>
+              }} icon={<Plus size={16} />} />
             </div>
             <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
               {(form.cc_usuario_ids || []).length === 0 ? (
@@ -173,14 +180,14 @@ export default function NotificationSendPage() {
               <div className="flex-1">
                 <Input label={tt('nav_review_periods', 'Períodos')} value={periodQuery} onChange={(e) => setPeriodQuery(e.target.value)} placeholder={tt('all', 'Todos')} />
               </div>
-              <Button variant="secondary" size="sm" type="button" title={tt('search', 'Buscar')} onClick={() => setPeriodModalOpen(true)} icon={<Search size={16} />} />
-              <Button variant="primary" size="sm" type="button" onClick={() => {
+              <Button variant="secondary" size="sm" type="button" title={tt('search', 'Buscar')} aria-label={tt('search', 'Buscar')} className="p-0 h-9 w-9 justify-center" onClick={() => setPeriodModalOpen(true)} icon={<Search size={16} />} />
+              <Button variant="primary" size="sm" type="button" title={tt('add', 'Adicionar')} aria-label={tt('add', 'Adicionar')} className="p-0 h-9 w-9 justify-center" onClick={() => {
                 const q = periodQuery.trim().toLowerCase();
                 const allowedCompanyIds = new Set(companies.map((c) => Number(c.id)));
                 const openAndAllowed = periods.filter((p) => p && String(p.status || '').toLowerCase() !== 'fechado' && allowedCompanyIds.has(Number(p.empresa_id || 0)));
                 const match = openAndAllowed.find((p) => String(p.codigo || '').toLowerCase().includes(q) || String(p.descricao || '').toLowerCase().includes(q));
                 if (match) setForm((f) => ({ ...f, periodo_ids: Array.from(new Set([...(f.periodo_ids || []), String(match.id)])) }));
-              }} icon={<Plus size={16} />}>{tt('add', 'Adicionar')}</Button>
+              }} icon={<Plus size={16} />} />
             </div>
             <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
               {(form.periodo_ids || []).length === 0 ? (
@@ -200,12 +207,12 @@ export default function NotificationSendPage() {
               )}
             </div>
             <div className="mt-3 flex items-center gap-2">
-              <Button variant="secondary" size="sm" type="button" onClick={() => {
+              <Button variant="secondary" size="sm" type="button" title={tt('select_all_open_periods', 'Selecionar abertos')} aria-label={tt('select_all_open_periods', 'Selecionar abertos')} className="p-0 h-9 w-9 justify-center" icon={<ListChecks size={16} />} onClick={() => {
                 const allowedCompanyIds = new Set(companies.map((c) => Number(c.id)));
                 const openAndAllowed = periods.filter((p) => p && String(p.status || '').toLowerCase() !== 'fechado' && allowedCompanyIds.has(Number(p.empresa_id || 0)));
                 setForm((f) => ({ ...f, periodo_ids: openAndAllowed.map((p) => String(p.id)) }));
-              }}>{tt('select_all_open_periods', 'Selecionar abertos')}</Button>
-              <Button variant="secondary" size="sm" type="button" onClick={() => setForm((f) => ({ ...f, periodo_ids: [] }))}>{tt('clear', 'Limpar')}</Button>
+              }} />
+              <Button variant="secondary" size="sm" type="button" title={tt('clear', 'Limpar')} aria-label={tt('clear', 'Limpar')} className="p-0 h-9 w-9 justify-center" icon={<RotateCcw size={16} />} onClick={() => setForm((f) => ({ ...f, periodo_ids: [] }))} />
             </div>
           </div>
 
@@ -214,13 +221,13 @@ export default function NotificationSendPage() {
               <div className="flex-1">
                 <Input label={tt('users', 'Usuário')} value={userQuery} onChange={(e) => setUserQuery(e.target.value)} placeholder={tt('all', 'Todos')} />
               </div>
-              <Button variant="secondary" size="sm" type="button" title={tt('search', 'Buscar')} onClick={() => setUserModalOpen(true)} disabled={form.notificar_todos} icon={<Search size={16} />} />
-              <Button variant="primary" size="sm" type="button" onClick={() => {
+              <Button variant="secondary" size="sm" type="button" title={tt('search', 'Buscar')} aria-label={tt('search', 'Buscar')} className="p-0 h-9 w-9 justify-center" onClick={() => setUserModalOpen(true)} disabled={form.notificar_todos} icon={<Search size={16} />} />
+              <Button variant="primary" size="sm" type="button" title={tt('add', 'Adicionar')} aria-label={tt('add', 'Adicionar')} className="p-0 h-9 w-9 justify-center" onClick={() => {
                 if (form.notificar_todos) return;
                 const q = userQuery.trim().toLowerCase();
                 const match = usersFiltered.find((u) => String(u.nome_completo || '').toLowerCase().includes(q) || String(u.email_corporativo || u.email || '').toLowerCase().includes(q));
                 if (match) setForm((f) => ({ ...f, usuario_ids: Array.from(new Set([...(f.usuario_ids || []), String(match.id)])) }));
-              }} icon={<Plus size={16} />}>{tt('add', 'Adicionar')}</Button>
+              }} icon={<Plus size={16} />} />
             </div>
             <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
               {form.notificar_todos ? (
@@ -283,12 +290,12 @@ export default function NotificationSendPage() {
               })()}
             </div>
             <div className="mt-3 flex items-center justify-end gap-2">
-              <Button variant="primary" onClick={() => {
+              <Button variant="primary" title={tt('add', 'Adicionar')} aria-label={tt('add', 'Adicionar')} className="p-0 h-10 w-10 justify-center" icon={<Plus size={18} />} onClick={() => {
                 if (!selectedPeriodId) return;
                 setForm((f) => ({ ...f, periodo_ids: Array.from(new Set([...(f.periodo_ids || []), String(selectedPeriodId)])) }));
                 setSelectedPeriodId('');
                 setPeriodModalOpen(false);
-              }}>{tt('add', 'Adicionar')}</Button>
+              }} />
               <Button variant="secondary" onClick={() => { setSelectedPeriodId(''); setPeriodModalOpen(false); }}>{tt('close', 'Fechar')}</Button>
             </div>
           </div>
@@ -328,12 +335,12 @@ export default function NotificationSendPage() {
               })()}
             </div>
             <div className="mt-3 flex items-center justify-end gap-2">
-              <Button variant="primary" onClick={() => {
+              <Button variant="primary" title={tt('add', 'Adicionar')} aria-label={tt('add', 'Adicionar')} className="p-0 h-10 w-10 justify-center" icon={<Plus size={18} />} onClick={() => {
                 if (selectedUserIds.length === 0) return;
                 setForm((f) => ({ ...f, usuario_ids: Array.from(new Set([...(f.usuario_ids || []), ...selectedUserIds])) }));
                 setSelectedUserIds([]);
                 setUserModalOpen(false);
-              }}>{tt('add', 'Adicionar')}</Button>
+              }} />
               <Button variant="secondary" onClick={() => { setSelectedUserIds([]); setUserModalOpen(false); }}>{tt('close', 'Fechar')}</Button>
             </div>
           </div>
@@ -373,12 +380,12 @@ export default function NotificationSendPage() {
               })()}
             </div>
             <div className="mt-3 flex items-center justify-end gap-2">
-              <Button variant="primary" onClick={() => {
+              <Button variant="primary" title={tt('add', 'Adicionar')} aria-label={tt('add', 'Adicionar')} className="p-0 h-10 w-10 justify-center" icon={<Plus size={18} />} onClick={() => {
                 if (selectedCcIds.length === 0) return;
                 setForm((f) => ({ ...f, cc_usuario_ids: Array.from(new Set([...(f.cc_usuario_ids || []), ...selectedCcIds])) }));
                 setSelectedCcIds([]);
                 setCcModalOpen(false);
-              }}>{tt('add', 'Adicionar')}</Button>
+              }} />
               <Button variant="secondary" onClick={() => { setSelectedCcIds([]); setCcModalOpen(false); }}>{tt('close', 'Fechar')}</Button>
             </div>
           </div>

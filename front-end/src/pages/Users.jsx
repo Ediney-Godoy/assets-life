@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { Plus, Save, Pencil, Trash2, Printer, FileText, FileDown, Search, X } from 'lucide-react';
+import { Plus, Save, Pencil, Printer, FileText, FileDown, Search, X } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';

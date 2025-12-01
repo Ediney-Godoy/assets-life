@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Plus, Save, Pencil, Trash2, Printer, FileText, Search, X, FileSpreadsheet } from 'lucide-react';
+import { Plus, Save, Pencil, Printer, FileText, Search, X, FileSpreadsheet, Trash2 } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';

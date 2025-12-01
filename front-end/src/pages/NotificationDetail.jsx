@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import { getNotification, markNotificationRead, archiveNotification } from '../apiClient';
-import { ArrowLeft, Archive as ArchiveIcon, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 
 export default function NotificationDetailPage() {
   const { t } = useTranslation();
@@ -79,7 +79,7 @@ export default function NotificationDetailPage() {
             title={tt('archive', 'Arquivar')}
             aria-label={tt('archive', 'Arquivar')}
             className="p-0 h-10 w-10 justify-center"
-            icon={<ArchiveIcon size={18} />}
+            icon={<img src="/Archive.svg" alt={tt('archive', 'Arquivar')} className="h-5 w-5" />}
           />
         </div>
       </div>

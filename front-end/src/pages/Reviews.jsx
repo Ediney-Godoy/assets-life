@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Pencil, Trash2, Plus, Save, FileDown, FileText, Printer, Upload, Lock, X, Search } from 'lucide-react';
+import { Pencil, Plus, Save, FileDown, FileText, Printer, Upload, Lock, X, Search } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';

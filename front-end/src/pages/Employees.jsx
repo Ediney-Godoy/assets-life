@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Pencil, Trash2, Plus, Save, FileDown, FileText, Printer, Search, X } from 'lucide-react';
+import { Pencil, Plus, Save, FileDown, FileText, Printer, Search, X, Trash2 } from 'lucide-react';
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getCompanies, getManagementUnits, getCostCenters } from '../apiClient';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';

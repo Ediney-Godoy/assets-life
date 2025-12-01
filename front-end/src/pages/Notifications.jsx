@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Table from '../components/ui/Table';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
+import { Plus } from 'lucide-react';
 import { getNotifications } from '../apiClient';
 
 export default function NotificationsPage() {
@@ -78,8 +79,15 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{tt('notifications', 'Notificações')}</h2>
       <div className="flex items-center gap-2">
-          {canSend && (
-            <Button variant="primary" onClick={() => navigate('/notifications/new')}>{tt('new', 'Nova')}</Button>
+        {canSend && (
+            <Button
+              variant="primary"
+              onClick={() => navigate('/notifications/new')}
+              title={tt('new', 'Nova')}
+              aria-label={tt('new', 'Nova')}
+              icon={<Plus size={18} />}
+              className="p-0 h-10 w-10 justify-center"
+            />
           )}
         </div>
       </div>
