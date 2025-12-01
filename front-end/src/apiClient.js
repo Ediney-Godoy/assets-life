@@ -261,6 +261,19 @@ async function request(path, options = {}) {
       console.log('[apiClient] Resposta recebida:', { status: res.status, statusText: res.statusText, ok: res.ok });
       if (!res.ok) {
         const text = await res.text();
+        // Tratamento amigável para endpoints de notificações ausentes
+        if (res.status === 404) {
+          const p = String(path || '');
+          const isNotifications = p.startsWith('/notificacoes') || p.startsWith('/notifications');
+          if (isNotifications) {
+            const isDetail = /\/notificacoes\/.+|\/notifications\/.+/i.test(p);
+            const isGet = String(options.method || 'GET').toUpperCase() === 'GET';
+            if (isGet && isDetail) return null; // detalhe inexistente
+            if (isGet) return []; // lista inexistente
+            // ações (read/archive) inexistentes: silencia e retorna null
+            return null;
+          }
+        }
         // Tratamento especial para 401: só limpa token se for realmente um erro de token inválido
         // No login, 401 com "Credenciais inválidas" deve ser propagado normalmente
         if (res.status === 401) {
