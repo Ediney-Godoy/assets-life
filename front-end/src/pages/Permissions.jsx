@@ -57,6 +57,37 @@ export default function PermissionsPage() {
   const [cloneName, setCloneName] = React.useState('');
   const [showClone, setShowClone] = React.useState(false);
 
+  const seedDefaultTransactions = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      let tx = transactions.length ? transactions : (await getTransactions()) || [];
+      const requiredRoutes = new Set([
+        '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis',
+        '/notifications','/notifications/new'
+      ]);
+      const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));
+      const missing = Array.from(requiredRoutes).filter((r) => !existingRoutes.has(r));
+      for (const r of missing) {
+        try {
+          const nome = r === '/notifications' ? 'Notificações' : r === '/notifications/new' ? 'Enviar Notificação' : r;
+          await createTransaction({ nome_tela: nome, rota: r });
+        } catch {}
+      }
+      if (missing.length > 0) {
+        tx = (await getTransactions()) || tx;
+        setTransactions(Array.isArray(tx) ? tx : transactions);
+        toast.success('Rotas padrão criadas');
+      } else {
+        toast('Rotas padrão já existem');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao criar rotas padrão');
+    } finally {
+      setLoading(false);
+    }
+  }, [transactions]);
+
   const load = async () => {
     try {
       setLoading(true); setError(false);
@@ -403,6 +434,10 @@ export default function PermissionsPage() {
             {!editingId && <p className="text-slate-600 dark:text-slate-300">Salve o grupo para vincular transações.</p>}
             {editingId && (
               <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-slate-600 dark:text-slate-300">Garanta que as rotas padrão existam para poder vinculá-las.</div>
+                  <Button variant="secondary" onClick={seedDefaultTransactions}>Criar rotas padrão</Button>
+                </div>
                 <div className="flex items-end gap-2">
                   <Select label="Transação" value={selectedTransacaoId} onChange={(e) => setSelectedTransacaoId(e.target.value)} className="flex-1">
                     <option value="">Selecione...</option>
