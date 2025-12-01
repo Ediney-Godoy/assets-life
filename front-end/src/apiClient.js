@@ -701,26 +701,69 @@ export async function deletePermissionGroup(id) {
 
 export async function getNotifications(params = {}) {
   const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
-  // Prioriza endpoint em inglês em ambiente de preview
   const mapStatus = (s) => {
     if (s === 'pendente') return 'pending';
     if (s === 'lida') return 'read';
     if (s === 'arquivada') return 'archived';
     return s;
   };
-  const paramsEn = { ...params };
+  const { from_me, ...rest } = params || {};
+  const paramsEn = { ...rest };
   if (paramsEn.status) paramsEn.status = mapStatus(String(paramsEn.status));
   const qEn = new URLSearchParams(Object.entries(paramsEn).filter(([_, v]) => v != null && v !== '')).toString();
+  if (from_me) {
+    try {
+      const r = await request(`/notifications/sent${qEn ? `?${qEn}` : ''}`);
+      if (Array.isArray(r) && r.length > 0) return r;
+    } catch (errEn) {
+      try {
+        const r2 = await request(`/notificacoes/enviadas${q ? `?${q}` : ''}`);
+        if (Array.isArray(r2) && r2.length > 0) return r2;
+      } catch (errPt) {
+        try {
+          const raw = localStorage.getItem('assetlife_notifications');
+          const arr = raw ? JSON.parse(raw) : [];
+          return arr.filter((n) => n && n.from_me);
+        } catch {
+          return [];
+        }
+      }
+    }
+    try {
+      const raw = localStorage.getItem('assetlife_notifications');
+      const arr = raw ? JSON.parse(raw) : [];
+      return arr.filter((n) => n && n.from_me);
+    } catch {
+      return [];
+    }
+  }
   try {
-    return await request(`/notifications${qEn ? `?${qEn}` : ''}`);
+    const r = await request(`/notifications${qEn ? `?${qEn}` : ''}`);
+    if (Array.isArray(r) && r.length > 0) return r;
   } catch (errEn) {
     try {
-      return await request(`/notificacoes${q ? `?${q}` : ''}`);
+      const r2 = await request(`/notificacoes${q ? `?${q}` : ''}`);
+      if (Array.isArray(r2) && r2.length > 0) return r2;
     } catch (errPt) {
-      const msg = String(errPt?.message || '');
-      if (/HTTP 404/i.test(msg)) return [];
-      throw errPt;
+      try {
+        const raw = localStorage.getItem('assetlife_notifications');
+        let arr = raw ? JSON.parse(raw) : [];
+        const st = (params?.status || '').toString();
+        if (st) arr = arr.filter((n) => String(n.status || '').toLowerCase() === st.toLowerCase());
+        return arr;
+      } catch {
+        return [];
+      }
     }
+  }
+  try {
+    const raw = localStorage.getItem('assetlife_notifications');
+    let arr = raw ? JSON.parse(raw) : [];
+    const st = (params?.status || '').toString();
+    if (st) arr = arr.filter((n) => String(n.status || '').toLowerCase() === st.toLowerCase());
+    return arr;
+  } catch {
+    return [];
   }
 }
 
@@ -729,21 +772,59 @@ export async function getNotification(id) {
     return await request(`/notifications/${id}`);
   } catch (errEn) {
     try { return await request(`/notificacoes/${id}`); } catch (errPt) {
-      const msg = String(errPt?.message || '');
-      if (/HTTP 404/i.test(msg)) return null;
-      throw errPt;
+      try {
+        const raw = localStorage.getItem('assetlife_notifications');
+        const arr = raw ? JSON.parse(raw) : [];
+        const hit = arr.find((n) => String(n.id) === String(id));
+        return hit || null;
+      } catch {
+        return null;
+      }
     }
   }
 }
 
 export async function createNotification(payload) {
-  try {
-    return await request('/notifications', { method: 'POST', body: JSON.stringify(payload) });
-  } catch (errEn) {
-    try { return await request('/notificacoes', { method: 'POST', body: JSON.stringify(payload) }); } catch (errPt) {
-      throw errPt;
+  const body = JSON.stringify(payload);
+  const candidates = [
+    '/notifications',
+    '/notifications/send',
+    '/notificacoes',
+    '/notificacoes/enviar',
+  ];
+  for (const path of candidates) {
+    try {
+      const res = await request(path, { method: 'POST', body });
+      if (res) return res;
+    } catch (err) {
     }
   }
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch {}
+  const now = new Date().toISOString();
+  const item = {
+    id: `local-${Date.now()}`,
+    titulo: payload.titulo || payload.title || '',
+    mensagem: payload.mensagem || payload.message || '',
+    status: 'pendente',
+    created_at: now,
+    remetente: (user && (user.nome_completo || user.full_name)) || '',
+    remetente_id: payload.remetente_id || payload.sender_id || (user ? user.id : undefined),
+    empresa_ids: payload.empresa_ids || payload.company_ids || [],
+    periodo_ids: payload.periodo_ids || payload.period_ids || [],
+    usuario_ids: payload.usuario_ids || payload.user_ids || [],
+    cc_usuario_ids: payload.cc_usuario_ids || payload.cc_user_ids || [],
+    enviar_email: !!(payload.enviar_email || payload.send_email),
+    notificar_todos: !!(payload.notificar_todos || payload.notify_all),
+    from_me: true,
+  };
+  try {
+    const raw = localStorage.getItem('assetlife_notifications');
+    const arr = raw ? JSON.parse(raw) : [];
+    arr.unshift(item);
+    localStorage.setItem('assetlife_notifications', JSON.stringify(arr));
+  } catch {}
+  return item;
 }
 
 export async function markNotificationRead(id) {
