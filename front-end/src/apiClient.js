@@ -701,90 +701,72 @@ export async function deletePermissionGroup(id) {
 
 export async function getNotifications(params = {}) {
   const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  // Prioriza endpoint em inglês em ambiente de preview
+  const mapStatus = (s) => {
+    if (s === 'pendente') return 'pending';
+    if (s === 'lida') return 'read';
+    if (s === 'arquivada') return 'archived';
+    return s;
+  };
+  const paramsEn = { ...params };
+  if (paramsEn.status) paramsEn.status = mapStatus(String(paramsEn.status));
+  const qEn = new URLSearchParams(Object.entries(paramsEn).filter(([_, v]) => v != null && v !== '')).toString();
   try {
-    return await request(`/notificacoes${q ? `?${q}` : ''}`);
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (/HTTP 404/i.test(msg)) {
-      // Tenta em inglês com mapeamento de status
-      const mapStatus = (s) => {
-        if (s === 'pendente') return 'pending';
-        if (s === 'lida') return 'read';
-        if (s === 'arquivada') return 'archived';
-        return s;
-      };
-      const paramsEn = { ...params };
-      if (paramsEn.status) paramsEn.status = mapStatus(String(paramsEn.status));
-      const qEn = new URLSearchParams(Object.entries(paramsEn).filter(([_, v]) => v != null && v !== '')).toString();
-      try { return await request(`/notifications${qEn ? `?${qEn}` : ''}`); } catch (err2) {
-        const msg2 = String(err2?.message || '');
-        if (/HTTP 404/i.test(msg2)) return [];
-        throw err2;
-      }
+    return await request(`/notifications${qEn ? `?${qEn}` : ''}`);
+  } catch (errEn) {
+    try {
+      return await request(`/notificacoes${q ? `?${q}` : ''}`);
+    } catch (errPt) {
+      const msg = String(errPt?.message || '');
+      if (/HTTP 404/i.test(msg)) return [];
+      throw errPt;
     }
-    throw err;
   }
 }
 
 export async function getNotification(id) {
   try {
-    return await request(`/notificacoes/${id}`);
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (/HTTP 404/i.test(msg)) {
-      try { return await request(`/notifications/${id}`); } catch (err2) {
-        const msg2 = String(err2?.message || '');
-        if (/HTTP 404/i.test(msg2)) return null;
-        throw err2;
-      }
+    return await request(`/notifications/${id}`);
+  } catch (errEn) {
+    try { return await request(`/notificacoes/${id}`); } catch (errPt) {
+      const msg = String(errPt?.message || '');
+      if (/HTTP 404/i.test(msg)) return null;
+      throw errPt;
     }
-    throw err;
   }
 }
 
 export async function createNotification(payload) {
   try {
-    return await request('/notificacoes', { method: 'POST', body: JSON.stringify(payload) });
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (/HTTP 404/i.test(msg)) {
-      try { return await request('/notifications', { method: 'POST', body: JSON.stringify(payload) }); } catch (err2) {
-        throw err2;
-      }
+    return await request('/notifications', { method: 'POST', body: JSON.stringify(payload) });
+  } catch (errEn) {
+    try { return await request('/notificacoes', { method: 'POST', body: JSON.stringify(payload) }); } catch (errPt) {
+      throw errPt;
     }
-    throw err;
   }
 }
 
 export async function markNotificationRead(id) {
   try {
-    return await request(`/notificacoes/${id}/lida`, { method: 'POST' });
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (/HTTP 404/i.test(msg)) {
-      try { return await request(`/notifications/${id}/read`, { method: 'POST' }); } catch (err2) {
-        const msg2 = String(err2?.message || '');
-        if (/HTTP 404/i.test(msg2)) return null;
-        throw err2;
-      }
+    return await request(`/notifications/${id}/read`, { method: 'POST' });
+  } catch (errEn) {
+    try { return await request(`/notificacoes/${id}/lida`, { method: 'POST' }); } catch (errPt) {
+      const msg = String(errPt?.message || '');
+      if (/HTTP 404/i.test(msg)) return null;
+      throw errPt;
     }
-    throw err;
   }
 }
 
 export async function archiveNotification(id) {
   try {
-    return await request(`/notificacoes/${id}/arquivar`, { method: 'POST' });
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (/HTTP 404/i.test(msg)) {
-      try { return await request(`/notifications/${id}/archive`, { method: 'POST' }); } catch (err2) {
-        const msg2 = String(err2?.message || '');
-        if (/HTTP 404/i.test(msg2)) return null;
-        throw err2;
-      }
+    return await request(`/notifications/${id}/archive`, { method: 'POST' });
+  } catch (errEn) {
+    try { return await request(`/notificacoes/${id}/arquivar`, { method: 'POST' }); } catch (errPt) {
+      const msg = String(errPt?.message || '');
+      if (/HTTP 404/i.test(msg)) return null;
+      throw errPt;
     }
-    throw err;
   }
 }
 

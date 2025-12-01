@@ -21,14 +21,8 @@ export default function NotificationsPage() {
       const data = await getNotifications({ status });
       setList(Array.isArray(data) ? data : []);
     } catch (err) {
-      const msg = String(err?.message || err);
-      if (/HTTP 404/i.test(msg)) {
-        setList([]);
-        setError('');
-      } else {
-        setError(msg);
-        setList([]);
-      }
+      setList([]);
+      setError('');
     } finally {
       setLoading(false);
     }
