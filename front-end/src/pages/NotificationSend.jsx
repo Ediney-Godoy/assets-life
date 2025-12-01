@@ -87,10 +87,43 @@ export default function NotificationSendPage() {
         <Button variant="secondary" onClick={() => navigate('/notifications')}>{t('back') || 'Voltar'}</Button>
       </div>
       <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={onSubmit}>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
-          <div className="space-y-3">
-            <Input label={t('title') || 'Título'} value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} />
-            <Input label={t('content') || 'Mensagem'} value={form.mensagem} onChange={(e) => setForm((f) => ({ ...f, mensagem: e.target.value }))} multiline rows={10} className="min-h-[220px]" />
+        <div className="space-y-3">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
+            <div className="space-y-3">
+              <Input label={t('title') || 'Título'} value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} />
+              <Input label={t('content') || 'Mensagem'} value={form.mensagem} onChange={(e) => setForm((f) => ({ ...f, mensagem: e.target.value }))} multiline rows={10} className="min-h-[220px]" />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input label={t('cc') || 'Cc'} value={ccQuery} onChange={(e) => setCcQuery(e.target.value)} placeholder="fulano.tal@empresa.com" />
+              </div>
+              <Button variant="secondary" size="sm" type="button" title="Buscar" icon={<Search size={16} />} />
+              <Button variant="primary" size="sm" type="button" onClick={() => {
+                const q = ccQuery.trim().toLowerCase();
+                const match = usersFiltered.find((u) => String(u.nome_completo || '').toLowerCase().includes(q) || String(u.email_corporativo || u.email || '').toLowerCase().includes(q));
+                if (match) setForm((f) => ({ ...f, cc_usuario_ids: Array.from(new Set([...(f.cc_usuario_ids || []), String(match.id)])) }));
+              }} icon={<Plus size={16} />}>{t('add') || 'Adicionar'}</Button>
+            </div>
+            <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
+              {(form.cc_usuario_ids || []).length === 0 ? (
+                <p className="text-sm text-slate-500">{t('no_cc_selected') || 'Nenhum Cc adicionado.'}</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {(form.cc_usuario_ids || []).map((id) => {
+                    const u = usersFiltered.find((x) => String(x.id) === String(id));
+                    return (
+                      <div key={id} className="flex items-center justify-between px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <div className="text-sm">{u ? (u.email_corporativo || u.email || u.nome_completo) : id}</div>
+                        <button type="button" className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setForm((f) => ({ ...f, cc_usuario_ids: (f.cc_usuario_ids || []).filter((x) => String(x) !== String(id)) }))}><X size={16} /></button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -171,46 +204,13 @@ export default function NotificationSendPage() {
           </div>
         </div>
 
-        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 min-h-[360px]">
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Input label={t('cc') || 'Cc'} value={ccQuery} onChange={(e) => setCcQuery(e.target.value)} placeholder="fulano.tal@empresa.com" />
-              </div>
-              <Button variant="secondary" size="sm" type="button" title="Buscar" icon={<Search size={16} />} />
-              <Button variant="primary" size="sm" type="button" onClick={() => {
-                const q = ccQuery.trim().toLowerCase();
-                const match = usersFiltered.find((u) => String(u.nome_completo || '').toLowerCase().includes(q) || String(u.email_corporativo || u.email || '').toLowerCase().includes(q));
-                if (match) setForm((f) => ({ ...f, cc_usuario_ids: Array.from(new Set([...(f.cc_usuario_ids || []), String(match.id)])) }));
-              }} icon={<Plus size={16} />}>{t('add') || 'Adicionar'}</Button>
-            </div>
-            <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
-              {(form.cc_usuario_ids || []).length === 0 ? (
-                <p className="text-sm text-slate-500">{t('no_cc_selected') || 'Nenhum Cc adicionado.'}</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {(form.cc_usuario_ids || []).map((id) => {
-                    const u = usersFiltered.find((x) => String(x.id) === String(id));
-                    return (
-                      <div key={id} className="flex items-center justify-between px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
-                        <div className="text-sm">{u ? (u.email_corporativo || u.email || u.nome_completo) : id}</div>
-                        <button type="button" className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setForm((f) => ({ ...f, cc_usuario_ids: (f.cc_usuario_ids || []).filter((x) => String(x) !== String(id)) }))}><X size={16} /></button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+        <div className="md:col-span-2 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <input type="checkbox" checked={form.enviar_email} onChange={(e) => setForm((f) => ({ ...f, enviar_email: e.target.checked }))} />
+            <span>{t('send_email') || 'Enviar por e-mail'}</span>
           </div>
-
-          <div className="flex flex-col justify-between">
-            <div className="flex items-center gap-2">
-              <input type="checkbox" checked={form.enviar_email} onChange={(e) => setForm((f) => ({ ...f, enviar_email: e.target.checked }))} />
-              <span>{t('send_email') || 'Enviar por e-mail'}</span>
-            </div>
-            <div className="flex justify-end">
-              <Button variant="primary" type="submit">{t('send') || 'Enviar'}</Button>
-            </div>
+          <div className="flex justify-end">
+            <Button variant="primary" type="submit">{t('send') || 'Enviar'}</Button>
           </div>
         </div>
       </form>
