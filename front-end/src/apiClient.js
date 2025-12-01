@@ -693,7 +693,11 @@ export async function getNotifications(params = {}) {
   } catch (err) {
     const msg = String(err?.message || '');
     if (/HTTP 404/i.test(msg)) {
-      return request(`/notifications${q ? `?${q}` : ''}`);
+      try { return await request(`/notifications${q ? `?${q}` : ''}`); } catch (err2) {
+        const msg2 = String(err2?.message || '');
+        if (/HTTP 404/i.test(msg2)) return [];
+        throw err2;
+      }
     }
     throw err;
   }
@@ -705,7 +709,11 @@ export async function getNotification(id) {
   } catch (err) {
     const msg = String(err?.message || '');
     if (/HTTP 404/i.test(msg)) {
-      return request(`/notifications/${id}`);
+      try { return await request(`/notifications/${id}`); } catch (err2) {
+        const msg2 = String(err2?.message || '');
+        if (/HTTP 404/i.test(msg2)) return null;
+        throw err2;
+      }
     }
     throw err;
   }
@@ -717,7 +725,9 @@ export async function createNotification(payload) {
   } catch (err) {
     const msg = String(err?.message || '');
     if (/HTTP 404/i.test(msg)) {
-      return request('/notifications', { method: 'POST', body: JSON.stringify(payload) });
+      try { return await request('/notifications', { method: 'POST', body: JSON.stringify(payload) }); } catch (err2) {
+        throw err2;
+      }
     }
     throw err;
   }
@@ -729,7 +739,11 @@ export async function markNotificationRead(id) {
   } catch (err) {
     const msg = String(err?.message || '');
     if (/HTTP 404/i.test(msg)) {
-      return request(`/notifications/${id}/read`, { method: 'POST' });
+      try { return await request(`/notifications/${id}/read`, { method: 'POST' }); } catch (err2) {
+        const msg2 = String(err2?.message || '');
+        if (/HTTP 404/i.test(msg2)) return null;
+        throw err2;
+      }
     }
     throw err;
   }
@@ -741,7 +755,11 @@ export async function archiveNotification(id) {
   } catch (err) {
     const msg = String(err?.message || '');
     if (/HTTP 404/i.test(msg)) {
-      return request(`/notifications/${id}/archive`, { method: 'POST' });
+      try { return await request(`/notifications/${id}/archive`, { method: 'POST' }); } catch (err2) {
+        const msg2 = String(err2?.message || '');
+        if (/HTTP 404/i.test(msg2)) return null;
+        throw err2;
+      }
     }
     throw err;
   }
