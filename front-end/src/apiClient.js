@@ -688,23 +688,63 @@ export async function deletePermissionGroup(id) {
 
 export async function getNotifications(params = {}) {
   const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
-  return request(`/notificacoes${q ? `?${q}` : ''}`);
+  try {
+    return await request(`/notificacoes${q ? `?${q}` : ''}`);
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (/HTTP 404/i.test(msg)) {
+      return request(`/notifications${q ? `?${q}` : ''}`);
+    }
+    throw err;
+  }
 }
 
 export async function getNotification(id) {
-  return request(`/notificacoes/${id}`);
+  try {
+    return await request(`/notificacoes/${id}`);
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (/HTTP 404/i.test(msg)) {
+      return request(`/notifications/${id}`);
+    }
+    throw err;
+  }
 }
 
 export async function createNotification(payload) {
-  return request('/notificacoes', { method: 'POST', body: JSON.stringify(payload) });
+  try {
+    return await request('/notificacoes', { method: 'POST', body: JSON.stringify(payload) });
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (/HTTP 404/i.test(msg)) {
+      return request('/notifications', { method: 'POST', body: JSON.stringify(payload) });
+    }
+    throw err;
+  }
 }
 
 export async function markNotificationRead(id) {
-  return request(`/notificacoes/${id}/lida`, { method: 'POST' });
+  try {
+    return await request(`/notificacoes/${id}/lida`, { method: 'POST' });
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (/HTTP 404/i.test(msg)) {
+      return request(`/notifications/${id}/read`, { method: 'POST' });
+    }
+    throw err;
+  }
 }
 
 export async function archiveNotification(id) {
-  return request(`/notificacoes/${id}/arquivar`, { method: 'POST' });
+  try {
+    return await request(`/notificacoes/${id}/arquivar`, { method: 'POST' });
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (/HTTP 404/i.test(msg)) {
+      return request(`/notifications/${id}/archive`, { method: 'POST' });
+    }
+    throw err;
+  }
 }
 
 // Vínculos: Empresas
