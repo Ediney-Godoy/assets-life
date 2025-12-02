@@ -167,6 +167,7 @@ class RevisaoItem(Base):
 
     centro_custo = Column(String(100), nullable=False)
     classe = Column(String(100), nullable=False)
+    descricao_classe = Column(Text, nullable=True)
     conta_contabil = Column(String(50), nullable=False)
     descricao_conta_contabil = Column(Text, nullable=False)
 

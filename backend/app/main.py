@@ -11,7 +11,7 @@ from datetime import date
 import os
 
 from .database import SessionLocal, engine
-from .config import ALLOW_DDL
+from .config import ALLOW_DDL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_USE_TLS, SMTP_USE_SSL, MAIL_FROM, MAIL_SENDER_NAME
 from .models import Base as SA_Base, Company as CompanyModel
 from .models import Employee as EmployeeModel, Vinculo as VinculoEnum, Status as StatusEnum
 from .models import ManagementUnit as UGModel
@@ -257,13 +257,34 @@ def validate_password_strength(p: str):
         raise HTTPException(status_code=400, detail="Senha deve conter pelo menos um símbolo")
 
 
-def _send_email_stub(to: str, subject: str, body: str):
-    # Substituir por FastAPI-Mail/SMTP real em produção
-    print("=== EMAIL STUB ===")
-    print("To:", to)
-    print("Subject:", subject)
-    print("Body:\n", body)
-    print("===================")
+from email.message import EmailMessage
+import smtplib
+import ssl
+
+def _send_email(to: str, subject: str, body: str):
+    if not SMTP_HOST:
+        return False
+    msg = EmailMessage()
+    msg["From"] = f"{MAIL_SENDER_NAME} <{MAIL_FROM}>"
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.set_content(body)
+    try:
+        if SMTP_USE_SSL:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+                if SMTP_USER:
+                    server.login(SMTP_USER, SMTP_PASSWORD or "")
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+                if SMTP_USE_TLS:
+                    server.starttls(context=ssl.create_default_context())
+                if SMTP_USER:
+                    server.login(SMTP_USER, SMTP_PASSWORD or "")
+                server.send_message(msg)
+        return True
+    except Exception:
+        return False
 
 
 @app.post("/auth/forgot-password")
@@ -279,7 +300,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
         try:
             base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
             link = f"{base_url}/reset-password?token={token}"
-            _send_email_stub(
+            _send_email(
                 to=user.email,
                 subject="Redefinição de Senha - Asset Life",
                 body=f"Olá {user.nome_completo},\n\nRecebemos uma solicitação para redefinir sua senha. Use o link abaixo (válido por 30 minutos):\n{link}\n\nSe você não solicitou, ignore este email.",
@@ -1170,6 +1191,7 @@ class RevisaoItemOut(BaseModel):
     valor_contabil: float
     centro_custo: str
     classe: str
+    descricao_classe: Optional[str] = None
     conta_contabil: str
     descricao_conta_contabil: str
     vida_util_anos: int
@@ -1868,6 +1890,7 @@ def list_revisao_itens(rev_id: int, db: Session = Depends(get_db)):
                 valor_contabil=float(i.valor_contabil) if i.valor_contabil is not None else 0.0,
                 centro_custo=i.centro_custo,
                 classe=i.classe,
+                descricao_classe=getattr(i, 'descricao_classe', None),
                 conta_contabil=i.conta_contabil,
                 descricao_conta_contabil=i.descricao_conta_contabil,
                 vida_util_anos=i.vida_util_anos,
@@ -2093,6 +2116,7 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
         valor_contabil=float(item.valor_contabil) if item.valor_contabil is not None else 0.0,
         centro_custo=item.centro_custo,
         classe=item.classe,
+        descricao_classe=getattr(item, 'descricao_classe', None),
         conta_contabil=item.conta_contabil,
         descricao_conta_contabil=item.descricao_conta_contabil,
         vida_util_anos=item.vida_util_anos,
