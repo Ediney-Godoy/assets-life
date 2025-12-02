@@ -1645,7 +1645,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
         "vida_util_anos",
         "vida_util_periodos",
     }
-    optional = {"data_fim_depreciacao", "auxiliar2", "auxiliar3"}
+    optional = {"data_fim_depreciacao", "auxiliar2", "auxiliar3", "descricao_classe"}
 
     def norm_key(k: str) -> str:
         import re, unicodedata
@@ -1677,6 +1677,9 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
             'centro_de_custos': 'centro_custo',
             'centro_custo': 'centro_custo',
             'classe': 'classe',
+            'desc_classe': 'descricao_classe',
+            'descricao_da_classe': 'descricao_classe',
+            'descricao_classe': 'descricao_classe',
             'conta_contabil': 'conta_contabil',
             'desc_conta_contabil': 'descricao_conta_contabil',
             'descricao_conta_contabil': 'descricao_conta_contabil',
@@ -1814,6 +1817,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                 classe = str(row.get("classe", "")).strip()
                 conta_contabil = str(row.get("conta_contabil", "")).strip()
                 descricao_cc = str(row.get("descricao_conta_contabil", "")).strip()
+                descricao_classe = str(row.get("descricao_classe", "")).strip()
 
                 data_fim = row.get("data_fim_depreciacao")
                 data_fim = parse_date_any(data_fim)
@@ -1832,6 +1836,7 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                     valor_contabil=valor_contabil,
                     centro_custo=centro_custo,
                     classe=classe,
+                    descricao_classe=(descricao_classe or None),
                     conta_contabil=conta_contabil,
                     descricao_conta_contabil=descricao_cc,
                     vida_util_anos=vida_util_anos,

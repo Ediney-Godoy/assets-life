@@ -148,6 +148,16 @@ export default function DelegacaoPage() {
     return vals.sort();
   }, [availableItems]);
 
+  const classDescLeft = useMemo(() => {
+    const m = new Map();
+    (availableItems || []).forEach((i) => {
+      const cls = i.classe;
+      const desc = i.descricao_classe;
+      if (cls && desc && !m.has(cls)) m.set(cls, desc);
+    });
+    return m;
+  }, [availableItems]);
+
   const uniqueContas = useMemo(() => {
     const vals = Array.from(new Set((availableItems || []).map((i) => i.conta_contabil).filter(Boolean)));
     return vals.sort();
@@ -160,6 +170,16 @@ export default function DelegacaoPage() {
       if (cls) set.add(cls);
     });
     return Array.from(set).sort();
+  }, [delegacoes, itemById]);
+
+  const classDescRight = useMemo(() => {
+    const m = new Map();
+    (delegacoes || []).forEach((d) => {
+      const cls = d?.classe ?? itemById.get(d.ativo_id)?.classe ?? '';
+      const desc = d?.descricao_classe ?? itemById.get(d.ativo_id)?.descricao_classe ?? '';
+      if (cls && desc && !m.has(cls)) m.set(cls, desc);
+    });
+    return m;
   }, [delegacoes, itemById]);
 
   const uniqueContasDelegated = useMemo(() => {
@@ -507,7 +527,7 @@ export default function DelegacaoPage() {
                     <select className="select w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)}>
                       <option value="">Todos</option>
                       {uniqueClasses.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c} value={c}>{classDescLeft.get(c) ? `${c} - ${classDescLeft.get(c)}` : c}</option>
                       ))}
                     </select>
                   </div>
@@ -746,7 +766,7 @@ export default function DelegacaoPage() {
                     <select className="select w-full" value={filterRightValue} onChange={(e) => setFilterRightValue(e.target.value)}>
                       <option value="">Todos</option>
                       {uniqueClassesDelegated.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c} value={c}>{classDescRight.get(c) ? `${c} - ${classDescRight.get(c)}` : c}</option>
                       ))}
                     </select>
                   </div>
