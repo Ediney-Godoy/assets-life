@@ -171,8 +171,21 @@ export default function RevisaoVidasUteis() {
   };
 
   // Motivos por incremento vindos do i18n (arrays de strings traduzidas)
-  const motivosAumento = t('review_reasons_increase', { returnObjects: true }) || [];
-  const motivosReducao = t('review_reasons_decrease', { returnObjects: true }) || [];
+  const motivosAumentoBase = t('review_reasons_increase', { returnObjects: true }) || [];
+  const motivosReducaoBase = t('review_reasons_decrease', { returnObjects: true }) || [];
+  const motivosManter = [
+    'Terras e Terrenos',
+    'Obras em Andamento',
+    'Totalmente depreciados',
+    'Intangível em andamento',
+    'Marcas e Patentes',
+    'Vida Útil Correta',
+    'Melhor Estimativa do LOM',
+  ];
+  const motivosAumento = Array.isArray(motivosAumentoBase) ? [...motivosAumentoBase] : [];
+  if (!motivosAumento.includes('Melhor Estimativa do LOM')) motivosAumento.push('Melhor Estimativa do LOM');
+  const motivosReducao = Array.isArray(motivosReducaoBase) ? [...motivosReducaoBase] : [];
+  if (!motivosReducao.includes('Melhor Estimativa do LOM')) motivosReducao.push('Melhor Estimativa do LOM');
 
   const isItemRevisado = (it) => {
     return (it.status === 'Revisado' || it.status === 'Aprovado') || Boolean(it.alterado);
@@ -865,11 +878,14 @@ export default function RevisaoVidasUteis() {
                   const selectedText = e.target.options[e.target.selectedIndex]?.text || val;
                   setEditForm((prev) => ({ ...prev, motivo: val, justificativa: selectedText }));
                 }}
-                disabled={editForm.incremento === 'Manter'}
-                className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
               >
-                <option value="">{editForm.incremento === 'Manter' ? t('select_increment_to_see_reasons') : t('select_reason')}</option>
-                {(editForm.incremento === 'Acréscimo' ? motivosAumento : editForm.incremento === 'Decréscimo' ? motivosReducao : []).map((m) => (
+                <option value="">{t('select_reason')}</option>
+                {(
+                  editForm.incremento === 'Acréscimo' ? motivosAumento :
+                  editForm.incremento === 'Decréscimo' ? motivosReducao :
+                  motivosManter
+                ).map((m) => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
@@ -883,7 +899,8 @@ export default function RevisaoVidasUteis() {
                 onChange={(e) => setEditForm({ ...editForm, justificativa: e.target.value })}
                 rows={3}
                 placeholder={t('justification_placeholder')}
-                className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
+                disabled
+                className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
               />
             </div>
 

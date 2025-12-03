@@ -225,8 +225,21 @@ export default function MassRevisionView() {
     return new Date(ty, tm, day);
   };
 
-  const motivosAumento = t('review_reasons_increase', { returnObjects: true }) || [];
-  const motivosReducao = t('review_reasons_decrease', { returnObjects: true }) || [];
+  const motivosAumentoBase = t('review_reasons_increase', { returnObjects: true }) || [];
+  const motivosReducaoBase = t('review_reasons_decrease', { returnObjects: true }) || [];
+  const motivosManter = [
+    'Terras e Terrenos',
+    'Obras em Andamento',
+    'Totalmente depreciados',
+    'Intangível em andamento',
+    'Marcas e Patentes',
+    'Vida Útil Correta',
+    'Melhor Estimativa do LOM',
+  ];
+  const motivosAumento = Array.isArray(motivosAumentoBase) ? [...motivosAumentoBase] : [];
+  if (!motivosAumento.includes('Melhor Estimativa do LOM')) motivosAumento.push('Melhor Estimativa do LOM');
+  const motivosReducao = Array.isArray(motivosReducaoBase) ? [...motivosReducaoBase] : [];
+  if (!motivosReducao.includes('Melhor Estimativa do LOM')) motivosReducao.push('Melhor Estimativa do LOM');
 
   // Funções auxiliares para filtros avançados
   const parseDecimal = (s) => {
@@ -832,11 +845,10 @@ export default function MassRevisionView() {
                       const selectedText = e.target.options[e.target.selectedIndex]?.text || val;
                       setForm((prev) => ({ ...prev, motivo: val, justificativa: selectedText }));
                     }}
-                    disabled={form.incremento === 'Manter'}
                     className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                   >
-                    <option value="">{form.incremento === 'Manter' ? t('select_increment_to_see_reasons') : t('select_reason')}</option>
-                    {(form.incremento === 'Acréscimo' ? motivosAumento : form.incremento === 'Decréscimo' ? motivosReducao : []).map((m) => (
+                    <option value="">{t('select_reason')}</option>
+                    {(form.incremento === 'Acréscimo' ? motivosAumento : form.incremento === 'Decréscimo' ? motivosReducao : motivosManter).map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
@@ -849,7 +861,8 @@ export default function MassRevisionView() {
                     onChange={(e) => setForm({ ...form, justificativa: e.target.value })}
                     rows={3}
                     placeholder={t('justification_placeholder')}
-                    className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
+                    disabled
+                    className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                   />
                 </div>
                 <div className="flex justify-end">
