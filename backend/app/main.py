@@ -2275,8 +2275,9 @@ def aplicar_revisao_massa(payload: MassRevisionPayload, current_user: UsuarioMod
             elif payload.justificativa is not None:
                 item.justificativa = payload.justificativa
 
-            # Aprovação automática para itens 'Manter' com vida útil restante > 18 meses
             if inc == "Manter":
+                if not (item.status or '').strip() or (item.status or '').strip().lower() == 'pendente':
+                    item.status = 'Revisado'
                 effective_end = item.data_fim_revisada or item.data_fim_depreciacao
                 per = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == item.periodo_id).first()
                 if effective_end and effective_end >= now18m and getattr(per, 'status', None) != 'Encerrado':
