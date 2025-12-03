@@ -45,8 +45,6 @@ const OLD_URLS = [
   // Adicione outras URLs antigas aqui se necessário
 ];
 
-// URL atual do backend (fallback até VITE_API_URL ser aplicada)
-const CURRENT_BACKEND_URL = 'https://different-marlie-assetslifev2-bc199b4b.koyeb.app';
 
 // Limpa cache de URL antiga antes de usar
 if (typeof window !== 'undefined') {
@@ -80,7 +78,7 @@ if (typeof window !== 'undefined') {
 const BASE_CANDIDATES = (() => {
   const list = [];
   if (PRIMARY_BASE) list.push(PRIMARY_BASE);
-  list.push(CURRENT_BACKEND_URL);
+  // Em desenvolvimento (HTTP), permitir fallback ao host local
   if (!IS_HTTPS && HOST_BASE) list.push(HOST_BASE);
   if (!IS_HTTPS && HOST_BASE_ALT_PORT) list.push(HOST_BASE_ALT_PORT);
   return list.filter(Boolean);
