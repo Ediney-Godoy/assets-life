@@ -38,3 +38,12 @@ if not DATABASE_URL:
 # Controle de DDL (CREATE/ALTER). Em ambientes sem privilégio de escrita de schema,
 # mantenha como False para evitar falhas durante startup/rotas.
 ALLOW_DDL = os.getenv("ALLOW_DDL", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+SMTP_HOST = os.getenv("SMTP_HOST")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").strip().lower() in {"1", "true", "yes", "on"}
+SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "false").strip().lower() in {"1", "true", "yes", "on"}
+MAIL_FROM = os.getenv("MAIL_FROM", "no-reply@assetlife.local")
+MAIL_SENDER_NAME = os.getenv("MAIL_SENDER_NAME", "Asset Life")
