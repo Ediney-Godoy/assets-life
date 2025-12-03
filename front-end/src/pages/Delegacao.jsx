@@ -656,6 +656,9 @@ export default function DelegacaoPage() {
                           {t('col_asset_number') || 'Nº Ativo'}
                         </th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_sub_number') || 'Sub. Nº'}
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                           {t('col_description') || 'Descrição'}
                         </th>
                         <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
@@ -673,6 +676,7 @@ export default function DelegacaoPage() {
                             <input type="checkbox" checked={selectedItemIds.includes(i.id)} onChange={() => onToggleSelect(i.id)} className="w-4 h-4 cursor-pointer" />
                           </td>
                           <td className="px-3 py-2.5 font-medium" style={{ color: 'var(--text-primary)' }}>{i.numero_imobilizado}</td>
+                          <td className="px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{i.sub_numero}</td>
                           <td className="px-3 py-2.5 truncate max-w-[250px]" style={{ color: 'var(--text-secondary)' }} title={i.descricao}>{i.descricao}</td>
                           <td className="hidden lg:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{i.classe}</td>
                           <td className="px-3 py-2.5 text-right tabular-nums font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -899,6 +903,9 @@ export default function DelegacaoPage() {
                           {t('col_asset_number') || 'Nº Ativo'}
                         </th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                          {t('col_sub_number') || 'Sub. Nº'}
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                           {t('col_description') || 'Descrição'}
                         </th>
                         <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
@@ -919,6 +926,7 @@ export default function DelegacaoPage() {
                             <input type="checkbox" checked={selectedDelegacaoIds.includes(d.id)} onChange={() => onToggleSelectRight(d.id)} className="w-4 h-4 cursor-pointer" />
                           </td>
                           <td className="px-3 py-2.5 font-medium" style={{ color: 'var(--text-primary)' }}>{d.numero_imobilizado}</td>
+                          <td className="px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d?.sub_numero ?? itemById.get(d.ativo_id)?.sub_numero}</td>
                           <td className="px-3 py-2.5 truncate max-w-[250px]" style={{ color: 'var(--text-secondary)' }} title={d.descricao}>{d.descricao}</td>
                           <td className="hidden lg:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d?.classe ?? itemById.get(d.ativo_id)?.classe}</td>
                           <td className="hidden xl:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d.revisor_nome || d.revisor_id}</td>
