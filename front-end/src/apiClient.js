@@ -1,3 +1,6 @@
+// URL do backend em produção (Koyeb)
+const PRODUCTION_API_URL = 'https://different-marlie-assetslifev2-bc199b4b.koyeb.app';
+
 // Base primária vinda do ambiente (sem barra final); em dev, fallback localhost:8000
 let rawBase = import.meta?.env?.VITE_API_URL;
 if (rawBase && typeof rawBase === 'string') rawBase = rawBase.replace(/\/+$/, '');
@@ -5,7 +8,12 @@ if (!rawBase && typeof window !== 'undefined') {
   const isHttps = window.location?.protocol === 'https:';
   const hostname = window.location?.hostname || '';
   const isProduction = isHttps && !hostname.includes('localhost') && !hostname.includes('127.0.0.1');
-  if (!isProduction) rawBase = 'http://localhost:8000';
+  if (isProduction) {
+    // Em produção, usar URL hardcoded se VITE_API_URL não estiver disponível
+    rawBase = PRODUCTION_API_URL;
+  } else {
+    rawBase = 'http://localhost:8000';
+  }
 }
 const PRIMARY_BASE = rawBase || null;
 
