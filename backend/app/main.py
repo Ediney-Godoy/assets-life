@@ -76,9 +76,9 @@ app.add_middleware(
     allow_origins=origins,
     allow_origin_regex=ORIGIN_REGEX,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "X-Company-Id"],
     allow_credentials=True,
-    expose_headers=["*"],
+    expose_headers=["Content-Disposition", "Content-Type"],
 )
 
 # Complemento CORS para "Private Network Access" (PNA) em navegadores modernos.
@@ -117,6 +117,7 @@ async def cors_preflight(request: Request, path: str):
             "Access-Control-Allow-Headers": headers_req,
             "Access-Control-Allow-Credentials": "true",
             "Vary": "Origin",
+            "Access-Control-Max-Age": "3600",
         }
     return Response(status_code=200, headers=headers)
 
