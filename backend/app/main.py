@@ -30,6 +30,7 @@ from .models import (
     AuditoriaLog as AuditoriaLogModel,
 )
 from .models import TokenRedefinicao as TokenRedefinicaoModel
+from .models import Cronograma as CronogramaModel, CronogramaTarefa as CronogramaTarefaModel
 from fastapi import UploadFile, File
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
@@ -412,6 +413,7 @@ def on_startup():
             {"nome_tela": "Revisões - Delegação", "rota": "/reviews/delegacao", "descricao": "Delegação de revisões"},
             {"nome_tela": "Revisões - Vidas Úteis", "rota": "/reviews/vidas-uteis", "descricao": "Revisão de vidas úteis"},
             {"nome_tela": "Revisões - Massa", "rota": "/revisoes-massa", "descricao": "Revisões em massa de ativos"},
+            {"nome_tela": "Revisões - Cronogramas", "rota": "/reviews/cronogramas", "descricao": "Cronogramas de revisão"},
             {"nome_tela": "Relatórios", "rota": "/reports", "descricao": "Relatórios"},
             {"nome_tela": "Ativos", "rota": "/assets", "descricao": "Gestão de ativos"},
         ]
@@ -448,6 +450,35 @@ def on_startup():
         print("Seed admin error:", e)
         traceback.print_exc()
 
+    try:
+        db = SessionLocal()
+        exists = db.query(UsuarioModel.id).limit(1).first()
+        if not exists:
+            pwd = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
+            senha_hash = bcrypt.hashpw(pwd.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            last = db.query(UsuarioModel.id).order_by(UsuarioModel.id.desc()).first()
+            next_num = (last[0] if last else 0) + 1
+            codigo = f"{next_num:06d}"
+            u = UsuarioModel(
+                codigo=codigo,
+                nome_completo="Administrador",
+                email=os.getenv("DEFAULT_ADMIN_EMAIL", "admin@local"),
+                senha_hash=senha_hash,
+                cpf=os.getenv("DEFAULT_ADMIN_CPF", "00000000000"),
+                nome_usuario=os.getenv("DEFAULT_ADMIN_USERNAME", "admin"),
+                status="Ativo",
+            )
+            db.add(u)
+            db.commit()
+    except Exception as e:
+        import traceback
+        print("Inline admin seed error:", e)
+        traceback.print_exc()
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 @app.get("/health")
 def health():
     # Checagem real de conectividade com o banco
@@ -583,6 +614,204 @@ def delete_company(company_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"deleted": True}
 
+class Cronograma(BaseModel):
+    id: int
+    periodo_id: int
+    empresa_id: int
+    responsavel_id: int
+    descricao: Optional[str] = None
+    status: str
+    progresso_percentual: int
+    criado_em: datetime
+    class Config:
+        from_attributes = True
+
+class CronogramaCreate(BaseModel):
+    periodo_id: int
+    empresa_id: int
+    responsavel_id: int
+    descricao: Optional[str] = None
+    status: str = "Aberto"
+
+class CronogramaUpdate(BaseModel):
+    descricao: Optional[str] = None
+    status: Optional[str] = None
+    progresso_percentual: Optional[int] = None
+
+class CronogramaTarefa(BaseModel):
+    id: int
+    cronograma_id: int
+    nome: str
+    descricao: Optional[str] = None
+    data_inicio: Optional[date] = None
+    data_fim: Optional[date] = None
+    responsavel_id: Optional[int] = None
+    status: str
+    progresso_percentual: int
+    dependente_tarefa_id: Optional[int] = None
+    criado_em: datetime
+    class Config:
+        from_attributes = True
+
+class CronogramaTarefaCreate(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+    data_inicio: Optional[date] = None
+    data_fim: Optional[date] = None
+    responsavel_id: Optional[int] = None
+    status: str = "Pendente"
+    progresso_percentual: Optional[int] = 0
+    dependente_tarefa_id: Optional[int] = None
+
+class CronogramaTarefaUpdate(BaseModel):
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    data_inicio: Optional[date] = None
+    data_fim: Optional[date] = None
+    responsavel_id: Optional[int] = None
+    status: Optional[str] = None
+    progresso_percentual: Optional[int] = None
+    dependente_tarefa_id: Optional[int] = None
+
+class CronogramaResumo(BaseModel):
+    total_tarefas: int
+    concluido: int
+    em_andamento: int
+    pendente: int
+    atrasada: int
+    progresso_percentual: int
+    previsao_conclusao: Optional[date] = None
+
+@app.get("/cronogramas", response_model=List[Cronograma])
+def list_cronogramas(periodo_id: Optional[int] = None, empresa_id: Optional[int] = None, db: Session = Depends(get_db)):
+    q = db.query(CronogramaModel)
+    if periodo_id is not None:
+        q = q.filter(CronogramaModel.periodo_id == int(periodo_id))
+    if empresa_id is not None:
+        q = q.filter(CronogramaModel.empresa_id == int(empresa_id))
+    return q.order_by(CronogramaModel.id.desc()).all()
+
+@app.post("/cronogramas", response_model=Cronograma)
+def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Session = Depends(get_db)):
+    per = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == payload.periodo_id).first()
+    if not per:
+        raise HTTPException(status_code=404, detail="Período não encontrado")
+    if getattr(per, "status", None) == "Fechado":
+        raise HTTPException(status_code=400, detail="Período fechado")
+    c = CronogramaModel(
+        periodo_id=payload.periodo_id,
+        empresa_id=payload.empresa_id,
+        responsavel_id=payload.responsavel_id,
+        descricao=payload.descricao,
+        status=payload.status,
+    )
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    if template:
+        inicio = getattr(per, "data_abertura", None)
+        fim_prev = getattr(per, "data_fechamento_prevista", None)
+        tarefas = [
+            ("Inventário físico", None, None),
+            ("Levantamento técnico das condições", None, None),
+            ("Análise contábil", None, None),
+            ("Preparação do laudo", None, None),
+            ("Aprovação pelos gestores", None, None),
+            ("Atualização no ERP", None, None),
+        ]
+        for nome, di, df in tarefas:
+            t = CronogramaTarefaModel(
+                cronograma_id=c.id,
+                nome=nome,
+                descricao=None,
+                data_inicio=di or inicio,
+                data_fim=df or fim_prev,
+                responsavel_id=None,
+                status="Pendente",
+                progresso_percentual=0,
+            )
+            db.add(t)
+        db.commit()
+    return c
+
+@app.get("/cronogramas/{cronograma_id}", response_model=Cronograma)
+def get_cronograma(cronograma_id: int, db: Session = Depends(get_db)):
+    c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+    return c
+
+@app.get("/cronogramas/{cronograma_id}/tarefas", response_model=List[CronogramaTarefa])
+def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
+    c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+    items = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).order_by(CronogramaTarefaModel.id).all()
+    now = date.today()
+    for it in items:
+        if it.data_fim and it.data_fim < now and it.status != "Concluída":
+            it.status = "Atrasada"
+    db.commit()
+    return items
+
+@app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
+def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate, db: Session = Depends(get_db)):
+    c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+    t = CronogramaTarefaModel(
+        cronograma_id=cronograma_id,
+        nome=payload.nome,
+        descricao=payload.descricao,
+        data_inicio=payload.data_inicio,
+        data_fim=payload.data_fim,
+        responsavel_id=payload.responsavel_id,
+        status=payload.status,
+        progresso_percentual=payload.progresso_percentual or 0,
+        dependente_tarefa_id=payload.dependente_tarefa_id,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+    return t
+
+@app.put("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}", response_model=CronogramaTarefa)
+def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: CronogramaTarefaUpdate, db: Session = Depends(get_db)):
+    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    data = payload.dict(exclude_unset=True)
+    for k, v in data.items():
+        setattr(t, k, v)
+    db.commit()
+    db.refresh(t)
+    return t
+
+@app.get("/cronogramas/{cronograma_id}/resumo", response_model=CronogramaResumo)
+def cronograma_resumo(cronograma_id: int, db: Session = Depends(get_db)):
+    c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+    items = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).all()
+    total = len(items)
+    concl = sum(1 for i in items if i.status == "Concluída")
+    em = sum(1 for i in items if i.status == "Em Andamento")
+    pend = sum(1 for i in items if i.status == "Pendente")
+    atr = sum(1 for i in items if i.status == "Atrasada")
+    prog = int(round((concl / total) * 100)) if total > 0 else 0
+    previsao = None
+    if items:
+        fins = [i.data_fim for i in items if i.data_fim is not None]
+        previsao = max(fins) if fins else None
+    return CronogramaResumo(
+        total_tarefas=total,
+        concluido=concl,
+        em_andamento=em,
+        pendente=pend,
+        atrasada=atr,
+        progresso_percentual=prog,
+        previsao_conclusao=previsao,
+    )
 # Schemas de Colaboradores
 class Colaborador(BaseModel):
     id: int

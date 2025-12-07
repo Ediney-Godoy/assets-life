@@ -205,6 +205,40 @@ class RevisaoDelegacao(Base):
     revisor = relationship("Usuario", foreign_keys=[revisor_id], backref="delegacoes_recebidas")
     atribuidor = relationship("Usuario", foreign_keys=[atribuido_por], backref="delegacoes_atribuidas")
 
+class Cronograma(Base):
+    __tablename__ = "cronogramas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    periodo_id = Column(Integer, ForeignKey("revisoes_periodos.id"), nullable=False, index=True)
+    empresa_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    descricao = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="Aberto")
+    progresso_percentual = Column(Integer, nullable=False, default=0)
+    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+
+    periodo = relationship("RevisaoPeriodo", backref="cronogramas")
+    empresa = relationship("Company", backref="cronogramas")
+    responsavel = relationship("Usuario", backref="cronogramas")
+
+class CronogramaTarefa(Base):
+    __tablename__ = "cronogramas_tarefas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cronograma_id = Column(Integer, ForeignKey("cronogramas.id"), nullable=False, index=True)
+    nome = Column(String(150), nullable=False)
+    descricao = Column(Text, nullable=True)
+    data_inicio = Column(Date, nullable=True)
+    data_fim = Column(Date, nullable=True)
+    responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
+    status = Column(String(20), nullable=False, default="Pendente")
+    progresso_percentual = Column(Integer, nullable=False, default=0)
+    dependente_tarefa_id = Column(Integer, ForeignKey("cronogramas_tarefas.id"), nullable=True, index=True)
+    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+
+    cronograma = relationship("Cronograma", backref="tarefas")
+    responsavel = relationship("Usuario")
+
 # -----------------------------
 # Centros de Custos
 # -----------------------------

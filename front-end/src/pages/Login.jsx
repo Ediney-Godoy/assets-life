@@ -32,7 +32,7 @@ export default function LoginPage() {
 
     try {
       const id = String(identifier || '').trim();
-      const isEmail = /@/.test(id);
+      const isEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(id);
       // Backend espera { email, senha } OU { identificador, senha }
       const payload = isEmail ? { email: id, senha: password } : { identificador: id, senha: password };
       console.log('[Login] Chamando login() com payload:', { ...payload, senha: '***' });

@@ -28,6 +28,7 @@ import AssetSpeciesPage from './pages/AssetSpecies';
 import ReportUsefulLifePage from './pages/ReportUsefulLife';
 import ReportsMenu from './pages/ReportsMenu';
 import PermissionsMenu from './pages/PermissionsMenu';
+import CronogramaRevisao from './pages/CronogramaRevisao';
 import NotificationsPage from './pages/Notifications';
 import NotificationDetailPage from './pages/NotificationDetail';
 import NotificationSendPage from './pages/NotificationSend';
@@ -228,6 +229,7 @@ export default function App() {
               <Route path="/asset-species" element={<RequireAuth><AssetSpeciesPage /></RequireAuth>} />
               <Route path="/reviews" element={<RequireAuth><ReviewsMenu /></RequireAuth>} />
               <Route path="/reviews/periodos" element={<RequireAuth><RequirePermission route="/reviews/periodos"><ErrorBoundary><React.Suspense fallback={<div className="p-4">Carregando…</div>}><ReviewsPageLazy /></React.Suspense></ErrorBoundary></RequirePermission></RequireAuth>} />
+              <Route path="/reviews/cronogramas" element={<RequireAuth><RequirePermission route="/reviews/cronogramas"><CronogramaRevisao /></RequirePermission></RequireAuth>} />
               <Route path="/reviews/delegacao" element={<RequireAuth><RequirePermission route="/reviews/delegacao"><DelegacaoPage /></RequirePermission></RequireAuth>} />
               <Route path="/reviews/vidas-uteis" element={<RequireAuth><RequirePermission route="/reviews/vidas-uteis"><RevisaoVidasUteis /></RequirePermission></RequireAuth>} />
               <Route path="/reviews/massa" element={<RequireAuth><RequirePermission route="/reviews/massa"><MassRevisionView /></RequirePermission></RequireAuth>} />

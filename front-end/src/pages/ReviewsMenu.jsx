@@ -1,21 +1,30 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, FileText, Clock, ListChecks, UserCheck, BarChart3 } from 'lucide-react';
+import { authMePermissions } from '../apiClient';
 
 export default function ReviewsMenu() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [allowed, setAllowed] = React.useState(new Set());
 
-  const allowed = useMemo(() => {
+  React.useEffect(() => {
     try {
       const raw = localStorage.getItem('assetlife_permissoes');
       const rotas = raw ? JSON.parse(raw)?.rotas : [];
       if (Array.isArray(rotas) && rotas.length > 0) {
-        return new Set(rotas);
+        setAllowed(new Set(rotas));
       }
     } catch {}
-    return new Set();
+    (async () => {
+      try {
+        const perms = await authMePermissions();
+        try { localStorage.setItem('assetlife_permissoes', JSON.stringify(perms)); } catch {}
+        const rotas2 = Array.isArray(perms?.rotas) ? perms.rotas : [];
+        setAllowed(new Set(rotas2));
+      } catch {}
+    })();
   }, []);
 
   const hasPerm = (path) => {
@@ -57,6 +66,26 @@ export default function ReviewsMenu() {
               <div className="flex-1">
                 <div className="font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_periods_title')}</div>
                 <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_periods_subtitle')}</div>
+              </div>
+            </div>
+          </button>
+        )}
+
+        {hasPerm('/reviews/cronogramas') && (
+          <button
+            type="button"
+            onClick={() => navigate('/reviews/cronogramas')}
+            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-indigo-50/60 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30 hover:border-indigo-200 dark:hover:border-indigo-800"
+            aria-label={t('reviews_menu_schedules_title') || 'Cronogramas'}
+            title={t('reviews_menu_schedules_title') || 'Cronogramas'}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+                <BarChart3 size={22} />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">Cronogramas</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">Planejamento e acompanhamento</div>
               </div>
             </div>
           </button>

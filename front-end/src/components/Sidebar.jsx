@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info, HelpCircle, Bell } from 'lucide-react';
+import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info, HelpCircle, Bell, Clock } from 'lucide-react';
 import { getRole, getVisibleMenuForRole } from '../permissions';
 
 export default function Sidebar({ collapsed = false }) {
@@ -26,6 +26,7 @@ export default function Sidebar({ collapsed = false }) {
     { to: '/dashboard', label: tt('nav_dashboard', 'Dashboard'), icon: LayoutDashboard },
     { to: '/cadastros', label: tt('nav_registrations', 'Cadastros'), icon: SquareStack },
     { to: '/reviews', label: tt('nav_reviews', 'Revisões'), icon: ClipboardList },
+    { to: '/reviews/cronogramas', label: 'Cronogramas', icon: Clock },
     { to: '/supervisao-rvu', label: tt('nav_supervisao', 'Supervisão'), icon: UserCheck },
     { to: '/reports', label: tt('nav_reports', 'Relatórios'), icon: BarChart3 },
     { to: '/notifications', label: tt('notifications', 'Notificações'), icon: Bell },
@@ -50,7 +51,7 @@ export default function Sidebar({ collapsed = false }) {
   };
 
   const childMap = {
-    '/reviews': ['/avaliacoes','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/revisoes/vidas-uteis','/revisao/vidas-uteis'],
+    '/reviews': ['/avaliacoes','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/revisoes/vidas-uteis','/revisao/vidas-uteis','/reviews/cronogramas'],
     '/reports': ['/relatorios-rvu','/reports/vida-util'],
     '/supervisao-rvu': ['/supervisao/rvu','/supervisao-rvu'],
     '/permissions': ['/permissions','/permissions/groups'],

@@ -46,6 +46,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       '/reviews': 'Delegações',
       '/reviews/delegacao': 'Delegações',
       '/reviews/vidas-uteis': 'Revisão de Vidas Úteis',
+      '/reviews/cronogramas': 'Cronogramas de Revisão',
       '/cost-centers': t('cost_centers_title') || 'Centros de Custos',
       '/reports': t('nav_reports') || 'Relatórios',
       '/about': t('nav_about') || 'Sobre',

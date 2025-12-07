@@ -53,6 +53,11 @@ const OLD_URLS = [
   // Adicione outras URLs antigas aqui se necessário
 ];
 
+const DEFAULT_KOYEB_BASES = [
+  'https://different-marlie-assetslifev2-bc199b4b.koyeb.app',
+  'https://brief-grete-assetlife-f50c6bd0.koyeb.app',
+];
+
 
 // Limpa cache de URL antiga antes de usar
 if (typeof window !== 'undefined') {
@@ -86,10 +91,17 @@ if (typeof window !== 'undefined') {
 const BASE_CANDIDATES = (() => {
   const list = [];
   if (PRIMARY_BASE) list.push(PRIMARY_BASE);
+  if (IS_HTTPS) list.push(...DEFAULT_KOYEB_BASES);
   // Em desenvolvimento (HTTP), permitir fallback ao host local
   if (!IS_HTTPS && HOST_BASE) list.push(HOST_BASE);
   if (!IS_HTTPS && HOST_BASE_ALT_PORT) list.push(HOST_BASE_ALT_PORT);
-  return list.filter(Boolean);
+  const uniq = [];
+  const seen = new Set();
+  for (const b of list.filter(Boolean)) {
+    const key = String(b).toLowerCase();
+    if (!seen.has(key)) { seen.add(key); uniq.push(b); }
+  }
+  return uniq;
 })();
 const SAFE_CANDIDATES = IS_HTTPS
   ? BASE_CANDIDATES.filter((b) => /^https:\/\//i.test(String(b)))
@@ -608,6 +620,31 @@ export async function deleteReviewDelegation(id) {
   return request(`/revisoes/delegacoes/${id}`, { method: 'DELETE' });
 }
 
+export async function getCronogramas(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  return request(`/cronogramas${q ? `?${q}` : ''}`);
+}
+
+export async function createCronograma(payload, { template = true } = {}) {
+  const q = template ? '?template=true' : '?template=false';
+  return request(`/cronogramas${q}`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function getCronogramaTarefas(cronogramaId) {
+  return request(`/cronogramas/${cronogramaId}/tarefas`);
+}
+
+export async function createCronogramaTarefa(cronogramaId, payload) {
+  return request(`/cronogramas/${cronogramaId}/tarefas`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateCronogramaTarefa(cronogramaId, tarefaId, payload) {
+  return request(`/cronogramas/${cronogramaId}/tarefas/${tarefaId}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function getCronogramaResumo(cronogramaId) {
+  return request(`/cronogramas/${cronogramaId}/resumo`);
+}
 // Centros de Custos
 export async function getCostCenters(filters = {}) {
   const qs = new URLSearchParams();
