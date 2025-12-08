@@ -779,7 +779,6 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
     for it in items:
         if it.data_fim and it.data_fim < now and it.status != "Concluída":
             it.status = "Atrasada"
-    db.commit()
     return items
 
 @app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
