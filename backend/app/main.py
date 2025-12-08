@@ -835,7 +835,7 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": e.__class__.__name__, "detail": str(e)})
+        raise HTTPException(status_code=500, detail=f"list_tarefas_error:{e.__class__.__name__}:{str(e)}")
 
 @app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
 def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate, db: Session = Depends(get_db)):
@@ -979,7 +979,7 @@ def cronograma_resumo(cronograma_id: int, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": e.__class__.__name__, "detail": str(e)})
+        raise HTTPException(status_code=500, detail=f"cronograma_resumo_error:{e.__class__.__name__}:{str(e)}")
     total = len(items)
     concl = sum(1 for i in items if i.status == "Concluída")
     em = sum(1 for i in items if i.status == "Em Andamento")
