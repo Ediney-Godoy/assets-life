@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
+import ActionToolbar from '../components/ActionToolbar';
 import Table from '../components/ui/Table';
 import { 
   getReviewPeriods,
@@ -32,6 +33,8 @@ export default function CronogramaRevisao() {
   const [resumo, setResumo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [form, setForm] = React.useState({ nome: '', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente' });
+  const [selectedTaskId, setSelectedTaskId] = React.useState(null);
+  const [editingTaskId, setEditingTaskId] = React.useState(null);
 
   const loadBase = React.useCallback(() => {
     setLoading(true);
@@ -114,6 +117,93 @@ export default function CronogramaRevisao() {
     }
   };
 
+  const onNew = () => {
+    setEditingTaskId(null);
+    setSelectedTaskId(null);
+    setForm({ nome: '', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente' });
+    toast('Novo');
+  };
+
+  const onEditSelected = () => {
+    if (!selectedTaskId) { toast.error('Selecione uma tarefa'); return; }
+    const t = tarefas.find((x) => x.id === selectedTaskId);
+    if (!t) { toast.error('Tarefa não encontrada'); return; }
+    setEditingTaskId(t.id);
+    setForm({
+      nome: t.nome || '',
+      responsavel_id: t.responsavel_id ? String(t.responsavel_id) : '',
+      data_inicio: t.data_inicio || '',
+      data_fim: t.data_fim || '',
+      status: t.status || 'Pendente',
+    });
+    toast.success('Editando tarefa');
+  };
+
+  const onSave = async () => {
+    try {
+      if (editingTaskId) {
+        const payload = {
+          nome: form.nome || undefined,
+          responsavel_id: form.responsavel_id ? Number(form.responsavel_id) : null,
+          data_inicio: form.data_inicio || undefined,
+          data_fim: form.data_fim || undefined,
+          status: form.status || undefined,
+        };
+        const updated = await updateCronogramaTarefa(Number(cronogramaId), Number(editingTaskId), payload);
+        toast.success('Tarefa atualizada');
+        setEditingTaskId(null);
+        setSelectedTaskId(updated?.id || null);
+        await loadTarefas();
+      } else {
+        await onAddTask();
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Erro ao salvar');
+    }
+  };
+
+  const exportCSV = () => {
+    const rows = [
+      ['Tarefa','Responsável','Início','Fim','Status','Progresso (%)'],
+      ...tarefas.map((t) => [
+        t.nome || '',
+        users.find((u) => u.id === t.responsavel_id)?.nome_completo || '',
+        t.data_inicio || '',
+        t.data_fim || '',
+        t.status || '',
+        String(t.progresso_percentual ?? 0),
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cronograma_tarefas.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exportado CSV');
+  };
+
+  const exportPDF = () => {
+    const win = window.open('', 'PRINT', 'height=700,width=900');
+    const rows = tarefas.map((t) => `<div style="padding:8px;border:1px solid #ddd;border-radius:8px;margin-bottom:6px;">
+      <div style="font-weight:bold">${t.nome || ''}</div>
+      <div>Responsável: ${users.find((u) => u.id === t.responsavel_id)?.nome_completo || ''}</div>
+      <div>Período: ${t.data_inicio || ''} → ${t.data_fim || ''}</div>
+      <div>Status: ${t.status || ''} • Progresso: ${t.progresso_percentual ?? 0}%</div>
+    </div>`).join('');
+    win.document.write(`<html><head><title>Cronograma</title></head><body>
+      <h3 style="font-family:Arial">Tarefas do Cronograma</h3>
+      ${rows}
+    </body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+    toast.success('Exportado PDF (via impressão)');
+  };
+
   const columns = [
     { key: 'nome', header: 'Tarefa' },
     { key: 'responsavel_id', header: 'Responsável', render: (v) => (users.find((u) => u.id === v)?.nome_completo || '') },
@@ -145,8 +235,18 @@ export default function CronogramaRevisao() {
 
   return (
     <section>
-      <div className="mb-4 px-4">
+      <div className="mb-4 px-4 flex items-center justify-between gap-2 flex-wrap">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Cronogramas de Revisão</h2>
+        <ActionToolbar
+          onNew={onNew}
+          onSave={onSave}
+          onEdit={onEditSelected}
+          onDelete={() => toast.error('Exclusão não disponível')}
+          onPrint={() => window.print()}
+          onExportPdf={exportPDF}
+          onExportExcel={exportCSV}
+          canEditDelete={!!selectedTaskId}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4">
@@ -179,7 +279,13 @@ export default function CronogramaRevisao() {
       )}
 
       <div className="px-4 mt-4">
-        <Table columns={columns} data={tarefas} loading={loading} />
+        <Table
+          columns={columns}
+          data={tarefas}
+          loading={loading}
+          onRowClick={(row) => setSelectedTaskId(row.id)}
+          getRowClassName={(row) => (row.id === selectedTaskId ? 'bg-blue-50 dark:bg-blue-900/30' : undefined)}
+        />
       </div>
 
       <div className="px-4 mt-4">
@@ -196,7 +302,7 @@ export default function CronogramaRevisao() {
       </div>
 
       <div className="px-4 mt-6">
-        <div className="text-lg font-semibold mb-2">Nova Tarefa</div>
+        <div className="text-lg font-semibold mb-2">{editingTaskId ? 'Editar Tarefa' : 'Nova Tarefa'}</div>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
           <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
@@ -209,8 +315,9 @@ export default function CronogramaRevisao() {
             {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
           </Select>
         </div>
-        <div className="mt-3">
-          <Button onClick={onAddTask} disabled={!cronogramaId}>Adicionar</Button>
+        <div className="mt-3 flex gap-2">
+          <Button onClick={onSave} disabled={!cronogramaId}>{editingTaskId ? 'Salvar' : 'Adicionar'}</Button>
+          <Button variant="secondary" onClick={onNew}>Limpar</Button>
         </div>
       </div>
     </section>

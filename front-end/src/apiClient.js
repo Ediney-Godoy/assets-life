@@ -55,7 +55,6 @@ const OLD_URLS = [
 
 const DEFAULT_KOYEB_BASES = [
   'https://different-marlie-assetslifev2-bc199b4b.koyeb.app',
-  'https://brief-grete-assetlife-f50c6bd0.koyeb.app',
 ];
 
 
@@ -68,6 +67,12 @@ if (typeof window !== 'undefined') {
     // Se há uma URL configurada via env e é diferente da cacheada, limpa o cache
     if (PRIMARY_BASE && cachedBase && cachedBase !== PRIMARY_BASE) {
       console.log('[apiClient] Limpando cache de URL antiga:', cachedBase, '→ Nova:', PRIMARY_BASE);
+      delete window.__ASSETS_API_BASE;
+      ACTIVE_BASE = null;
+    }
+    // Em preview/local (HTTP), não usar base remota HTTPS cacheada
+    else if (!IS_HTTPS && cachedBase && /^https:\/\//i.test(String(cachedBase))) {
+      console.log('[apiClient] Removendo base remota em ambiente HTTP:', cachedBase);
       delete window.__ASSETS_API_BASE;
       ACTIVE_BASE = null;
     }
@@ -323,7 +328,7 @@ async function request(path, options = {}) {
           }
           // Se for login ou erro de credenciais, propaga o erro normalmente
         }
-        // Para erros de cliente/negócio, não tenta próximo base
+        // Para erros de cliente/negócio (4xx), não tenta próxima base; propaga
         if (res.status >= 400 && res.status < 500) {
           throw new Error(`HTTP ${res.status}: ${text}`);
         }
@@ -355,6 +360,10 @@ async function request(path, options = {}) {
       console.error('[apiClient] Erro na requisição:', err);
       console.error('[apiClient] Erro name:', err?.name);
       console.error('[apiClient] Erro message:', err?.message);
+      // Se for erro 4xx (cliente/negócio), não tentar próxima base
+      if (/HTTP 4\d\d/.test(String(err?.message || ''))) {
+        throw err;
+      }
       // Tratamento amigável para abort por timeout
       if (err?.name === 'AbortError' || /aborted|AbortError/i.test(String(err?.message || ''))) {
         console.log('[apiClient] Timeout detectado');
