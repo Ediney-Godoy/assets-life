@@ -798,12 +798,40 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
         if not c:
             raise HTTPException(status_code=404, detail="Cronograma não encontrado")
-        items = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).order_by(CronogramaTarefaModel.id).all()
+
+        has_tipo = bool(db.execute(sa.text(
+            "SELECT 1 FROM information_schema.columns WHERE table_name='cronogramas_tarefas' AND column_name='tipo'"
+        )).first())
+
+        select_cols = [
+            "id", "cronograma_id",
+            "nome", "descricao",
+            "data_inicio", "data_fim",
+            "responsavel_id", "status",
+            "progresso_percentual", "dependente_tarefa_id",
+            "criado_em"
+        ]
+        tipo_expr = "COALESCE(tipo, 'Tarefa') AS tipo" if has_tipo else "'Tarefa' AS tipo"
+        cols_sql = tipo_expr + ", " + ", ".join(select_cols)
+        rows = db.execute(sa.text(
+            f"SELECT {cols_sql} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
+        ), {"cid": cronograma_id}).mappings().all()
+
         now = date.today()
-        for it in items:
-            if it.data_fim and it.data_fim < now and it.status != "Concluída":
-                it.status = "Atrasada"
-        return items
+        result = []
+        for r in rows:
+            status = r["status"]
+            df = r["data_fim"]
+            if df and isinstance(df, date) and df < now and status != "Concluída":
+                status = "Atrasada"
+            result.append(CronogramaTarefa(
+                id=r["id"], cronograma_id=r["cronograma_id"], tipo=r["tipo"], nome=r["nome"],
+                descricao=r.get("descricao"), data_inicio=r.get("data_inicio"), data_fim=r.get("data_fim"),
+                responsavel_id=r.get("responsavel_id"), status=status,
+                progresso_percentual=r.get("progresso_percentual") or 0,
+                dependente_tarefa_id=r.get("dependente_tarefa_id"), criado_em=r.get("criado_em")
+            ))
+        return result
     except HTTPException:
         raise
     except Exception as e:
@@ -915,7 +943,39 @@ def cronograma_resumo(cronograma_id: int, db: Session = Depends(get_db)):
         c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
         if not c:
             raise HTTPException(status_code=404, detail="Cronograma não encontrado")
-        items = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).all()
+
+        rows = db.execute(sa.text(
+            "SELECT status, data_fim, progresso_percentual FROM cronogramas_tarefas WHERE cronograma_id = :cid"
+        ), {"cid": cronograma_id}).mappings().all()
+
+        now = date.today()
+        total = len(rows)
+        pendente = em_andamento = concluido = atrasada = 0
+        progresso_media = 0
+        for r in rows:
+            st = r["status"] or "Pendente"
+            if st == "Pendente":
+                pendente += 1
+            elif st == "Em Andamento":
+                em_andamento += 1
+            elif st == "Concluída":
+                concluido += 1
+            else:
+                pendente += 1
+            df = r["data_fim"]
+            if df and isinstance(df, date) and df < now and st != "Concluída":
+                atrasada += 1
+            progresso_media += (r.get("progresso_percentual") or 0)
+        progresso_percentual = int(round(progresso_media / total)) if total else 0
+        return CronogramaResumo(
+            total_tarefas=total,
+            concluido=concluido,
+            em_andamento=em_andamento,
+            pendente=pendente,
+            atrasada=atrasada,
+            progresso_percentual=progresso_percentual,
+            previsao_conclusao=None,
+        )
     except HTTPException:
         raise
     except Exception as e:
