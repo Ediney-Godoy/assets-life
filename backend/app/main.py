@@ -68,7 +68,8 @@ if _frontend_origin:
         if origin and origin not in origins:
             origins.append(origin)
 
-ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$|^https?://([a-zA-Z0-9-]+\.)+?(vercel\.app|koyeb\.app|fly\.dev|run\.app|cloudfunctions\.net)(:443)?/?$"
+# Relaxar regex para aceitar qualquer origem válida (evita bloqueios quando o proxy/ingress altera o Host/Origin)
+ORIGIN_REGEX = r"^https?://.+$"
 origin_re = re.compile(ORIGIN_REGEX)
 
 app.add_middleware(
