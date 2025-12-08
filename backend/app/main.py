@@ -421,6 +421,29 @@ def on_startup():
             print("Schema tweak error (tipo coluna):", e)
             traceback.print_exc()
 
+    # Executa ajustes mínimos de schema mesmo quando ALLOW_DDL=false (idempotentes e seguros)
+    try:
+        with engine.connect() as conn:
+            conn.execute(sa.text("ALTER TABLE cronogramas_tarefas ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'Tarefa'"))
+            conn.execute(sa.text(
+                """
+                CREATE TABLE IF NOT EXISTS cronogramas_tarefas_evidencias (
+                    id SERIAL PRIMARY KEY,
+                    tarefa_id INTEGER NOT NULL REFERENCES cronogramas_tarefas(id),
+                    nome_arquivo VARCHAR(255) NOT NULL,
+                    content_type VARCHAR(100) NOT NULL,
+                    tamanho_bytes INTEGER NOT NULL,
+                    conteudo BYTEA NOT NULL,
+                    criado_em TIMESTAMP DEFAULT NOW() NOT NULL,
+                    uploaded_by INTEGER NULL REFERENCES usuarios(id)
+                )
+                """
+            ))
+    except Exception as e:
+        import traceback
+        print("Schema tweak error (tipo/evidencias fallback):", e)
+        traceback.print_exc()
+
     # Seed default transactions if none exist or missing
     try:
         db = SessionLocal()
