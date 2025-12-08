@@ -6,6 +6,8 @@ import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import ActionToolbar from '../components/ActionToolbar';
 import Table from '../components/ui/Table';
+import { Tabs, TabPanel } from '../components/ui/Tabs';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { 
   getReviewPeriods,
   getUsers,
@@ -35,6 +37,7 @@ export default function CronogramaRevisao() {
   const [form, setForm] = React.useState({ nome: '', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente' });
   const [selectedTaskId, setSelectedTaskId] = React.useState(null);
   const [editingTaskId, setEditingTaskId] = React.useState(null);
+  const [activeTab, setActiveTab] = React.useState('tarefas');
 
   const loadBase = React.useCallback(() => {
     setLoading(true);
@@ -69,11 +72,27 @@ export default function CronogramaRevisao() {
 
   React.useEffect(() => { loadCronogramas(); }, [loadCronogramas]);
 
+  const orderKey = React.useMemo(() => (cronogramaId ? `assetlife_cronograma_order_${cronogramaId}` : ''), [cronogramaId]);
+
+  const applyOrder = React.useCallback((list) => {
+    try {
+      const raw = orderKey ? localStorage.getItem(orderKey) : null;
+      const arr = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(arr) && arr.length > 0) {
+        const pos = new Map(arr.map((id, idx) => [Number(id), idx]));
+        const withPos = list.map((it) => ({ it, p: pos.has(Number(it.id)) ? pos.get(Number(it.id)) : Infinity }));
+        withPos.sort((a, b) => (a.p - b.p) || (a.it.id - b.it.id));
+        return withPos.map((x) => x.it);
+      }
+    } catch {}
+    return list;
+  }, [orderKey]);
+
   const loadTarefas = React.useCallback(() => {
     if (!cronogramaId) { setTarefas([]); setResumo(null); return; }
     setLoading(true);
     Promise.all([getCronogramaTarefas(Number(cronogramaId)), getCronogramaResumo(Number(cronogramaId))])
-      .then(([ts, rs]) => { setTarefas(ts || []); setResumo(rs || null); })
+      .then(([ts, rs]) => { setTarefas(applyOrder(ts || [])); setResumo(rs || null); })
       .catch((err) => toast.error(err.message || 'Erro ao carregar tarefas'))
       .finally(() => setLoading(false));
   }, [cronogramaId]);
@@ -204,6 +223,25 @@ export default function CronogramaRevisao() {
     toast.success('Exportado PDF (via impressão)');
   };
 
+  const selectedIndex = React.useMemo(() => tarefas.findIndex((t) => t.id === selectedTaskId), [tarefas, selectedTaskId]);
+  const canMoveUp = selectedIndex > 0;
+  const canMoveDown = selectedIndex >= 0 && selectedIndex < tarefas.length - 1;
+
+  const moveSelected = (dir) => {
+    if (selectedIndex < 0) return;
+    const swapIdx = dir === 'up' ? selectedIndex - 1 : selectedIndex + 1;
+    if (swapIdx < 0 || swapIdx >= tarefas.length) return;
+    const next = tarefas.slice();
+    const tmp = next[selectedIndex];
+    next[selectedIndex] = next[swapIdx];
+    next[swapIdx] = tmp;
+    setTarefas(next);
+    try {
+      const ids = next.map((t) => t.id);
+      if (orderKey) localStorage.setItem(orderKey, JSON.stringify(ids));
+    } catch {}
+  };
+
   const columns = [
     { key: 'nome', header: 'Tarefa' },
     { key: 'responsavel_id', header: 'Responsável', render: (v) => (users.find((u) => u.id === v)?.nome_completo || '') },
@@ -247,6 +285,10 @@ export default function CronogramaRevisao() {
           onExportExcel={exportCSV}
           canEditDelete={!!selectedTaskId}
         />
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" title="Mover para cima" aria-label="Mover para cima" onClick={() => moveSelected('up')} disabled={!canMoveUp} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronUp size={18} /></Button>
+          <Button variant="secondary" title="Mover para baixo" aria-label="Mover para baixo" onClick={() => moveSelected('down')} disabled={!canMoveDown} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronDown size={18} /></Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4">
@@ -277,48 +319,55 @@ export default function CronogramaRevisao() {
           <div className="p-3 rounded-lg border">Progresso: {resumo.progresso_percentual}%</div>
         </div>
       )}
-
       <div className="px-4 mt-4">
-        <Table
-          columns={columns}
-          data={tarefas}
-          loading={loading}
-          onRowClick={(row) => setSelectedTaskId(row.id)}
-          getRowClassName={(row) => (row.id === selectedTaskId ? 'bg-blue-50 dark:bg-blue-900/30' : undefined)}
-        />
-      </div>
+        <Tabs value={activeTab} onChange={setActiveTab} items={[{ value: 'tarefas', label: 'Tarefas' }, { value: 'gantt', label: 'Gantt' }]} />
 
-      <div className="px-4 mt-4">
-        <div className="text-lg font-semibold mb-2">Gantt</div>
-        <div className="relative w-full h-48 rounded-lg border overflow-hidden">
-          <div className="absolute inset-0">
-            {ganttItems.map((g) => (
-              <div key={g.id} title={g.nome}
-                   className={"absolute h-6 rounded-full " + (g.status === 'Concluída' ? 'bg-emerald-500' : g.status === 'Em Andamento' ? 'bg-blue-500' : g.status === 'Atrasada' ? 'bg-red-500' : 'bg-slate-400')}
-                   style={{ left: `${g.left}%`, width: `${g.width}%`, top: `${(g.id % 10) * 14}px` }} />
-            ))}
+        <TabPanel active={activeTab === 'tarefas'}>
+          <div className="mt-2">
+            <Table
+              columns={columns}
+              data={tarefas}
+              loading={loading}
+              onRowClick={(row) => setSelectedTaskId(row.id)}
+              getRowClassName={(row) => (row.id === selectedTaskId ? 'bg-blue-50 dark:bg-blue-900/30' : undefined)}
+            />
           </div>
-        </div>
-      </div>
 
-      <div className="px-4 mt-6">
-        <div className="text-lg font-semibold mb-2">{editingTaskId ? 'Editar Tarefa' : 'Nova Tarefa'}</div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-          <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
-            <option value="">Selecione</option>
-            {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
-          </Select>
-          <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
-          <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
-          <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-            {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
-          </Select>
-        </div>
-        <div className="mt-3 flex gap-2">
-          <Button onClick={onSave} disabled={!cronogramaId}>{editingTaskId ? 'Salvar' : 'Adicionar'}</Button>
-          <Button variant="secondary" onClick={onNew}>Limpar</Button>
-        </div>
+          <div className="mt-6">
+            <div className="text-lg font-semibold mb-2">{editingTaskId ? 'Editar Tarefa' : 'Nova Tarefa'}</div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+              <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
+                <option value="">Selecione</option>
+                {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
+              </Select>
+              <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+              <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
+              <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
+              </Select>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Button onClick={onSave} disabled={!cronogramaId}>{editingTaskId ? 'Salvar' : 'Adicionar'}</Button>
+              <Button variant="secondary" onClick={onNew}>Limpar</Button>
+            </div>
+          </div>
+        </TabPanel>
+
+        <TabPanel active={activeTab === 'gantt'}>
+          <div className="mt-2">
+            <div className="text-lg font-semibold mb-2">Gantt</div>
+            <div className="relative w-full h-48 rounded-lg border overflow-hidden">
+              <div className="absolute inset-0">
+                {ganttItems.map((g) => (
+                  <div key={g.id} title={g.nome}
+                       className={"absolute h-6 rounded-full " + (g.status === 'Concluída' ? 'bg-emerald-500' : g.status === 'Em Andamento' ? 'bg-blue-500' : g.status === 'Atrasada' ? 'bg-red-500' : 'bg-slate-400')}
+                       style={{ left: `${g.left}%`, width: `${g.width}%`, top: `${(g.id % 10) * 14}px` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabPanel>
       </div>
     </section>
   );
