@@ -118,7 +118,7 @@ async function resolveBase() {
     if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         const res = await fetch(`${PRIMARY_BASE}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
         clearTimeout(timeoutId);
         if (res.ok) {
@@ -147,7 +147,7 @@ async function resolveBase() {
     console.log('[apiClient] resolveBase() - Testando base:', base);
     if (!base) continue; // Pula valores nulos/undefined
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch(`${base}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
       clearTimeout(timeoutId);
@@ -393,7 +393,7 @@ export async function getHealth(options = {}) {
       return null;
     }
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), Math.max(options.timeout ?? 0, 3000));
+    const timeoutId = setTimeout(() => controller.abort(), Math.max(options.timeout ?? 0, 8000));
     const res = await fetch(`${base}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
     clearTimeout(timeoutId);
     if (!res.ok) return null;
