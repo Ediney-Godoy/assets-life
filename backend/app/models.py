@@ -226,6 +226,7 @@ class CronogramaTarefa(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     cronograma_id = Column(Integer, ForeignKey("cronogramas.id"), nullable=False, index=True)
+    tipo = Column(String(20), nullable=False, default="Tarefa")
     nome = Column(String(150), nullable=False)
     descricao = Column(Text, nullable=True)
     data_inicio = Column(Date, nullable=True)
@@ -238,6 +239,24 @@ class CronogramaTarefa(Base):
 
     cronograma = relationship("Cronograma", backref="tarefas")
     responsavel = relationship("Usuario")
+
+# Evidências de tarefas do cronograma
+from sqlalchemy import LargeBinary
+
+class CronogramaTarefaEvidencia(Base):
+    __tablename__ = "cronogramas_tarefas_evidencias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tarefa_id = Column(Integer, ForeignKey("cronogramas_tarefas.id"), nullable=False, index=True)
+    nome_arquivo = Column(String(255), nullable=False)
+    content_type = Column(String(100), nullable=False)
+    tamanho_bytes = Column(Integer, nullable=False)
+    conteudo = Column(LargeBinary, nullable=False)
+    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+    uploaded_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
+
+    tarefa = relationship("CronogramaTarefa", backref="evidencias")
+    uploader = relationship("Usuario")
 
 # -----------------------------
 # Centros de Custos

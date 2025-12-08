@@ -30,7 +30,7 @@ from .models import (
     AuditoriaLog as AuditoriaLogModel,
 )
 from .models import TokenRedefinicao as TokenRedefinicaoModel
-from .models import Cronograma as CronogramaModel, CronogramaTarefa as CronogramaTarefaModel
+from .models import Cronograma as CronogramaModel, CronogramaTarefa as CronogramaTarefaModel, CronogramaTarefaEvidencia as CronogramaTarefaEvidenciaModel
 from fastapi import UploadFile, File
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
@@ -396,6 +396,29 @@ def on_startup():
             import traceback
             print("DB init error:", e)
             traceback.print_exc()
+        # Ajustes de schema leves (sem Alembic): adiciona coluna 'tipo' em cronogramas_tarefas se ausente
+        try:
+            with engine.connect() as conn:
+                conn.execute(sa.text("ALTER TABLE cronogramas_tarefas ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'Tarefa'"))
+                conn.execute(sa.text(
+                    """
+                    CREATE TABLE IF NOT EXISTS cronogramas_tarefas_evidencias (
+                        id SERIAL PRIMARY KEY,
+                        tarefa_id INTEGER NOT NULL REFERENCES cronogramas_tarefas(id),
+                        nome_arquivo VARCHAR(255) NOT NULL,
+                        content_type VARCHAR(100) NOT NULL,
+                        tamanho_bytes INTEGER NOT NULL,
+                        conteudo BYTEA NOT NULL,
+                        criado_em TIMESTAMP DEFAULT NOW() NOT NULL,
+                        uploaded_by INTEGER NULL REFERENCES usuarios(id)
+                    )
+                    """
+                ))
+        except Exception as e:
+            # Não bloquear startup por falhas de ALTER
+            import traceback
+            print("Schema tweak error (tipo coluna):", e)
+            traceback.print_exc()
 
     # Seed default transactions if none exist or missing
     try:
@@ -642,6 +665,7 @@ class CronogramaUpdate(BaseModel):
 class CronogramaTarefa(BaseModel):
     id: int
     cronograma_id: int
+    tipo: str
     nome: str
     descricao: Optional[str] = None
     data_inicio: Optional[date] = None
@@ -655,6 +679,7 @@ class CronogramaTarefa(BaseModel):
         from_attributes = True
 
 class CronogramaTarefaCreate(BaseModel):
+    tipo: Optional[str] = "Tarefa"
     nome: str
     descricao: Optional[str] = None
     data_inicio: Optional[date] = None
@@ -665,6 +690,7 @@ class CronogramaTarefaCreate(BaseModel):
     dependente_tarefa_id: Optional[int] = None
 
 class CronogramaTarefaUpdate(BaseModel):
+    tipo: Optional[str] = None
     nome: Optional[str] = None
     descricao: Optional[str] = None
     data_inicio: Optional[date] = None
@@ -762,6 +788,7 @@ def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate
         raise HTTPException(status_code=404, detail="Cronograma não encontrado")
     t = CronogramaTarefaModel(
         cronograma_id=cronograma_id,
+        tipo=payload.tipo or "Tarefa",
         nome=payload.nome,
         descricao=payload.descricao,
         data_inicio=payload.data_inicio,
@@ -787,6 +814,72 @@ def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: Cronog
     db.commit()
     db.refresh(t)
     return t
+
+# Evidências de tarefas
+class CronogramaTarefaEvidencia(BaseModel):
+    id: int
+    tarefa_id: int
+    nome_arquivo: str
+    content_type: str
+    tamanho_bytes: int
+    criado_em: datetime
+    uploaded_by: Optional[int] = None
+    class Config:
+        from_attributes = True
+
+@app.get("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias", response_model=List[CronogramaTarefaEvidencia])
+def list_evidencias(cronograma_id: int, tarefa_id: int, db: Session = Depends(get_db)):
+    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    items = db.query(CronogramaTarefaEvidenciaModel).filter(CronogramaTarefaEvidenciaModel.tarefa_id == tarefa_id).order_by(CronogramaTarefaEvidenciaModel.id.desc()).all()
+    return items
+
+@app.post("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias", response_model=CronogramaTarefaEvidencia)
+async def upload_evidencia(cronograma_id: int, tarefa_id: int, file: UploadFile = File(...), current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Arquivo vazio")
+    item = CronogramaTarefaEvidenciaModel(
+        tarefa_id=tarefa_id,
+        nome_arquivo=file.filename or "arquivo",
+        content_type=file.content_type or "application/octet-stream",
+        tamanho_bytes=len(content),
+        conteudo=content,
+        uploaded_by=getattr(current_user, "id", None),
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@app.get("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias/{evidencia_id}")
+def download_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db: Session = Depends(get_db)):
+    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    ev = db.query(CronogramaTarefaEvidenciaModel).filter(CronogramaTarefaEvidenciaModel.id == evidencia_id, CronogramaTarefaEvidenciaModel.tarefa_id == tarefa_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Evidência não encontrada")
+    headers = {
+        "Content-Disposition": f"attachment; filename=\"{ev.nome_arquivo}\""
+    }
+    return Response(content=ev.conteudo, media_type=ev.content_type or "application/octet-stream", headers=headers)
+
+@app.delete("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias/{evidencia_id}")
+def delete_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db: Session = Depends(get_db)):
+    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    ev = db.query(CronogramaTarefaEvidenciaModel).filter(CronogramaTarefaEvidenciaModel.id == evidencia_id, CronogramaTarefaEvidenciaModel.tarefa_id == tarefa_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Evidência não encontrada")
+    db.delete(ev)
+    db.commit()
+    return {"deleted": True}
 
 @app.get("/cronogramas/{cronograma_id}/resumo", response_model=CronogramaResumo)
 def cronograma_resumo(cronograma_id: int, db: Session = Depends(get_db)):

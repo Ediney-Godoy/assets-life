@@ -17,6 +17,10 @@ import {
   createCronogramaTarefa,
   updateCronogramaTarefa,
   getCronogramaResumo,
+  listCronogramaTarefaEvidencias,
+  uploadCronogramaTarefaEvidencia,
+  deleteCronogramaTarefaEvidencia,
+  downloadCronogramaTarefaEvidencia,
 } from '../apiClient';
 
 function toDate(d) {
@@ -34,10 +38,13 @@ export default function CronogramaRevisao() {
   const [tarefas, setTarefas] = React.useState([]);
   const [resumo, setResumo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
-  const [form, setForm] = React.useState({ nome: '', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente' });
+  const [form, setForm] = React.useState({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 });
   const [selectedTaskId, setSelectedTaskId] = React.useState(null);
   const [editingTaskId, setEditingTaskId] = React.useState(null);
   const [activeTab, setActiveTab] = React.useState('tarefas');
+  const [showNewModal, setShowNewModal] = React.useState(false);
+  const [evidencias, setEvidencias] = React.useState([]);
+  const [uploadFile, setUploadFile] = React.useState(null);
 
   const loadBase = React.useCallback(() => {
     setLoading(true);
@@ -99,6 +106,18 @@ export default function CronogramaRevisao() {
 
   React.useEffect(() => { loadTarefas(); }, [loadTarefas]);
 
+  const loadEvidencias = React.useCallback(async () => {
+    if (!cronogramaId || !selectedTaskId) { setEvidencias([]); return; }
+    try {
+      const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(selectedTaskId));
+      setEvidencias(Array.isArray(list) ? list : []);
+    } catch {
+      setEvidencias([]);
+    }
+  }, [cronogramaId, selectedTaskId]);
+
+  React.useEffect(() => { loadEvidencias(); }, [loadEvidencias]);
+
   const onCreateCronograma = async () => {
     const p = periodos.find((x) => String(x.id) === String(periodoId));
     if (!p) return toast.error('Selecione um período aberto');
@@ -119,18 +138,20 @@ export default function CronogramaRevisao() {
     if (!form.nome) return toast.error('Nome é obrigatório');
     try {
       const payload = {
+        tipo: form.tipo || 'Tarefa',
         nome: form.nome,
         descricao: '',
         data_inicio: form.data_inicio || null,
         data_fim: form.data_fim || null,
         responsavel_id: form.responsavel_id ? Number(form.responsavel_id) : null,
         status: form.status || 'Pendente',
-        progresso_percentual: 0,
+        progresso_percentual: Math.max(0, Math.min(100, Number(form.progresso_percentual || 0))),
       };
       await createCronogramaTarefa(Number(cronogramaId), payload);
-      setForm({ nome: '', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente' });
+      setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 });
       await loadTarefas();
       toast.success('Tarefa adicionada');
+      setShowNewModal(false);
     } catch (err) {
       toast.error(err.message || 'Erro ao adicionar tarefa');
     }
@@ -139,8 +160,8 @@ export default function CronogramaRevisao() {
   const onNew = () => {
     setEditingTaskId(null);
     setSelectedTaskId(null);
-    setForm({ nome: '', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente' });
-    toast('Novo');
+    setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 });
+    setShowNewModal(true);
   };
 
   const onEditSelected = () => {
@@ -150,10 +171,12 @@ export default function CronogramaRevisao() {
     setEditingTaskId(t.id);
     setForm({
       nome: t.nome || '',
+      tipo: t.tipo || 'Tarefa',
       responsavel_id: t.responsavel_id ? String(t.responsavel_id) : '',
       data_inicio: t.data_inicio || '',
       data_fim: t.data_fim || '',
       status: t.status || 'Pendente',
+      progresso_percentual: Number(t.progresso_percentual ?? 0),
     });
     toast.success('Editando tarefa');
   };
@@ -162,11 +185,13 @@ export default function CronogramaRevisao() {
     try {
       if (editingTaskId) {
         const payload = {
+          tipo: form.tipo || undefined,
           nome: form.nome || undefined,
           responsavel_id: form.responsavel_id ? Number(form.responsavel_id) : null,
           data_inicio: form.data_inicio || undefined,
           data_fim: form.data_fim || undefined,
           status: form.status || undefined,
+          progresso_percentual: Math.max(0, Math.min(100, Number(form.progresso_percentual ?? 0))),
         };
         const updated = await updateCronogramaTarefa(Number(cronogramaId), Number(editingTaskId), payload);
         toast.success('Tarefa atualizada');
@@ -243,7 +268,9 @@ export default function CronogramaRevisao() {
   };
 
   const columns = [
-    { key: 'nome', header: 'Tarefa' },
+    { key: 'nome', header: 'Tarefa', render: (v, row) => (
+      <span className={row.tipo === 'Título' ? 'uppercase font-bold' : ''}>{v}</span>
+    ) },
     { key: 'responsavel_id', header: 'Responsável', render: (v) => (users.find((u) => u.id === v)?.nome_completo || '') },
     { key: 'data_inicio', header: 'Início', render: (v) => (v || '') },
     { key: 'data_fim', header: 'Fim', render: (v) => (v || '') },
@@ -332,26 +359,82 @@ export default function CronogramaRevisao() {
               getRowClassName={(row) => (row.id === selectedTaskId ? 'bg-blue-50 dark:bg-blue-900/30' : undefined)}
             />
           </div>
+          {editingTaskId && (
+            <div className="mt-6">
+              <div className="text-lg font-semibold mb-2">Editar Tarefa</div>
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <Select label="Tipo" value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
+                  {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s}</option>))}
+                </Select>
+                <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+                <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
+                </Select>
+                <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+                <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
+                <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                  {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
+                </Select>
+                <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Button onClick={onSave} disabled={!cronogramaId}>Salvar</Button>
+                <Button variant="secondary" onClick={() => { setEditingTaskId(null); setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 }); }}>Cancelar</Button>
+              </div>
+            </div>
+          )}
 
-          <div className="mt-6">
-            <div className="text-lg font-semibold mb-2">{editingTaskId ? 'Editar Tarefa' : 'Nova Tarefa'}</div>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-              <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-              <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
-                <option value="">Selecione</option>
-                {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
-              </Select>
-              <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
-              <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
-              <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-                {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
-              </Select>
+          {selectedTaskId && (
+            <div className="mt-6">
+              <div className="text-lg font-semibold mb-2">Evidências da Tarefa Selecionada</div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Input label="Arquivo" type="file" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
+                </div>
+                <Button onClick={async () => {
+                  if (!uploadFile) { toast.error('Selecione um arquivo'); return; }
+                  try {
+                    await uploadCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), uploadFile);
+                    setUploadFile(null);
+                    await loadEvidencias();
+                    toast.success('Evidência enviada');
+                  } catch (err) {
+                    toast.error(err?.message || 'Falha no upload');
+                  }
+                }}>Enviar</Button>
+              </div>
+              <div className="mt-3 rounded-lg border">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-3">
+                  {evidencias.map((ev) => (
+                    <div key={ev.id} className="p-2 rounded border">
+                      <div className="font-medium">{ev.nome_arquivo}</div>
+                      <div className="text-sm text-slate-500">{Math.round((ev.tamanho_bytes || 0) / 1024)} KB</div>
+                      <div className="mt-2 flex gap-2">
+                        <Button variant="secondary" onClick={async () => {
+                          try {
+                            const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), Number(ev.id));
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = ev.nome_arquivo || 'arquivo';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          } catch (err) {
+                            toast.error(err?.message || 'Falha ao baixar');
+                          }
+                        }}>Baixar</Button>
+                        <Button variant="danger" onClick={async () => { try { await deleteCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), Number(ev.id)); await loadEvidencias(); toast.success('Excluída'); } catch (err) { toast.error(err?.message || 'Falha ao excluir'); } }}>Excluir</Button>
+                      </div>
+                    </div>
+                  ))}
+                  {evidencias.length === 0 && (
+                    <div className="text-sm text-slate-500">Nenhuma evidência enviada para esta tarefa.</div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="mt-3 flex gap-2">
-              <Button onClick={onSave} disabled={!cronogramaId}>{editingTaskId ? 'Salvar' : 'Adicionar'}</Button>
-              <Button variant="secondary" onClick={onNew}>Limpar</Button>
-            </div>
-          </div>
+          )}
         </TabPanel>
 
         <TabPanel active={activeTab === 'gantt'}>
@@ -369,6 +452,33 @@ export default function CronogramaRevisao() {
           </div>
         </TabPanel>
       </div>
+      {showNewModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
+            <div className="text-lg font-semibold mb-2">Nova Tarefa</div>
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+              <Select label="Tipo" value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
+                {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s}</option>))}
+              </Select>
+              <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+              <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
+                <option value="">Selecione</option>
+                {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
+              </Select>
+              <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+              <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
+              <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
+              </Select>
+              <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
+            </div>
+            <div className="mt-3 flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => { setShowNewModal(false); }}>Cancelar</Button>
+              <Button onClick={onAddTask} disabled={!cronogramaId}>Adicionar</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

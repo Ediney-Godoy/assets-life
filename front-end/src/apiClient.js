@@ -654,6 +654,57 @@ export async function updateCronogramaTarefa(cronogramaId, tarefaId, payload) {
 export async function getCronogramaResumo(cronogramaId) {
   return request(`/cronogramas/${cronogramaId}/resumo`);
 }
+
+// Evidências de Tarefas
+export async function listCronogramaTarefaEvidencias(cronogramaId, tarefaId) {
+  return request(`/cronogramas/${cronogramaId}/tarefas/${tarefaId}/evidencias`);
+}
+
+export async function uploadCronogramaTarefaEvidencia(cronogramaId, tarefaId, file) {
+  const base = await resolveBase();
+  if (!base) throw new Error('Nenhuma URL de API configurada. Configure VITE_API_URL.');
+  const url = `${base}/cronogramas/${cronogramaId}/tarefas/${tarefaId}/evidencias`;
+  const form = new FormData();
+  form.append('file', file);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 600000);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+      headers: (() => {
+        const t = getToken();
+        const h = { Accept: 'application/json' };
+        if (t) h.Authorization = `Bearer ${t}`;
+        return h;
+      })(),
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HTTP ${res.status}: ${txt}`);
+    }
+    return res.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+export async function downloadCronogramaTarefaEvidencia(cronogramaId, tarefaId, evidenciaId) {
+  const base = await resolveBase();
+  if (!base) throw new Error('Nenhuma URL de API configurada. Configure VITE_API_URL.');
+  const url = `${base}/cronogramas/${cronogramaId}/tarefas/${tarefaId}/evidencias/${evidenciaId}`;
+  const res = await fetch(url, { headers: (() => { const t = getToken(); const h = {}; if (t) h.Authorization = `Bearer ${t}`; return h; })() });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  return blob;
+}
+
+export async function deleteCronogramaTarefaEvidencia(cronogramaId, tarefaId, evidenciaId) {
+  return request(`/cronogramas/${cronogramaId}/tarefas/${tarefaId}/evidencias/${evidenciaId}`, { method: 'DELETE' });
+}
 // Centros de Custos
 export async function getCostCenters(filters = {}) {
   const qs = new URLSearchParams();
