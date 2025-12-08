@@ -771,15 +771,20 @@ def get_cronograma(cronograma_id: int, db: Session = Depends(get_db)):
 
 @app.get("/cronogramas/{cronograma_id}/tarefas", response_model=List[CronogramaTarefa])
 def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
-    c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Cronograma não encontrado")
-    items = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).order_by(CronogramaTarefaModel.id).all()
-    now = date.today()
-    for it in items:
-        if it.data_fim and it.data_fim < now and it.status != "Concluída":
-            it.status = "Atrasada"
-    return items
+    try:
+        c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
+        if not c:
+            raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+        items = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).order_by(CronogramaTarefaModel.id).all()
+        now = date.today()
+        for it in items:
+            if it.data_fim and it.data_fim < now and it.status != "Concluída":
+                it.status = "Atrasada"
+        return items
+    except HTTPException:
+        raise
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": e.__class__.__name__, "detail": str(e)})
 
 @app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
 def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate, db: Session = Depends(get_db)):
@@ -883,10 +888,15 @@ def delete_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db: 
 
 @app.get("/cronogramas/{cronograma_id}/resumo", response_model=CronogramaResumo)
 def cronograma_resumo(cronograma_id: int, db: Session = Depends(get_db)):
-    c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Cronograma não encontrado")
-    items = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).all()
+    try:
+        c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
+        if not c:
+            raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+        items = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).all()
+    except HTTPException:
+        raise
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": e.__class__.__name__, "detail": str(e)})
     total = len(items)
     concl = sum(1 for i in items if i.status == "Concluída")
     em = sum(1 for i in items if i.status == "Em Andamento")
