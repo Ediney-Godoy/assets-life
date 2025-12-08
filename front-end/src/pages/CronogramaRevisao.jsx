@@ -54,7 +54,7 @@ export default function CronogramaRevisao() {
         setPeriodos(abertos);
         setUsers(us || []);
       })
-      .catch((err) => toast.error(err.message || 'Erro'))
+      .catch((err) => toast.error(err.message || t('error_generic')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -73,7 +73,7 @@ export default function CronogramaRevisao() {
           setCronogramaId('');
         }
       })
-      .catch((err) => toast.error(err.message || 'Erro ao carregar cronogramas'))
+      .catch((err) => toast.error(err.message || t('error_loading_cronogramas')))
       .finally(() => setLoading(false));
   }, [periodoId]);
 
@@ -100,7 +100,7 @@ export default function CronogramaRevisao() {
     setLoading(true);
     Promise.all([getCronogramaTarefas(Number(cronogramaId)), getCronogramaResumo(Number(cronogramaId))])
       .then(([ts, rs]) => { setTarefas(applyOrder(ts || [])); setResumo(rs || null); })
-      .catch((err) => toast.error(err.message || 'Erro ao carregar tarefas'))
+      .catch((err) => toast.error(err.message || t('error_loading_tasks')))
       .finally(() => setLoading(false));
   }, [cronogramaId]);
 
@@ -120,22 +120,22 @@ export default function CronogramaRevisao() {
 
   const onCreateCronograma = async () => {
     const p = periodos.find((x) => String(x.id) === String(periodoId));
-    if (!p) return toast.error('Selecione um período aberto');
+    if (!p) return toast.error(t('select_open_period'));
     const payload = { periodo_id: p.id, empresa_id: p.empresa_id, responsavel_id: p.responsavel_id, descricao: p.descricao || '' };
     try {
       const c = await createCronograma(payload, { template: true });
-      toast.success('Cronograma criado');
+      toast.success(t('cronogram_created'));
       setCronogramaId(String(c.id));
       await loadCronogramas();
       await loadTarefas();
     } catch (err) {
-      toast.error(err.message || 'Erro ao criar cronograma');
+      toast.error(err.message || t('cronogram_create_error'));
     }
   };
 
   const onAddTask = async () => {
-    if (!cronogramaId) return toast.error('Selecione um cronograma');
-    if (!form.nome) return toast.error('Nome é obrigatório');
+    if (!cronogramaId) return toast.error(t('select_cronogram'));
+    if (!form.nome) return toast.error(t('field_required'));
     try {
       const payload = {
         tipo: form.tipo || 'Tarefa',
@@ -150,10 +150,10 @@ export default function CronogramaRevisao() {
       await createCronogramaTarefa(Number(cronogramaId), payload);
       setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 });
       await loadTarefas();
-      toast.success('Tarefa adicionada');
+      toast.success(t('task_added'));
       setShowNewModal(false);
     } catch (err) {
-      toast.error(err.message || 'Erro ao adicionar tarefa');
+      toast.error(err.message || t('error_saving'));
     }
   };
 
@@ -165,7 +165,7 @@ export default function CronogramaRevisao() {
   };
 
   const onEditSelected = () => {
-    if (!selectedTaskId) { toast.error('Selecione uma tarefa'); return; }
+    if (!selectedTaskId) { toast.error(t('error_generic')); return; }
     const t = tarefas.find((x) => x.id === selectedTaskId);
     if (!t) { toast.error('Tarefa não encontrada'); return; }
     setEditingTaskId(t.id);
@@ -178,7 +178,7 @@ export default function CronogramaRevisao() {
       status: t.status || 'Pendente',
       progresso_percentual: Number(t.progresso_percentual ?? 0),
     });
-    toast.success('Editando tarefa');
+    toast.success(t('editing_task'));
   };
 
   const onSave = async () => {
@@ -202,7 +202,7 @@ export default function CronogramaRevisao() {
         await onAddTask();
       }
     } catch (err) {
-      toast.error(err?.message || 'Erro ao salvar');
+      toast.error(err?.message || t('error_saving'));
     }
   };
 
@@ -245,7 +245,7 @@ export default function CronogramaRevisao() {
     win.focus();
     win.print();
     win.close();
-    toast.success('Exportado PDF (via impressão)');
+    toast.success(t('export_pdf_done'));
   };
 
   const selectedIndex = React.useMemo(() => tarefas.findIndex((t) => t.id === selectedTaskId), [tarefas, selectedTaskId]);
@@ -306,7 +306,7 @@ export default function CronogramaRevisao() {
           onNew={onNew}
           onSave={onSave}
           onEdit={onEditSelected}
-          onDelete={() => toast.error('Exclusão não disponível')}
+          onDelete={() => toast.error(t('delete_not_available'))}
           onPrint={() => window.print()}
           onExportPdf={exportPDF}
           onExportExcel={exportCSV}
@@ -379,8 +379,8 @@ export default function CronogramaRevisao() {
                 <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
               </div>
               <div className="mt-3 flex gap-2">
-                <Button onClick={onSave} disabled={!cronogramaId}>Salvar</Button>
-                <Button variant="secondary" onClick={() => { setEditingTaskId(null); setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 }); }}>Cancelar</Button>
+                <Button onClick={onSave} disabled={!cronogramaId}>{t('save')}</Button>
+                <Button variant="secondary" onClick={() => { setEditingTaskId(null); setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 }); }}>{t('cancel')}</Button>
               </div>
             </div>
           )}
@@ -393,14 +393,14 @@ export default function CronogramaRevisao() {
                   <Input label="Arquivo" type="file" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
                 </div>
                 <Button onClick={async () => {
-                  if (!uploadFile) { toast.error('Selecione um arquivo'); return; }
+                  if (!uploadFile) { toast.error(t('select_file_msg')); return; }
                   try {
                     await uploadCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), uploadFile);
                     setUploadFile(null);
                     await loadEvidencias();
-                    toast.success('Evidência enviada');
+                    toast.success(t('evidence_uploaded'));
                   } catch (err) {
-                    toast.error(err?.message || 'Falha no upload');
+                    toast.error(err?.message || t('upload_failed'));
                   }
                 }}>Enviar</Button>
               </div>
@@ -421,10 +421,10 @@ export default function CronogramaRevisao() {
                             a.click();
                             URL.revokeObjectURL(url);
                           } catch (err) {
-                            toast.error(err?.message || 'Falha ao baixar');
+                            toast.error(err?.message || t('download_failed'));
                           }
                         }}>Baixar</Button>
-                        <Button variant="danger" onClick={async () => { try { await deleteCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), Number(ev.id)); await loadEvidencias(); toast.success('Excluída'); } catch (err) { toast.error(err?.message || 'Falha ao excluir'); } }}>Excluir</Button>
+                        <Button variant="danger" onClick={async () => { try { await deleteCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), Number(ev.id)); await loadEvidencias(); toast.success(t('deleted_successfully')); } catch (err) { toast.error(err?.message || t('error_deleting')); } }}>Excluir</Button>
                       </div>
                     </div>
                   ))}
@@ -455,7 +455,7 @@ export default function CronogramaRevisao() {
       {showNewModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
-            <div className="text-lg font-semibold mb-2">Nova Tarefa</div>
+            <div className="text-lg font-semibold mb-2">{t('new_record')}</div>
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
               <Select label="Tipo" value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
                 {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s}</option>))}
@@ -473,8 +473,8 @@ export default function CronogramaRevisao() {
               <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
             </div>
             <div className="mt-3 flex gap-2 justify-end">
-              <Button variant="secondary" onClick={() => { setShowNewModal(false); }}>Cancelar</Button>
-              <Button onClick={onAddTask} disabled={!cronogramaId}>Adicionar</Button>
+              <Button variant="secondary" onClick={() => { setShowNewModal(false); }}>{t('cancel')}</Button>
+              <Button onClick={onAddTask} disabled={!cronogramaId}>{t('add')}</Button>
             </div>
           </div>
         </div>

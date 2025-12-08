@@ -749,6 +749,12 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
         raise HTTPException(status_code=404, detail="Período não encontrado")
     if getattr(per, "status", None) == "Fechado":
         raise HTTPException(status_code=400, detail="Período fechado")
+    emp = db.query(CompanyModel).filter(CompanyModel.id == payload.empresa_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+    resp = db.query(UsuarioModel).filter(UsuarioModel.id == payload.responsavel_id).first()
+    if not resp:
+        raise HTTPException(status_code=404, detail="Responsável não encontrado")
     c = CronogramaModel(
         periodo_id=payload.periodo_id,
         empresa_id=payload.empresa_id,
@@ -756,9 +762,13 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
         descricao=payload.descricao,
         status=payload.status,
     )
-    db.add(c)
-    db.commit()
-    db.refresh(c)
+    try:
+        db.add(c)
+        db.commit()
+        db.refresh(c)
+    except sa.exc.IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Violação de integridade nos dados do cronograma")
     if template:
         inicio = getattr(per, "data_abertura", None)
         fim_prev = getattr(per, "data_fechamento_prevista", None)
@@ -782,7 +792,11 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
                 progresso_percentual=0,
             )
             db.add(t)
-        db.commit()
+        try:
+            db.commit()
+        except sa.exc.IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=400, detail="Falha ao criar tarefas padrão do cronograma")
     return c
 
 @app.get("/cronogramas/{cronograma_id}", response_model=Cronograma)

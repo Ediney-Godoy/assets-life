@@ -328,9 +328,19 @@ async function request(path, options = {}) {
           }
           // Se for login ou erro de credenciais, propaga o erro normalmente
         }
-        // Para erros de cliente/negócio (4xx), não tenta próxima base; propaga
         if (res.status >= 400 && res.status < 500) {
-          throw new Error(`HTTP ${res.status}: ${text}`);
+          let message = `HTTP ${res.status}`;
+          try {
+            const j = JSON.parse(text);
+            const d = j && (j.detail || j.message || j.error);
+            if (typeof d === 'string' && d.trim()) message = d;
+          } catch {}
+          const p = String(path || '');
+          const m = String(options.method || 'GET').toUpperCase();
+          if (m === 'POST' && /^\/cronogramas(?:\?|$)/.test(p)) {
+            throw new Error(message);
+          }
+          throw new Error(message);
         }
         lastErr = new Error(`HTTP ${res.status}: ${text}`);
         continue;

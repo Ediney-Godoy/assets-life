@@ -469,5 +469,18 @@
   "no_periods_selected": "Nenhum período selecionado.",
   "select_all_open_periods": "Selecionar abertos",
   "notify_all_hint_periods": "Todos os usuários dos períodos selecionados serão notificados.",
-  "select_periods_for_notify_all": "Selecione ao menos um período para \"Notificar todos\""
+  "select_periods_for_notify_all": "Selecione ao menos um período para \"Notificar todos\"",
+  "select_open_period": "Selecione um período aberto",
+  "cronogram_created": "Cronograma criado",
+  "cronogram_create_error": "Erro ao criar cronograma",
+  "error_loading_cronogramas": "Erro ao carregar cronogramas",
+  "error_loading_tasks": "Erro ao carregar tarefas",
+  "select_cronogram": "Selecione um cronograma",
+  "task_added": "Tarefa adicionada",
+  "editing_task": "Editando tarefa",
+  "evidence_uploaded": "Evidência enviada",
+  "download_failed": "Falha ao baixar",
+  "export_csv_done": "Exportado CSV",
+  "export_pdf_done": "Exportado PDF (via impressão)",
+  "delete_not_available": "Exclusão não disponível"
 }
