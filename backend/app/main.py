@@ -675,7 +675,7 @@ class CronogramaTarefa(BaseModel):
     status: str
     progresso_percentual: int
     dependente_tarefa_id: Optional[int] = None
-    criado_em: datetime
+    criado_em: Optional[datetime] = None
     class Config:
         from_attributes = True
 
