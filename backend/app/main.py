@@ -799,10 +799,6 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         if not c:
             raise HTTPException(status_code=404, detail="Cronograma não encontrado")
 
-        has_tipo = bool(db.execute(sa.text(
-            "SELECT 1 FROM information_schema.columns WHERE table_name='cronogramas_tarefas' AND column_name='tipo'"
-        )).first())
-
         select_cols = [
             "id", "cronograma_id",
             "nome", "descricao",
@@ -811,11 +807,19 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
             "progresso_percentual", "dependente_tarefa_id",
             "criado_em"
         ]
-        tipo_expr = "COALESCE(tipo, 'Tarefa') AS tipo" if has_tipo else "'Tarefa' AS tipo"
-        cols_sql = tipo_expr + ", " + ", ".join(select_cols)
-        rows = db.execute(sa.text(
-            f"SELECT {cols_sql} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
-        ), {"cid": cronograma_id}).mappings().all()
+        cols_sql_try = "COALESCE(tipo, 'Tarefa') AS tipo, " + ", ".join(select_cols)
+        sql_try = sa.text(
+            f"SELECT {cols_sql_try} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
+        )
+        rows = None
+        try:
+            rows = db.execute(sql_try, {"cid": cronograma_id}).mappings().all()
+        except Exception:
+            cols_sql_fb = "'Tarefa' AS tipo, " + ", ".join(select_cols)
+            sql_fb = sa.text(
+                f"SELECT {cols_sql_fb} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
+            )
+            rows = db.execute(sql_fb, {"cid": cronograma_id}).mappings().all()
 
         now = date.today()
         result = []
