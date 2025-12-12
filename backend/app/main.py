@@ -90,20 +90,60 @@ from fastapi import Request
 
 @app.middleware("http")
 async def allow_private_network(request: Request, call_next):
+    # Pre-attach permissive CORS headers for known/regex-matched origins to avoid race conditions
+    origin = request.headers.get("origin")
     response = await call_next(request)
     try:
         if request.headers.get("access-control-request-private-network") == "true":
             response.headers["Access-Control-Allow-Private-Network"] = "true"
-        origin = request.headers.get("origin")
         if origin and (origin in origins or origin_re.match(origin)):
             if not response.headers.get("Access-Control-Allow-Origin"):
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Vary"] = "Origin"
             if not response.headers.get("Access-Control-Allow-Credentials"):
                 response.headers["Access-Control-Allow-Credentials"] = "true"
+            if not response.headers.get("Access-Control-Expose-Headers"):
+                response.headers["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Type"
+            if not response.headers.get("Access-Control-Allow-Methods"):
+                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            if not response.headers.get("Access-Control-Allow-Headers"):
+                req_headers = request.headers.get("access-control-request-headers", "*")
+                response.headers["Access-Control-Allow-Headers"] = req_headers
     except Exception:
         pass
     return response
+
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(request: Request, exc: HTTPException):
+    origin = request.headers.get("origin")
+    headers = {}
+    try:
+        if origin and (origin in origins or origin_re.match(origin)):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Vary"] = "Origin"
+            headers["Access-Control-Allow-Credentials"] = "true"
+            headers["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Type"
+            headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            headers["Access-Control-Allow-Headers"] = request.headers.get("access-control-request-headers", "*")
+    except Exception:
+        pass
+    return JSONResponse(status_code=exc.status_code, content={"detail": getattr(exc, "detail", "Erro")}, headers=headers)
+
+@app.exception_handler(Exception)
+async def _generic_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin")
+    headers = {}
+    try:
+        if origin and (origin in origins or origin_re.match(origin)):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Vary"] = "Origin"
+            headers["Access-Control-Allow-Credentials"] = "true"
+            headers["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Type"
+            headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            headers["Access-Control-Allow-Headers"] = request.headers.get("access-control-request-headers", "*")
+    except Exception:
+        pass
+    return JSONResponse(status_code=500, content={"detail": "Erro interno"}, headers=headers)
 
 @app.options("/{path:path}")
 async def cors_preflight(request: Request, path: str):
@@ -415,6 +455,7 @@ def on_startup():
                     )
                     """
                 ))
+                conn.execute(sa.text("CREATE UNIQUE INDEX IF NOT EXISTS ux_cronogramas_periodo ON cronogramas(periodo_id)"))
         except Exception as e:
             # Não bloquear startup por falhas de ALTER
             import traceback
@@ -439,6 +480,7 @@ def on_startup():
                 )
                 """
             ))
+            conn.execute(sa.text("CREATE UNIQUE INDEX IF NOT EXISTS ux_cronogramas_periodo ON cronogramas(periodo_id)"))
     except Exception as e:
         import traceback
         print("Schema tweak error (tipo/evidencias fallback):", e)
@@ -749,6 +791,9 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
         raise HTTPException(status_code=404, detail="Período não encontrado")
     if getattr(per, "status", None) == "Fechado":
         raise HTTPException(status_code=400, detail="Período fechado")
+    existing = db.query(CronogramaModel).filter(CronogramaModel.periodo_id == payload.periodo_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Já existe um cronograma para este período")
     emp = db.query(CompanyModel).filter(CompanyModel.id == payload.empresa_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Empresa não encontrada")
@@ -780,21 +825,53 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
             ("Aprovação pelos gestores", None, None),
             ("Atualização no ERP", None, None),
         ]
-        for nome, di, df in tarefas:
-            t = CronogramaTarefaModel(
-                cronograma_id=c.id,
-                nome=nome,
-                descricao=None,
-                data_inicio=di or inicio,
-                data_fim=df or fim_prev,
-                responsavel_id=None,
-                status="Pendente",
-                progresso_percentual=0,
-            )
-            db.add(t)
+        has_tipo = False
         try:
+            insp = sa.inspect(engine)
+            cols = [c["name"] for c in insp.get_columns("cronogramas_tarefas")]
+            has_tipo = "tipo" in cols
+        except Exception:
+            has_tipo = False
+        try:
+            for nome, di, df in tarefas:
+                if has_tipo:
+                    t = CronogramaTarefaModel(
+                        cronograma_id=c.id,
+                        tipo="Tarefa",
+                        nome=nome,
+                        descricao=None,
+                        data_inicio=di or inicio,
+                        data_fim=df or fim_prev,
+                        responsavel_id=None,
+                        status="Pendente",
+                        progresso_percentual=0,
+                    )
+                    db.add(t)
+                    db.flush()
+                else:
+                    db.execute(sa.text(
+                        """
+                        INSERT INTO cronogramas_tarefas (
+                            cronograma_id, nome, descricao, data_inicio, data_fim,
+                            responsavel_id, status, progresso_percentual, dependente_tarefa_id
+                        ) VALUES (
+                            :cronograma_id, :nome, :descricao, :data_inicio, :data_fim,
+                            :responsavel_id, :status, :progresso_percentual, :dependente_tarefa_id
+                        )
+                        """
+                    ), {
+                        "cronograma_id": c.id,
+                        "nome": nome,
+                        "descricao": None,
+                        "data_inicio": di or inicio,
+                        "data_fim": df or fim_prev,
+                        "responsavel_id": None,
+                        "status": "Pendente",
+                        "progresso_percentual": 0,
+                        "dependente_tarefa_id": None,
+                    })
             db.commit()
-        except sa.exc.IntegrityError:
+        except Exception:
             db.rollback()
             raise HTTPException(status_code=400, detail="Falha ao criar tarefas padrão do cronograma")
     return c
@@ -860,22 +937,64 @@ def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate
     c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Cronograma não encontrado")
-    t = CronogramaTarefaModel(
-        cronograma_id=cronograma_id,
-        tipo=payload.tipo or "Tarefa",
-        nome=payload.nome,
-        descricao=payload.descricao,
-        data_inicio=payload.data_inicio,
-        data_fim=payload.data_fim,
-        responsavel_id=payload.responsavel_id,
-        status=payload.status,
-        progresso_percentual=payload.progresso_percentual or 0,
-        dependente_tarefa_id=payload.dependente_tarefa_id,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-    return t
+    try:
+        t = CronogramaTarefaModel(
+            cronograma_id=cronograma_id,
+            tipo=payload.tipo or "Tarefa",
+            nome=payload.nome,
+            descricao=payload.descricao,
+            data_inicio=payload.data_inicio,
+            data_fim=payload.data_fim,
+            responsavel_id=payload.responsavel_id,
+            status=payload.status,
+            progresso_percentual=payload.progresso_percentual or 0,
+            dependente_tarefa_id=payload.dependente_tarefa_id,
+        )
+        db.add(t)
+        db.commit()
+        db.refresh(t)
+        return t
+    except (sa.exc.ProgrammingError, sa.exc.DBAPIError):
+        db.rollback()
+        # Fallback quando coluna 'tipo' não existe
+        try:
+            db.execute(sa.text(
+                """
+                INSERT INTO cronogramas_tarefas (
+                    cronograma_id, nome, descricao, data_inicio, data_fim,
+                    responsavel_id, status, progresso_percentual, dependente_tarefa_id
+                ) VALUES (
+                    :cronograma_id, :nome, :descricao, :data_inicio, :data_fim,
+                    :responsavel_id, :status, :progresso_percentual, :dependente_tarefa_id
+                )
+                RETURNING id
+                """
+            ), {
+                "cronograma_id": cronograma_id,
+                "nome": payload.nome,
+                "descricao": payload.descricao,
+                "data_inicio": payload.data_inicio,
+                "data_fim": payload.data_fim,
+                "responsavel_id": payload.responsavel_id,
+                "status": payload.status,
+                "progresso_percentual": payload.progresso_percentual or 0,
+                "dependente_tarefa_id": payload.dependente_tarefa_id,
+            })
+            db.commit()
+            # Recupera a tarefa criada para retorno coerente
+            created = db.execute(sa.text("SELECT * FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id DESC LIMIT 1"), {"cid": cronograma_id}).mappings().first()
+            if not created:
+                raise HTTPException(status_code=400, detail="Falha ao criar tarefa")
+            # Monta resposta mínima, com 'tipo' como 'Tarefa' por compatibilidade
+            return CronogramaTarefa(
+                id=created["id"], cronograma_id=created["cronograma_id"], tipo="Tarefa", nome=created["nome"],
+                descricao=created.get("descricao"), data_inicio=created.get("data_inicio"), data_fim=created.get("data_fim"),
+                responsavel_id=created.get("responsavel_id"), status=created.get("status"),
+                progresso_percentual=created.get("progresso_percentual") or 0,
+                dependente_tarefa_id=created.get("dependente_tarefa_id"), criado_em=created.get("criado_em")
+            )
+        except Exception:
+            raise HTTPException(status_code=400, detail="Falha ao criar tarefa")
 
 @app.put("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}", response_model=CronogramaTarefa)
 def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: CronogramaTarefaUpdate, db: Session = Depends(get_db)):

@@ -646,7 +646,16 @@ export async function getCronogramas(params = {}) {
 
 export async function createCronograma(payload, { template = true } = {}) {
   const q = template ? '?template=true' : '?template=false';
-  return request(`/cronogramas${q}`, { method: 'POST', body: JSON.stringify(payload) });
+  try {
+    return await request(`/cronogramas${q}`, { method: 'POST', body: JSON.stringify(payload) });
+  } catch (err) {
+    const msg = String(err?.message || '');
+    const isCors = /Failed to fetch|CORS|No 'Access-Control-Allow-Origin'/i.test(msg);
+    if (template && isCors) {
+      return await request(`/cronogramas?template=false`, { method: 'POST', body: JSON.stringify(payload) });
+    }
+    throw err;
+  }
 }
 
 export async function getCronogramaTarefas(cronogramaId) {
