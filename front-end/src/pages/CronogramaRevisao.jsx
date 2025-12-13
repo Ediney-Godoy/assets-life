@@ -332,7 +332,7 @@ export default function CronogramaRevisao() {
           ))}
         </Select>
         <div className="flex items-end">
-          <Button onClick={onCreateCronograma} disabled={!periodoId}>Criar Cronograma</Button>
+          <Button onClick={onCreateCronograma} disabled={!periodoId || cronogramas.length > 0} title={cronogramas.length > 0 ? t('schedule_already_exists') : ''}>Criar Cronograma</Button>
         </div>
       </div>
 

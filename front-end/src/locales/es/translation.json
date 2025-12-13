@@ -400,6 +400,7 @@
   "help_tips_title": "Consejos",
   "help_tip_filters": "Use filtros y búsqueda para localizar ítems rápidamente.",
   "help_tip_shortcuts": "Aproveche el panel plegable para ganar espacio en pantalla.",
+  "schedule_already_exists": "Ya existe un cronograma para este período.",
   "help_tip_permissions": "¿Sin acceso? Verifique permisos y la empresa seleccionada arriba.",
   "notifications": "Notificaciones",
   "notification": "Notificación",

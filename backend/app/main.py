@@ -906,11 +906,24 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         try:
             rows = db.execute(sql_try, {"cid": cronograma_id}).mappings().all()
         except Exception:
-            cols_sql_fb = "'Tarefa' AS tipo, " + ", ".join(select_cols)
-            sql_fb = sa.text(
-                f"SELECT {cols_sql_fb} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
-            )
-            rows = db.execute(sql_fb, {"cid": cronograma_id}).mappings().all()
+            # Fallback 1: assume 'tipo' column is missing
+            try:
+                cols_sql_fb = "'Tarefa' AS tipo, " + ", ".join(select_cols)
+                sql_fb = sa.text(
+                    f"SELECT {cols_sql_fb} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
+                )
+                rows = db.execute(sql_fb, {"cid": cronograma_id}).mappings().all()
+            except Exception:
+                # Fallback 2: maybe 'dependente_tarefa_id' or 'criado_em' are also missing?
+                min_cols = [
+                    "id", "cronograma_id", "nome", "descricao", "data_inicio", "data_fim",
+                    "responsavel_id", "status", "progresso_percentual"
+                ]
+                cols_sql_min = "'Tarefa' AS tipo, " + ", ".join(min_cols)
+                sql_min = sa.text(
+                    f"SELECT {cols_sql_min} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
+                )
+                rows = db.execute(sql_min, {"cid": cronograma_id}).mappings().all()
 
         now = date.today()
         result = []
@@ -924,12 +937,14 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 descricao=r.get("descricao"), data_inicio=r.get("data_inicio"), data_fim=r.get("data_fim"),
                 responsavel_id=r.get("responsavel_id"), status=status,
                 progresso_percentual=r.get("progresso_percentual") or 0,
-                dependente_tarefa_id=r.get("dependente_tarefa_id"), criado_em=r.get("criado_em")
+                dependente_tarefa_id=r.get("dependente_tarefa_id"),
+                criado_em=r.get("criado_em")
             ))
         return result
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        print(f"Error listing cronograma tasks: {e}")
         return []
 
 @app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
