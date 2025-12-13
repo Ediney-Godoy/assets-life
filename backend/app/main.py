@@ -1049,11 +1049,17 @@ class CronogramaTarefaEvidencia(BaseModel):
 
 @app.get("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias", response_model=List[CronogramaTarefaEvidencia])
 def list_evidencias(cronograma_id: int, tarefa_id: int, db: Session = Depends(get_db)):
-    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
-    if not t:
-        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-    items = db.query(CronogramaTarefaEvidenciaModel).filter(CronogramaTarefaEvidenciaModel.tarefa_id == tarefa_id).order_by(CronogramaTarefaEvidenciaModel.id.desc()).all()
-    return items
+    try:
+        t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
+        if not t:
+            raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+        items = db.query(CronogramaTarefaEvidenciaModel).filter(CronogramaTarefaEvidenciaModel.tarefa_id == tarefa_id).order_by(CronogramaTarefaEvidenciaModel.id.desc()).all()
+        return items
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error listing evidencias: {e}")
+        return []
 
 @app.post("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias", response_model=CronogramaTarefaEvidencia)
 async def upload_evidencia(cronograma_id: int, tarefa_id: int, file: UploadFile = File(...), current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
