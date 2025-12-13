@@ -7,7 +7,7 @@ import Button from '../components/ui/Button';
 import ActionToolbar from '../components/ActionToolbar';
 import Table from '../components/ui/Table';
 import { Tabs, TabPanel } from '../components/ui/Tabs';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Plus, Download, Upload, Trash2, Eye } from 'lucide-react';
 import { 
   getReviewPeriods,
   getUsers,
@@ -349,7 +349,7 @@ export default function CronogramaRevisao() {
   const columns = [
     { key: 'view', header: 'Ver', render: (_, row) => (
       <Button variant="ghost" size="sm" title="Visualizar Evidências" onClick={(e) => { e.stopPropagation(); handleViewEvidencias(row.id); }}>
-          <img src="/view_vision_eye_icon_195036.svg" alt="Ver" className="w-5 h-5" />
+          <Eye className="w-5 h-5 text-blue-500" />
       </Button>
     ) },
     { key: 'nome', header: 'Tarefa', render: (v, row) => {
@@ -485,57 +485,6 @@ export default function CronogramaRevisao() {
               <div className="mt-3 flex gap-2">
                 <Button onClick={onSave} disabled={!cronogramaId}>{t('save')}</Button>
                 <Button variant="secondary" onClick={() => { setEditingTaskId(null); setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 }); }}>{t('cancel')}</Button>
-              </div>
-            </div>
-          )}
-
-          {selectedTaskId && (
-            <div className="mt-6">
-              <div className="text-lg font-semibold mb-2">Evidências da Tarefa Selecionada</div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <Input label="Arquivo" type="file" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
-                </div>
-                <Button onClick={async () => {
-                  if (!uploadFile) { toast.error(t('select_file_msg')); return; }
-                  try {
-                    await uploadCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), uploadFile);
-                    setUploadFile(null);
-                    await loadEvidencias();
-                    toast.success(t('evidence_uploaded'));
-                  } catch (err) {
-                    toast.error(err?.message || t('upload_failed'));
-                  }
-                }}>Enviar</Button>
-              </div>
-              <div className="mt-3 rounded-lg border">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-3">
-                  {evidencias.map((ev) => (
-                    <div key={ev.id} className="p-2 rounded border">
-                      <div className="font-medium">{ev.nome_arquivo}</div>
-                      <div className="text-sm text-slate-500">{Math.round((ev.tamanho_bytes || 0) / 1024)} KB</div>
-                      <div className="mt-2 flex gap-2">
-                        <Button variant="secondary" onClick={async () => {
-                          try {
-                            const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), Number(ev.id));
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = ev.nome_arquivo || 'arquivo';
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          } catch (err) {
-                            toast.error(err?.message || t('download_failed'));
-                          }
-                        }}>Baixar</Button>
-                        <Button variant="danger" onClick={async () => { try { await deleteCronogramaTarefaEvidencia(Number(cronogramaId), Number(selectedTaskId), Number(ev.id)); await loadEvidencias(); toast.success(t('deleted_successfully')); } catch (err) { toast.error(err?.message || t('error_deleting')); } }}>Excluir</Button>
-                      </div>
-                    </div>
-                  ))}
-                  {evidencias.length === 0 && (
-                    <div className="text-sm text-slate-500">Nenhuma evidência enviada para esta tarefa.</div>
-                  )}
-                </div>
               </div>
             </div>
           )}

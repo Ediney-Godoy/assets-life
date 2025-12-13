@@ -827,24 +827,65 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
         inicio = getattr(per, "data_abertura", None)
         fim_prev = getattr(per, "data_fechamento_prevista", None)
         
-        # New structure: (tipo, nome, descricao)
-        tarefas_padrao = [
-            ("Título", "Iniciação", None),
-            ("Tarefa", "Reunião Kick Off", None),
-            ("Título", "Planejamento", None),
-            ("Tarefa", "Consolidação da Base de Dados", None),
-            ("Tarefa", "Abertura do Período", None),
-            ("Tarefa", "Delegação de itens", None),
-            ("Tarefa", "Treinamento", None),
-            ("Título", "Execução", None),
-            ("Tarefa", "Revisão Vidas Úteis", "Uma linha para cada revisor"),
-            ("Título", "Encerramento", None),
-            ("Tarefa", "Fechar Período", None),
-            ("Tarefa", "Confeccionar Laudo", None),
-            ("Tarefa", "Assinatura de Laudo", None),
-            ("Tarefa", "Abertura de Chamado", None),
-            ("Tarefa", "Ajustes no Sistema", None),
+        # 1. Tarefas estáticas antes da execução
+        tasks_to_create = [
+            {"tipo": "Título", "nome": "Iniciação", "desc": None},
+            {"tipo": "Tarefa", "nome": "Reunião Kick Off", "desc": None},
+            {"tipo": "Título", "nome": "Planejamento", "desc": None},
+            {"tipo": "Tarefa", "nome": "Consolidação da Base de Dados", "desc": None},
+            {"tipo": "Tarefa", "nome": "Abertura do Período", "desc": None},
+            {"tipo": "Tarefa", "nome": "Delegação de itens", "desc": None},
+            {"tipo": "Tarefa", "nome": "Treinamento", "desc": None},
+            {"tipo": "Título", "nome": "Execução", "desc": None},
         ]
+
+        # 2. Tarefas dinâmicas de Execução (Revisores)
+        # Buscar delegações ativas neste período agrupadas por revisor
+        try:
+            delegations = db.query(RevisaoDelegacaoModel.revisor_id, sa.func.count(RevisaoDelegacaoModel.id))\
+                .filter(RevisaoDelegacaoModel.periodo_id == payload.periodo_id, RevisaoDelegacaoModel.status == 'Ativo')\
+                .group_by(RevisaoDelegacaoModel.revisor_id).all()
+            
+            for revisor_id, total_assigned in delegations:
+                if total_assigned == 0: continue
+                
+                revisor = db.query(UsuarioModel).filter(UsuarioModel.id == revisor_id).first()
+                if not revisor: continue
+                
+                # Calcular progresso (itens revisados / total)
+                # Consideramos revisado se RevisaoItem.alterado == True
+                reviewed_count = db.query(sa.func.count(RevisaoItemModel.id))\
+                    .join(RevisaoDelegacaoModel, RevisaoDelegacaoModel.ativo_id == RevisaoItemModel.id)\
+                    .filter(
+                        RevisaoDelegacaoModel.periodo_id == payload.periodo_id,
+                        RevisaoDelegacaoModel.revisor_id == revisor_id,
+                        RevisaoDelegacaoModel.status == 'Ativo',
+                        RevisaoItemModel.alterado == True
+                    ).scalar() or 0
+                    
+                progresso = int((reviewed_count / total_assigned) * 100)
+                
+                tasks_to_create.append({
+                    "tipo": "Tarefa",
+                    "nome": f"Revisão de Vidas úteis - {revisor.nome_completo}",
+                    "desc": f"Revisor: {revisor.nome_completo} ({reviewed_count}/{total_assigned} itens)",
+                    "responsavel_id": revisor_id,
+                    "progresso_percentual": progresso
+                })
+        except Exception as e:
+            print(f"Erro ao gerar tarefas dinâmicas: {e}")
+            # Fallback se falhar
+            tasks_to_create.append({"tipo": "Tarefa", "nome": "Revisão Vidas Úteis", "desc": "Erro ao gerar lista de revisores"})
+
+        # 3. Tarefas estáticas pós-execução
+        tasks_to_create.extend([
+            {"tipo": "Título", "nome": "Encerramento", "desc": None},
+            {"tipo": "Tarefa", "nome": "Fechar Período", "desc": None},
+            {"tipo": "Tarefa", "nome": "Confeccionar Laudo", "desc": None},
+            {"tipo": "Tarefa", "nome": "Assinatura de Laudo", "desc": None},
+            {"tipo": "Tarefa", "nome": "Abertura de Chamado", "desc": None},
+            {"tipo": "Tarefa", "nome": "Ajustes no Sistema", "desc": None},
+        ])
 
         has_tipo = False
         try:
@@ -855,7 +896,13 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
             has_tipo = False
             
         try:
-            for tipo, nome, desc in tarefas_padrao:
+            for task in tasks_to_create:
+                tipo = task.get("tipo", "Tarefa")
+                nome = task.get("nome")
+                desc = task.get("desc")
+                resp_id = task.get("responsavel_id") # Pode ser None
+                prog = task.get("progresso_percentual", 0)
+
                 if has_tipo:
                     t = CronogramaTarefaModel(
                         cronograma_id=c.id,
@@ -864,9 +911,9 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
                         descricao=desc,
                         data_inicio=inicio,
                         data_fim=fim_prev,
-                        responsavel_id=None,
+                        responsavel_id=resp_id,
                         status="Pendente",
-                        progresso_percentual=0,
+                        progresso_percentual=prog,
                     )
                     db.add(t)
                 else:
@@ -888,9 +935,9 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
                         "descricao": desc,
                         "data_inicio": inicio,
                         "data_fim": fim_prev,
-                        "responsavel_id": None,
+                        "responsavel_id": resp_id,
                         "status": "Pendente",
-                        "progresso_percentual": 0,
+                        "progresso_percentual": prog,
                         "dependente_tarefa_id": None,
                     })
             db.commit()
