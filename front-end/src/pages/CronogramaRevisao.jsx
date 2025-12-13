@@ -5,9 +5,8 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import ActionToolbar from '../components/ActionToolbar';
-import Table from '../components/ui/Table';
-import { Tabs, TabPanel } from '../components/ui/Tabs';
-import { ChevronUp, ChevronDown, Plus, Download, Upload, Trash2, Eye } from 'lucide-react';
+// import Table from '../components/ui/Table'; // Custom table implementation used
+import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList } from 'lucide-react';
 import { 
   getReviewPeriods,
   getUsers,
@@ -19,7 +18,6 @@ import {
   getCronogramaResumo,
   listCronogramaTarefaEvidencias,
   uploadCronogramaTarefaEvidencia,
-  deleteCronogramaTarefaEvidencia,
   downloadCronogramaTarefaEvidencia,
 } from '../apiClient';
 
@@ -41,7 +39,6 @@ export default function CronogramaRevisao() {
   const [form, setForm] = React.useState({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 });
   const [selectedTaskId, setSelectedTaskId] = React.useState(null);
   const [editingTaskId, setEditingTaskId] = React.useState(null);
-  const [activeTab, setActiveTab] = React.useState('tarefas');
   const [showNewModal, setShowNewModal] = React.useState(false);
   const [evidencias, setEvidencias] = React.useState([]);
   const [uploadFile, setUploadFile] = React.useState(null);
@@ -58,7 +55,7 @@ export default function CronogramaRevisao() {
       })
       .catch((err) => toast.error(err.message || t('error_generic')))
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   React.useEffect(() => { loadBase(); }, [loadBase]);
 
@@ -77,7 +74,7 @@ export default function CronogramaRevisao() {
       })
       .catch((err) => toast.error(err.message || t('error_loading_cronogramas')))
       .finally(() => setLoading(false));
-  }, [periodoId]);
+  }, [periodoId, t]);
 
   React.useEffect(() => { loadCronogramas(); }, [loadCronogramas]);
 
@@ -102,16 +99,14 @@ export default function CronogramaRevisao() {
     setLoading(true);
     Promise.all([getCronogramaTarefas(Number(cronogramaId)), getCronogramaResumo(Number(cronogramaId))])
       .then(([ts, rs]) => { 
-        console.log('CronogramaTarefas loaded:', ts);
         setTarefas(applyOrder(ts || [])); 
         setResumo(rs || null); 
       })
       .catch((err) => {
-        console.error('Error loading tasks:', err);
         toast.error(err.message || t('error_loading_tasks'));
       })
       .finally(() => setLoading(false));
-  }, [cronogramaId]);
+  }, [cronogramaId, applyOrder, t]);
 
   React.useEffect(() => { loadTarefas(); }, [loadTarefas]);
 
@@ -129,7 +124,7 @@ export default function CronogramaRevisao() {
 
   const handleViewEvidencias = async (taskId) => {
     setViewTaskId(taskId);
-    setViewEvidencias([]); // Clear previous
+    setViewEvidencias([]); 
     try {
       const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(taskId));
       setViewEvidencias(Array.isArray(list) ? list : []);
@@ -160,16 +155,13 @@ export default function CronogramaRevisao() {
     if (!newStart || !newEnd) return true;
     const ns = new Date(newStart).getTime();
     const ne = new Date(newEnd).getTime();
-    
     let min = ns;
     let max = ne;
-
     tarefas.forEach(t => {
       if (t.id === excludeId) return;
       if (t.data_inicio) min = Math.min(min, new Date(t.data_inicio).getTime());
       if (t.data_fim) max = Math.max(max, new Date(t.data_fim).getTime());
     });
-
     const diff = (max - min) / (1000 * 60 * 60 * 24);
     return diff <= 92;
   };
@@ -185,7 +177,7 @@ export default function CronogramaRevisao() {
     try {
       await uploadCronogramaTarefaEvidencia(Number(cronogramaId), Number(uploadTaskId), file);
       toast.success('Evidência enviada com sucesso');
-      if (selectedTaskId === uploadTaskId) loadEvidencias(); // Refresh if currently viewing this task
+      if (selectedTaskId === uploadTaskId) loadEvidencias();
     } catch (err) {
       toast.error(err.message || 'Erro ao enviar evidência');
     } finally {
@@ -198,12 +190,10 @@ export default function CronogramaRevisao() {
     try {
       if (!cronogramaId) { toast.error('Selecione um cronograma'); return; }
       if (!form.nome) { toast.error('Nome é obrigatório'); return; }
-      
       if (!checkDurationLimit(form.data_inicio, form.data_fim)) {
         toast.error('O cronograma não pode ultrapassar 92 dias');
         return;
       }
-
       const payload = {
         cronograma_id: Number(cronogramaId),
         tipo: form.tipo || 'Tarefa',
@@ -216,11 +206,9 @@ export default function CronogramaRevisao() {
         progresso_percentual: Math.max(0, Math.min(100, Number(form.progresso_percentual || 0))),
       };
       const created = await createCronogramaTarefa(Number(cronogramaId), payload);
-      
       if (form.file) {
         await uploadCronogramaTarefaEvidencia(Number(cronogramaId), created.id, form.file);
       }
-
       setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0, file: null });
       await loadTarefas();
       toast.success(t('task_added'));
@@ -262,7 +250,6 @@ export default function CronogramaRevisao() {
             toast.error('O cronograma não pode ultrapassar 92 dias');
             return;
         }
-
         const payload = {
           tipo: form.tipo || undefined,
           nome: form.nome || undefined,
@@ -346,61 +333,43 @@ export default function CronogramaRevisao() {
     } catch {}
   };
 
-  const columns = [
-    { key: 'view', header: 'Ver', render: (_, row) => (
-      <Button variant="ghost" size="sm" title="Visualizar Evidências" onClick={(e) => { e.stopPropagation(); handleViewEvidencias(row.id); }}>
-          <Eye className="w-5 h-5 text-blue-500" />
-      </Button>
-    ) },
-    { key: 'nome', header: 'Tarefa', render: (v, row) => {
-      let val = v || '';
-      let isTitle = row.tipo === 'Título';
-      const pattern = /^(\[TÍTULO\]|\(TÍTULO\))\s*/i;
-      if (pattern.test(val)) {
-        isTitle = true;
-        val = val.replace(pattern, '');
-      }
-      return (
-        <span className={isTitle ? 'uppercase font-bold text-slate-800 dark:text-slate-100' : ''}>{val}</span>
-      );
-    } },
-    { key: 'responsavel_id', header: 'Responsável', render: (v) => (users.find((u) => u.id === v)?.nome_completo || '') },
-    { key: 'data_inicio', header: 'Início', render: (v) => (v || '') },
-    { key: 'data_fim', header: 'Fim', render: (v) => (v || '') },
-    { key: 'status', header: 'Status' },
-    { key: 'progresso_percentual', header: '%', render: (v) => `${v ?? 0}%` },
-    { key: 'actions', header: 'Ações', render: (_, row) => (
-        <Button variant="ghost" size="sm" title="Upload de Evidência" onClick={(e) => { e.stopPropagation(); handleTableUploadClick(row.id); }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        </Button>
-    ) },
-  ];
-
+  // --- New Gantt Logic ---
   const timeline = React.useMemo(() => {
     const ds = tarefas.map((t) => toDate(t.data_inicio)).filter(Boolean);
-    const df = tarefas.map((t) => toDate(t.data_fim)).filter(Boolean);
-    if (ds.length === 0 || df.length === 0) return { start: new Date(), end: new Date() };
+    if (ds.length === 0) return { start: new Date() };
+    // Find min date
     const min = new Date(Math.min(...ds.map((d) => d.getTime())));
-    const max = new Date(Math.max(...df.map((d) => d.getTime())));
-    // Ensure at least 1 day duration to avoid division by zero
-    if (max.getTime() <= min.getTime()) {
-      max.setDate(min.getDate() + 7);
-    }
-    return { start: min, end: max };
+    // Normalize to UTC midnight to avoid timezone offsets affecting diffs
+    const start = new Date(Date.UTC(min.getUTCFullYear(), min.getUTCMonth(), min.getUTCDate()));
+    return { start };
   }, [tarefas]);
 
-  const ganttItems = React.useMemo(() => {
-    if (!timeline.start || !timeline.end) return [];
-    const total = timeline.end.getTime() - timeline.start.getTime();
-    const safeTotal = total > 0 ? total : 1;
-    return tarefas.map((t) => {
-      const di = toDate(t.data_inicio) || timeline.start;
-      const df = toDate(t.data_fim) || timeline.end;
-      const left = ((di.getTime() - timeline.start.getTime()) / safeTotal) * 100;
-      const width = ((df.getTime() - di.getTime()) / safeTotal) * 100;
-      return { id: t.id, nome: t.nome, left: Math.max(0, left), width: Math.max(0.5, width), status: t.status };
-    });
-  }, [timeline, tarefas]);
+  const totalDays = 60; 
+  const dayWidth = 40; // Increased width for better visibility
+
+  // Generate array of Date objects for the header
+  const headerDates = React.useMemo(() => {
+    const dates = [];
+    if (!timeline.start) return dates;
+    const s = new Date(timeline.start);
+    for (let i = 0; i < totalDays; i++) {
+        const d = new Date(s);
+        d.setUTCDate(s.getUTCDate() + i);
+        dates.push(d);
+    }
+    return dates;
+  }, [timeline.start, totalDays]);
+
+  const getStatusColor = (status, progress) => {
+    // Concluída or 100% -> Green/Slate
+    if (progress === 100 || status === 'Concluída') return 'bg-emerald-500 border-emerald-600';
+    // Atrasada -> Red
+    if (status === 'Atrasada') return 'bg-rose-500 border-rose-600';
+    // Em Andamento -> Blue striped
+    if (status === 'Em Andamento') return 'bg-blue-500 border-blue-600 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:10px_10px]';
+    // Pendente -> Slate/Gray striped
+    return 'bg-slate-400 border-slate-500 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:10px_10px]'; 
+  };
 
   return (
     <section>
@@ -422,7 +391,7 @@ export default function CronogramaRevisao() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 mb-4">
         <Select label="Período Aberto" value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
           <option value="">Selecione</option>
           {periodos.map((p) => (
@@ -441,72 +410,123 @@ export default function CronogramaRevisao() {
       </div>
 
       {resumo && (
-        <div className="px-4 mt-4 grid grid-cols-2 md:grid-cols-6 gap-2">
-          <div className="p-3 rounded-lg border">Total: {resumo.total_tarefas}</div>
-          <div className="p-3 rounded-lg border">Concluídas: {resumo.concluido}</div>
-          <div className="p-3 rounded-lg border">Em andamento: {resumo.em_andamento}</div>
-          <div className="p-3 rounded-lg border">Pendentes: {resumo.pendente}</div>
-          <div className="p-3 rounded-lg border">Atrasadas: {resumo.atrasada}</div>
-          <div className="p-3 rounded-lg border">Progresso: {resumo.progresso_percentual}%</div>
+        <div className="px-4 mb-4 grid grid-cols-2 md:grid-cols-6 gap-2">
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Total: {resumo.total_tarefas}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Concluídas: {resumo.concluido}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Em andamento: {resumo.em_andamento}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Pendentes: {resumo.pendente}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Atrasadas: {resumo.atrasada}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Progresso: {resumo.progresso_percentual}%</div>
         </div>
       )}
-      <div className="px-4 mt-4">
-        <Tabs value={activeTab} onChange={setActiveTab} items={[{ value: 'tarefas', label: 'Tarefas' }, { value: 'gantt', label: 'Gantt' }]} />
 
-        <TabPanel active={activeTab === 'tarefas'}>
-          <div className="mt-2">
-            <Table
-              columns={columns}
-              data={tarefas}
-              loading={loading}
-              onRowClick={(row) => setSelectedTaskId(row.id)}
-              getRowClassName={(row) => (row.id === selectedTaskId ? 'bg-blue-50 dark:bg-blue-900/30' : undefined)}
-            />
-          </div>
-          {editingTaskId && (
-            <div className="mt-6">
-              <div className="text-lg font-semibold mb-2">Editar Tarefa</div>
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                <Select label="Tipo" value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
-                  {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s}</option>))}
-                </Select>
-                <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-                <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
-                </Select>
-                <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
-                <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
-                <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-                  {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
-                </Select>
-                <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
-              </div>
-              <div className="mt-3 flex gap-2">
-                <Button onClick={onSave} disabled={!cronogramaId}>{t('save')}</Button>
-                <Button variant="secondary" onClick={() => { setEditingTaskId(null); setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 }); }}>{t('cancel')}</Button>
-              </div>
+      {/* Main Combined View */}
+      <div className="mx-4 overflow-auto border rounded-lg h-[600px] relative bg-white dark:bg-slate-950 shadow-sm">
+        {/* Header */}
+        <div className="flex min-w-max border-b bg-slate-100 dark:bg-slate-900 sticky top-0 z-40 font-semibold text-xs text-slate-700 dark:text-slate-300 shadow-sm">
+            <div className="sticky left-0 z-50 bg-slate-100 dark:bg-slate-900 w-[40px] p-2 border-r flex items-center justify-center">
+              <Eye size={16} />
             </div>
-          )}
-        </TabPanel>
-
-        <TabPanel active={activeTab === 'gantt'}>
-          <div className="mt-2">
-            <div className="text-lg font-semibold mb-2">Gantt</div>
-            <div className="relative w-full rounded-lg border overflow-auto bg-slate-50 dark:bg-slate-900/50" style={{ height: Math.max(300, ganttItems.length * 40 + 40) + 'px' }}>
-              <div className="absolute inset-0 m-4">
-                {ganttItems.map((g, idx) => (
-                  <div key={g.id} title={`${g.nome} (${g.status})`}
-                       className={"absolute h-6 rounded-md shadow-sm border border-black/10 flex items-center px-2 text-xs text-white overflow-hidden whitespace-nowrap " + (g.status === 'Concluída' ? 'bg-emerald-500' : g.status === 'Em Andamento' ? 'bg-blue-500' : g.status === 'Atrasada' ? 'bg-red-500' : 'bg-slate-400')}
-                       style={{ left: `${g.left}%`, width: `${g.width}%`, top: `${idx * 32}px` }}>
-                       {g.width > 5 && g.nome}
-                  </div>
+            <div className="sticky left-[40px] z-50 bg-slate-100 dark:bg-slate-900 w-[300px] p-2 border-r flex items-center">Atividade</div>
+            <div className="sticky left-[340px] z-50 bg-slate-100 dark:bg-slate-900 w-[150px] p-2 border-r flex items-center">Responsável</div>
+            <div className="sticky left-[490px] z-50 bg-slate-100 dark:bg-slate-900 w-[90px] p-2 border-r flex items-center">Início</div>
+            <div className="sticky left-[580px] z-50 bg-slate-100 dark:bg-slate-900 w-[90px] p-2 border-r flex items-center">Fim</div>
+            <div className="sticky left-[670px] z-50 bg-slate-100 dark:bg-slate-900 w-[100px] p-2 border-r flex items-center">Status</div>
+            <div className="sticky left-[770px] z-50 bg-slate-100 dark:bg-slate-900 w-[60px] p-2 border-r flex items-center text-center">Execução</div>
+            <div className="sticky left-[830px] z-50 bg-slate-100 dark:bg-slate-900 w-[60px] p-2 border-r flex items-center text-center">Ações</div>
+            
+            {/* Gantt Header */}
+            <div className="flex">
+                <div className="flex-shrink-0 border-r text-center flex items-center justify-center text-[10px] text-slate-500 font-bold bg-amber-100 dark:bg-amber-900/20 px-2 sticky left-[890px]">PERÍODOS</div>
+                {headerDates.map(d => (
+                    <div key={d.toISOString()} className="flex-shrink-0 border-r text-center flex flex-col items-center justify-center text-[10px] text-slate-500" style={{ width: dayWidth }}>
+                        <span className="font-bold">{d.getUTCDate()}</span>
+                        <span className="text-[9px]">{d.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }).replace('.','')}</span>
+                    </div>
                 ))}
-              </div>
             </div>
-          </div>
-        </TabPanel>
+        </div>
+
+        {/* Body */}
+        <div className="min-w-max">
+            {tarefas.map((t, idx) => {
+                const isTitle = t.tipo === 'Título' || /^(\[TÍTULO\]|\(TÍTULO\))/i.test(t.nome);
+                const startDate = toDate(t.data_inicio);
+                const endDate = toDate(t.data_fim);
+                let startDiff = 0;
+                let duration = 0;
+
+                if (startDate && timeline.start) {
+                    // Ensure startDate is treated as UTC midnight for comparison
+                    const s = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+                    const diffTime = s.getTime() - timeline.start.getTime();
+                    startDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    const end = endDate ? new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate())) : s;
+                    const durTime = end.getTime() - s.getTime();
+                    duration = Math.floor(durTime / (1000 * 60 * 60 * 24)) + 1;
+                }
+
+                const isSelected = t.id === selectedTaskId;
+                const rowBg = isTitle ? 'bg-slate-200 dark:bg-slate-800' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950';
+                const stickyBg = isTitle ? 'bg-slate-200 dark:bg-slate-800' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/50';
+
+                return (
+                    <div key={t.id} 
+                         className={`flex border-b text-sm group hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${rowBg}`}
+                         onClick={() => setSelectedTaskId(t.id)}>
+                        
+                        {/* Sticky Columns */}
+                        <div className={`sticky left-0 z-30 w-[40px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Visualizar Evidências" onClick={(e) => { e.stopPropagation(); handleViewEvidencias(t.id); }}>
+                                <Eye className="w-4 h-4 text-blue-500" />
+                            </Button>
+                        </div>
+                        <div className={`sticky left-[40px] z-30 w-[300px] p-2 border-r flex items-center gap-2 truncate ${stickyBg} ${isTitle ? 'font-bold uppercase text-slate-700 dark:text-slate-200' : ''}`}>
+                             {!isTitle && <ClipboardList size={14} className="text-slate-400 flex-shrink-0" />}
+                             <span title={t.nome}>{t.nome.replace(/^(\[TÍTULO\]|\(TÍTULO\))\s*/i, '')}</span>
+                        </div>
+                        <div className={`sticky left-[340px] z-30 w-[150px] p-2 border-r flex items-center truncate ${stickyBg}`}>
+                             {users.find((u) => u.id === t.responsavel_id)?.nome_completo || ''}
+                        </div>
+                        <div className={`sticky left-[490px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
+                             {t.data_inicio}
+                        </div>
+                        <div className={`sticky left-[580px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
+                             {t.data_fim}
+                        </div>
+                        <div className={`sticky left-[670px] z-30 w-[100px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
+                             {t.status}
+                        </div>
+                        <div className={`sticky left-[770px] z-30 w-[60px] p-2 border-r flex items-center justify-center text-xs ${stickyBg}`}>
+                             {t.progresso_percentual ?? 0}%
+                        </div>
+                        <div className={`sticky left-[830px] z-30 w-[60px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Upload" onClick={(e) => { e.stopPropagation(); handleTableUploadClick(t.id); }}>
+                                <Upload size={14} />
+                            </Button>
+                        </div>
+
+                        {/* Gantt Cell */}
+                        <div className="relative h-9 flex items-center" style={{ width: totalDays * dayWidth }}>
+                            {/* Grid Lines Background */}
+                            <div className="absolute inset-0 flex pointer-events-none">
+                                {Array.from({ length: totalDays }).map((_, i) => <div key={i} className="flex-shrink-0 border-r h-full" style={{ width: dayWidth }}></div>)}
+                            </div>
+                            
+                            {/* Bar */}
+                            {!isTitle && startDate && (
+                                <div className={`absolute h-5 rounded-sm shadow-sm border transition-all ${getStatusColor(t.status, t.progresso_percentual)}`}
+                                    style={{ left: startDiff * dayWidth, width: Math.max(dayWidth / 2, duration * dayWidth) }}>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
       </div>
+
       {showNewModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
@@ -538,6 +558,36 @@ export default function CronogramaRevisao() {
           </div>
         </div>
       )}
+
+      {/* Editing Form (if needed outside modal, or just reuse modal? The original code had a separate editing form below the table in the TabPanel. I will put it in a Modal or below the table.) */}
+      {editingTaskId && !showNewModal && (
+         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
+              <div className="text-lg font-semibold mb-2">Editar Tarefa</div>
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <Select label="Tipo" value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
+                  {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s}</option>))}
+                </Select>
+                <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+                <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
+                </Select>
+                <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+                <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
+                <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                  {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
+                </Select>
+                <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
+              </div>
+              <div className="mt-3 flex gap-2 justify-end">
+                <Button variant="secondary" onClick={() => { setEditingTaskId(null); }}>{t('cancel')}</Button>
+                <Button onClick={onSave} disabled={!cronogramaId}>{t('save')}</Button>
+              </div>
+            </div>
+         </div>
+      )}
+
       {viewTaskId && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl p-4 max-h-[80vh] overflow-y-auto">
