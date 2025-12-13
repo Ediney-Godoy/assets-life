@@ -99,8 +99,15 @@ export default function CronogramaRevisao() {
     if (!cronogramaId) { setTarefas([]); setResumo(null); return; }
     setLoading(true);
     Promise.all([getCronogramaTarefas(Number(cronogramaId)), getCronogramaResumo(Number(cronogramaId))])
-      .then(([ts, rs]) => { setTarefas(applyOrder(ts || [])); setResumo(rs || null); })
-      .catch((err) => toast.error(err.message || t('error_loading_tasks')))
+      .then(([ts, rs]) => { 
+        console.log('CronogramaTarefas loaded:', ts);
+        setTarefas(applyOrder(ts || [])); 
+        setResumo(rs || null); 
+      })
+      .catch((err) => {
+        console.error('Error loading tasks:', err);
+        toast.error(err.message || t('error_loading_tasks'));
+      })
       .finally(() => setLoading(false));
   }, [cronogramaId]);
 

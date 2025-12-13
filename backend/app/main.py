@@ -925,17 +925,33 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 )
                 rows = db.execute(sql_min, {"cid": cronograma_id}).mappings().all()
 
+        if rows is None:
+             # Fallback 3: minimal columns
+             try:
+                 sql_minimal = sa.text(
+                     "SELECT id, cronograma_id, nome, status, data_fim FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
+                 )
+                 rows = db.execute(sql_minimal, {"cid": cronograma_id}).mappings().all()
+             except Exception:
+                 rows = []
+
         now = date.today()
         result = []
         for r in rows:
             status = r["status"]
-            df = r["data_fim"]
+            df = r.get("data_fim") # Use .get() just in case
             if df and isinstance(df, date) and df < now and status != "Concluída":
                 status = "Atrasada"
             result.append(CronogramaTarefa(
-                id=r["id"], cronograma_id=r["cronograma_id"], tipo=r["tipo"], nome=r["nome"],
-                descricao=r.get("descricao"), data_inicio=r.get("data_inicio"), data_fim=r.get("data_fim"),
-                responsavel_id=r.get("responsavel_id"), status=status,
+                id=r["id"], 
+                cronograma_id=r["cronograma_id"], 
+                tipo=r.get("tipo", "Tarefa"), 
+                nome=r["nome"],
+                descricao=r.get("descricao"), 
+                data_inicio=r.get("data_inicio"), 
+                data_fim=df,
+                responsavel_id=r.get("responsavel_id"), 
+                status=status,
                 progresso_percentual=r.get("progresso_percentual") or 0,
                 dependente_tarefa_id=r.get("dependente_tarefa_id"),
                 criado_em=r.get("criado_em")
