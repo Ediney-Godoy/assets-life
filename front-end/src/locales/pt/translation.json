@@ -270,6 +270,7 @@
   "dashboard_metric_fully_depreciated": "Ativos totalmente depreciados",
   "dashboard_chart_title": "Atribuídos por usuário e a atribuir",
   "dashboard_chart_justifications_title": "Justificativas das revisões",
+  "dashboard_chart_increment_title": "Tipos de Incremento",
   "dashboard_chart_evolution_title": "Evolução da revisão (Revisados vs Restantes)",
   "dashboard_reviewed": "Revisados",
   "dashboard_remaining": "Restantes",

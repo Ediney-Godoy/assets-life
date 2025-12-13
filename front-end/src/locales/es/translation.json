@@ -245,6 +245,7 @@
   "dashboard_metric_fully_depreciated": "Activos totalmente depreciados",
   "dashboard_chart_title": "Asignados por usuario y por asignar",
   "dashboard_chart_justifications_title": "Justificaciones de las revisiones",
+  "dashboard_chart_increment_title": "Tipos de Incremento",
   "dashboard_others_justifications": "Otras justificaciones",
   "dashboard_no_data": "No hay datos de revisión para mostrar.",
 

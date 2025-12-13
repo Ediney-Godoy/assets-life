@@ -239,6 +239,7 @@
   "dashboard_metric_fully_depreciated": "Fully depreciated assets",
   "dashboard_chart_title": "Assigned per user and to assign",
   "dashboard_chart_justifications_title": "Review justifications",
+  "dashboard_chart_increment_title": "Increment Types",
   "dashboard_chart_evolution_title": "Review evolution (Reviewed vs Remaining)",
   "dashboard_reviewed": "Reviewed",
   "dashboard_remaining": "Remaining",

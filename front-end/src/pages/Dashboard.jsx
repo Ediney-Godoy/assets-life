@@ -17,7 +17,7 @@ export default function DashboardPage({ registrationsOnly }) {
   const [companyId, setCompanyId] = React.useState('');
   const [metrics, setMetrics] = React.useState({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
   const [chartData, setChartData] = React.useState([]);
-  const [justifChartData, setJustifChartData] = React.useState([]);
+  const [incrementChartData, setIncrementChartData] = React.useState([]);
   const [rotationIndex, setRotationIndex] = React.useState(0);
   const [filterPanelOpen, setFilterPanelOpen] = React.useState(false);
 
@@ -36,7 +36,7 @@ export default function DashboardPage({ registrationsOnly }) {
     if (registrationsOnly) return;
     if (!companyId) {
       setChartData([]);
-      setJustifChartData([]);
+      setIncrementChartData([]);
       setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
       return;
     }
@@ -57,14 +57,15 @@ export default function DashboardPage({ registrationsOnly }) {
           const delegatedIds = new Set(delegsArr.map((d) => d.ativo_id));
           const assignedItems = delegatedIds.size;
           const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          const reviewedItems = itemsArr.filter((i) => {
+          const reviewedList = itemsArr.filter((i) => {
             const s = normalize(i.status);
             const statusReviewed = (s === 'revisado' || s === 'revisada');
             const adjusted = Boolean(i.alterado);
             const hasJustification = Boolean(String(i.justificativa || '').trim());
             const hasCondicao = Boolean(String(i.condicao_fisica || '').trim());
             return statusReviewed || adjusted || hasJustification || hasCondicao;
-          }).length;
+          });
+          const reviewedItems = reviewedList.length;
           const reviewedPct = totalItems ? Number(((reviewedItems / totalItems) * 100).toFixed(1)) : 0;
           const adjustedItems = itemsArr.filter((i) => Boolean(i.alterado)).length;
           const groups = itemsArr.reduce((acc, it) => {
@@ -91,41 +92,48 @@ export default function DashboardPage({ registrationsOnly }) {
           series.push({ name: t('dashboard_unassigned'), y: unassigned });
           setChartData(series);
 
-          const justifs = itemsArr
-            .map((it) => String(it.justificativa || '').trim())
-            .filter((j) => j.length > 0);
-
-          if (justifs.length > 0) {
-            const countsMap = new Map();
-            justifs.forEach((j) => {
-              const key = j.toLowerCase();
-              const prev = countsMap.get(key);
-              if (prev) {
-                prev.count += 1;
-              } else {
-                countsMap.set(key, { label: j, count: 1 });
+          if (reviewedList.length > 0) {
+            let inc = 0, dec = 0, keep = 0;
+            reviewedList.forEach((item) => {
+              if (!item.alterado) {
+                keep += 1;
+                return;
               }
+              if (!item.data_fim_revisada) {
+                keep += 1;
+                return;
+              }
+              const start = new Date(item.data_inicio_depreciacao);
+              const endOriginal = new Date(item.data_fim_depreciacao);
+              const endRevised = new Date(item.data_fim_revisada);
+              const getMonths = (d1, d2) => (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+              const originalMonths = getMonths(start, endOriginal);
+              const revisedMonths = getMonths(start, endRevised);
+
+              if (revisedMonths > originalMonths) inc += 1;
+              else if (revisedMonths < originalMonths) dec += 1;
+              else keep += 1;
             });
-            const entries = Array.from(countsMap.values()).sort((a, b) => b.count - a.count);
-            const TOP_N = 8;
-            const top = entries.slice(0, TOP_N).map((e) => ({ name: e.label, y: e.count }));
-            const others = entries.slice(TOP_N).reduce((acc, e) => acc + e.count, 0);
-            if (others > 0) top.push({ name: t('dashboard_others_justifications'), y: others });
-            setJustifChartData(top);
+
+            setIncrementChartData([
+              { name: t('increment_increase'), y: inc },
+              { name: t('increment_decrease'), y: dec },
+              { name: t('increment_keep'), y: keep },
+            ]);
           } else {
-            setJustifChartData([]);
+            setIncrementChartData([]);
           }
 
         } else {
           setChartData([]);
-          setJustifChartData([]);
+          setIncrementChartData([]);
           setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
         }
       } catch (err) {
         console.error(err);
         setChartData([]);
-        setJustifChartData([]);
-        setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
+          setIncrementChartData([]);
+          setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
       }
     };
     init();
@@ -175,7 +183,7 @@ export default function DashboardPage({ registrationsOnly }) {
   }, [metrics, t]);
 
   const renderRotatingChart = (slotOffset = 0) => {
-    const sequence = ['assignments', 'evolution', 'adjusted', 'justifications'];
+    const sequence = ['assignments', 'evolution', 'adjusted', 'increment'];
     const idx = (rotationIndex + slotOffset) % sequence.length;
     const type = sequence[idx];
 
@@ -188,11 +196,11 @@ export default function DashboardPage({ registrationsOnly }) {
         </div>
       );
     }
-    if (type === 'justifications') {
-      return justifChartData.length > 0 ? (
+    if (type === 'increment') {
+      return incrementChartData.length > 0 ? (
         <BarChart
-          data={justifChartData}
-          title={t('dashboard_chart_justifications_title')}
+          data={incrementChartData}
+          title={t('dashboard_chart_increment_title')}
           horizontal={true}
           showPercent={true}
         />
