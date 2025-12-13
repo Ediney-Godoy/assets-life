@@ -886,66 +886,59 @@ def get_cronograma(cronograma_id: int, db: Session = Depends(get_db)):
 @app.get("/cronogramas/{cronograma_id}/tarefas", response_model=List[CronogramaTarefa])
 def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
     try:
+        # Check if cronograma exists
         c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
         if not c:
             raise HTTPException(status_code=404, detail="Cronograma não encontrado")
 
-        select_cols = [
-            "id", "cronograma_id",
-            "nome", "descricao",
-            "data_inicio", "data_fim",
-            "responsavel_id", "status",
-            "progresso_percentual", "dependente_tarefa_id",
+        # Explicitly define columns that are known to exist in the migration (a4c5d6e7f8a9)
+        # We exclude 'tipo' because it is not in the migration.
+        # We hardcode 'Tarefa' as tipo in the selection to satisfy the Pydantic model.
+        
+        # Columns to select from DB
+        db_cols = [
+            "id", "cronograma_id", "nome", "descricao",
+            "data_inicio", "data_fim", "responsavel_id", 
+            "status", "progresso_percentual", "dependente_tarefa_id",
             "criado_em"
         ]
-        cols_sql_try = "COALESCE(tipo, 'Tarefa') AS tipo, " + ", ".join(select_cols)
-        sql_try = sa.text(
-            f"SELECT {cols_sql_try} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
-        )
-        rows = None
-        try:
-            rows = db.execute(sql_try, {"cid": cronograma_id}).mappings().all()
-        except Exception:
-            # Fallback 1: assume 'tipo' column is missing
-            try:
-                cols_sql_fb = "'Tarefa' AS tipo, " + ", ".join(select_cols)
-                sql_fb = sa.text(
-                    f"SELECT {cols_sql_fb} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
-                )
-                rows = db.execute(sql_fb, {"cid": cronograma_id}).mappings().all()
-            except Exception:
-                # Fallback 2: maybe 'dependente_tarefa_id' or 'criado_em' are also missing?
-                min_cols = [
-                    "id", "cronograma_id", "nome", "descricao", "data_inicio", "data_fim",
-                    "responsavel_id", "status", "progresso_percentual"
-                ]
-                cols_sql_min = "'Tarefa' AS tipo, " + ", ".join(min_cols)
-                sql_min = sa.text(
-                    f"SELECT {cols_sql_min} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
-                )
-                rows = db.execute(sql_min, {"cid": cronograma_id}).mappings().all()
+        
+        # Build the SELECT statement
+        # We use 'Tarefa' as tipo for the Pydantic model
+        cols_str = ", ".join(db_cols)
+        sql = sa.text(f"SELECT {cols_str} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id")
 
-        if rows is None:
-             # Fallback 3: minimal columns
-             try:
-                 sql_minimal = sa.text(
-                     "SELECT id, cronograma_id, nome, status, data_fim FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"
-                 )
-                 rows = db.execute(sql_minimal, {"cid": cronograma_id}).mappings().all()
-             except Exception:
-                 rows = []
+        rows = []
+        try:
+            # Try full fetch first
+            rows = db.execute(sql, {"cid": cronograma_id}).mappings().all()
+        except Exception as e:
+            print(f"Full fetch failed: {e}")
+            # Fallback: Minimal fetch (id, nome, status, data_fim) which are critical
+            # We assume 'tipo' is 'Tarefa'
+            try:
+                sql_min = sa.text("SELECT id, cronograma_id, nome, status, data_fim FROM cronogramas_tarefas WHERE cronograma_id = :cid")
+                rows = db.execute(sql_min, {"cid": cronograma_id}).mappings().all()
+            except Exception as e2:
+                print(f"Minimal fetch failed: {e2}")
+                return []
 
         now = date.today()
         result = []
         for r in rows:
-            status = r["status"]
-            df = r.get("data_fim") # Use .get() just in case
+            # Safe extraction of values
+            status = r.get("status", "Pendente")
+            df = r.get("data_fim")
+            
+            # Check for delay
             if df and isinstance(df, date) and df < now and status != "Concluída":
                 status = "Atrasada"
-            result.append(CronogramaTarefa(
+            
+            # Construct Pydantic model safely
+            task = CronogramaTarefa(
                 id=r["id"], 
                 cronograma_id=r["cronograma_id"], 
-                tipo=r.get("tipo", "Tarefa"), 
+                tipo="Tarefa", # Hardcoded as it's missing in DB
                 nome=r["nome"],
                 descricao=r.get("descricao"), 
                 data_inicio=r.get("data_inicio"), 
@@ -955,12 +948,14 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 progresso_percentual=r.get("progresso_percentual") or 0,
                 dependente_tarefa_id=r.get("dependente_tarefa_id"),
                 criado_em=r.get("criado_em")
-            ))
+            )
+            result.append(task)
+            
         return result
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error listing cronograma tasks: {e}")
+        print(f"Critical error in list_cronograma_tarefas: {e}")
         return []
 
 @app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
