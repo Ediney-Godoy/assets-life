@@ -905,6 +905,7 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         
         # Build the SELECT statement
         # We use 'Tarefa' as tipo for the Pydantic model
+        # FIX: Ensure we only select existing columns to prevent errors
         cols_str = ", ".join(db_cols)
         sql = sa.text(f"SELECT {cols_str} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id")
 
