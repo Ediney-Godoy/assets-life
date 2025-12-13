@@ -45,6 +45,8 @@ export default function CronogramaRevisao() {
   const [showNewModal, setShowNewModal] = React.useState(false);
   const [evidencias, setEvidencias] = React.useState([]);
   const [uploadFile, setUploadFile] = React.useState(null);
+  const [viewTaskId, setViewTaskId] = React.useState(null);
+  const [viewEvidencias, setViewEvidencias] = React.useState([]);
 
   const loadBase = React.useCallback(() => {
     setLoading(true);
@@ -124,6 +126,17 @@ export default function CronogramaRevisao() {
   }, [cronogramaId, selectedTaskId]);
 
   React.useEffect(() => { loadEvidencias(); }, [loadEvidencias]);
+
+  const handleViewEvidencias = async (taskId) => {
+    setViewTaskId(taskId);
+    setViewEvidencias([]); // Clear previous
+    try {
+      const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(taskId));
+      setViewEvidencias(Array.isArray(list) ? list : []);
+    } catch {
+      toast.error('Erro ao carregar evidências');
+    }
+  };
 
   const onCreateCronograma = async () => {
     const p = periodos.find((x) => String(x.id) === String(periodoId));
@@ -334,6 +347,11 @@ export default function CronogramaRevisao() {
   };
 
   const columns = [
+    { key: 'view', header: 'Ver', render: (_, row) => (
+      <Button variant="ghost" size="sm" title="Visualizar Evidências" onClick={(e) => { e.stopPropagation(); handleViewEvidencias(row.id); }}>
+          <img src="/view_vision_eye_icon_195036.svg" alt="Ver" className="w-5 h-5" />
+      </Button>
+    ) },
     { key: 'nome', header: 'Tarefa', render: (v, row) => {
       let val = v || '';
       let isTitle = row.tipo === 'Título';
@@ -567,6 +585,50 @@ export default function CronogramaRevisao() {
             <div className="mt-3 flex gap-2 justify-end">
               <Button variant="secondary" onClick={() => { setShowNewModal(false); }}>{t('cancel')}</Button>
               <Button onClick={onAddTask} disabled={!cronogramaId}>{t('add')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {viewTaskId && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl p-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-lg font-semibold">Evidências da Tarefa</div>
+              <Button variant="ghost" size="sm" onClick={() => setViewTaskId(null)}>✕</Button>
+            </div>
+            
+            {viewEvidencias.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">Nenhuma evidência encontrada.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {viewEvidencias.map((ev) => (
+                  <div key={ev.id} className="p-3 rounded border flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+                    <div>
+                      <div className="font-medium break-all">{ev.nome_arquivo}</div>
+                      <div className="text-xs text-slate-500">{Math.round((ev.tamanho_bytes || 0) / 1024)} KB</div>
+                    </div>
+                    <Button variant="secondary" size="sm" onClick={async () => {
+                      try {
+                        const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(viewTaskId), Number(ev.id));
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = ev.nome_arquivo || 'arquivo';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (err) {
+                        toast.error(err?.message || t('download_failed'));
+                      }
+                    }}>
+                      Baixar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="mt-4 flex justify-end">
+              <Button onClick={() => setViewTaskId(null)}>Fechar</Button>
             </div>
           </div>
         </div>
