@@ -1025,15 +1025,40 @@ def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate
 
 @app.put("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}", response_model=CronogramaTarefa)
 def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: CronogramaTarefaUpdate, db: Session = Depends(get_db)):
-    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
-    if not t:
-        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-    data = payload.dict(exclude_unset=True)
-    for k, v in data.items():
-        setattr(t, k, v)
-    db.commit()
-    db.refresh(t)
-    return t
+    try:
+        t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
+        if not t:
+            raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+        data = payload.dict(exclude_unset=True)
+        for k, v in data.items():
+            setattr(t, k, v)
+        db.commit()
+        db.refresh(t)
+        return t
+    except (sa.exc.ProgrammingError, sa.exc.DBAPIError):
+        db.rollback()
+        # Fallback raw SQL update due to missing columns (e.g. tipo)
+        data = payload.dict(exclude_unset=True)
+        params = {"id": tarefa_id, "cid": cronograma_id}
+        clauses = []
+        for k, v in data.items():
+            if k == 'tipo': continue
+            clauses.append(f"{k} = :{k}")
+            params[k] = v
+        
+        if clauses:
+            sql = sa.text(f"UPDATE cronogramas_tarefas SET {', '.join(clauses)} WHERE id = :id AND cronograma_id = :cid")
+            res = db.execute(sql, params)
+            db.commit()
+            if res.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+        
+        # Fetch updated
+        cols = "id, cronograma_id, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
+        row = db.execute(sa.text(f"SELECT {cols} FROM cronogramas_tarefas WHERE id=:id"), {"id": tarefa_id}).mappings().first()
+        if not row:
+             raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+        return CronogramaTarefa(tipo="Tarefa", **row)
 
 # Evidências de tarefas
 class CronogramaTarefaEvidencia(BaseModel):
@@ -1050,9 +1075,11 @@ class CronogramaTarefaEvidencia(BaseModel):
 @app.get("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias", response_model=List[CronogramaTarefaEvidencia])
 def list_evidencias(cronograma_id: int, tarefa_id: int, db: Session = Depends(get_db)):
     try:
-        t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
-        if not t:
-            raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+        # Use Raw SQL to check task existence to avoid missing column errors
+        exists = db.execute(sa.text("SELECT id FROM cronogramas_tarefas WHERE id=:id AND cronograma_id=:cid"), {"id": tarefa_id, "cid": cronograma_id}).scalar()
+        if not exists:
+             raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+             
         items = db.query(CronogramaTarefaEvidenciaModel).filter(CronogramaTarefaEvidenciaModel.tarefa_id == tarefa_id).order_by(CronogramaTarefaEvidenciaModel.id.desc()).all()
         return items
     except HTTPException:
@@ -1063,8 +1090,9 @@ def list_evidencias(cronograma_id: int, tarefa_id: int, db: Session = Depends(ge
 
 @app.post("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias", response_model=CronogramaTarefaEvidencia)
 async def upload_evidencia(cronograma_id: int, tarefa_id: int, file: UploadFile = File(...), current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
-    if not t:
+    # Raw SQL check
+    exists = db.execute(sa.text("SELECT id FROM cronogramas_tarefas WHERE id=:id AND cronograma_id=:cid"), {"id": tarefa_id, "cid": cronograma_id}).scalar()
+    if not exists:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
     content = await file.read()
     if not content:
@@ -1084,8 +1112,8 @@ async def upload_evidencia(cronograma_id: int, tarefa_id: int, file: UploadFile 
 
 @app.get("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias/{evidencia_id}")
 def download_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db: Session = Depends(get_db)):
-    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
-    if not t:
+    exists = db.execute(sa.text("SELECT id FROM cronogramas_tarefas WHERE id=:id AND cronograma_id=:cid"), {"id": tarefa_id, "cid": cronograma_id}).scalar()
+    if not exists:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
     ev = db.query(CronogramaTarefaEvidenciaModel).filter(CronogramaTarefaEvidenciaModel.id == evidencia_id, CronogramaTarefaEvidenciaModel.tarefa_id == tarefa_id).first()
     if not ev:
@@ -1097,8 +1125,8 @@ def download_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db
 
 @app.delete("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias/{evidencia_id}")
 def delete_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db: Session = Depends(get_db)):
-    t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
-    if not t:
+    exists = db.execute(sa.text("SELECT id FROM cronogramas_tarefas WHERE id=:id AND cronograma_id=:cid"), {"id": tarefa_id, "cid": cronograma_id}).scalar()
+    if not exists:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
     ev = db.query(CronogramaTarefaEvidenciaModel).filter(CronogramaTarefaEvidenciaModel.id == evidencia_id, CronogramaTarefaEvidenciaModel.tarefa_id == tarefa_id).first()
     if not ev:
