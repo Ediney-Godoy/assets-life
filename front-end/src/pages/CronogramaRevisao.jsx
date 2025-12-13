@@ -334,9 +334,18 @@ export default function CronogramaRevisao() {
   };
 
   const columns = [
-    { key: 'nome', header: 'Tarefa', render: (v, row) => (
-      <span className={row.tipo === 'Título' ? 'uppercase font-bold text-slate-800 dark:text-slate-100' : ''}>{v}</span>
-    ) },
+    { key: 'nome', header: 'Tarefa', render: (v, row) => {
+      let val = v || '';
+      let isTitle = row.tipo === 'Título';
+      const pattern = /^(\[TÍTULO\]|\(TÍTULO\))\s*/i;
+      if (pattern.test(val)) {
+        isTitle = true;
+        val = val.replace(pattern, '');
+      }
+      return (
+        <span className={isTitle ? 'uppercase font-bold text-slate-800 dark:text-slate-100' : ''}>{val}</span>
+      );
+    } },
     { key: 'responsavel_id', header: 'Responsável', render: (v) => (users.find((u) => u.id === v)?.nome_completo || '') },
     { key: 'data_inicio', header: 'Início', render: (v) => (v || '') },
     { key: 'data_fim', header: 'Fim', render: (v) => (v || '') },
