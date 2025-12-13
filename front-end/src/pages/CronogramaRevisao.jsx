@@ -140,11 +140,59 @@ export default function CronogramaRevisao() {
     }
   };
 
-  const onAddTask = async () => {
-    if (!cronogramaId) return toast.error(t('select_cronogram'));
-    if (!form.nome) return toast.error(t('field_required'));
+  const [uploadTaskId, setUploadTaskId] = React.useState(null);
+  const fileInputRef = React.useRef(null);
+
+  const checkDurationLimit = (newStart, newEnd, excludeId = null) => {
+    if (!newStart || !newEnd) return true;
+    const ns = new Date(newStart).getTime();
+    const ne = new Date(newEnd).getTime();
+    
+    let min = ns;
+    let max = ne;
+
+    tarefas.forEach(t => {
+      if (t.id === excludeId) return;
+      if (t.data_inicio) min = Math.min(min, new Date(t.data_inicio).getTime());
+      if (t.data_fim) max = Math.max(max, new Date(t.data_fim).getTime());
+    });
+
+    const diff = (max - min) / (1000 * 60 * 60 * 24);
+    return diff <= 92;
+  };
+
+  const handleTableUploadClick = (id) => {
+    setUploadTaskId(id);
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  const handleTableFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !uploadTaskId) return;
     try {
+      await uploadCronogramaTarefaEvidencia(Number(cronogramaId), Number(uploadTaskId), file);
+      toast.success('Evidência enviada com sucesso');
+      if (selectedTaskId === uploadTaskId) loadEvidencias(); // Refresh if currently viewing this task
+    } catch (err) {
+      toast.error(err.message || 'Erro ao enviar evidência');
+    } finally {
+      setUploadTaskId(null);
+      e.target.value = '';
+    }
+  };
+
+  const onAddTask = async () => {
+    try {
+      if (!cronogramaId) { toast.error('Selecione um cronograma'); return; }
+      if (!form.nome) { toast.error('Nome é obrigatório'); return; }
+      
+      if (!checkDurationLimit(form.data_inicio, form.data_fim)) {
+        toast.error('O cronograma não pode ultrapassar 92 dias');
+        return;
+      }
+
       const payload = {
+        cronograma_id: Number(cronogramaId),
         tipo: form.tipo || 'Tarefa',
         nome: form.nome,
         descricao: '',
@@ -154,8 +202,13 @@ export default function CronogramaRevisao() {
         status: form.status || 'Pendente',
         progresso_percentual: Math.max(0, Math.min(100, Number(form.progresso_percentual || 0))),
       };
-      await createCronogramaTarefa(Number(cronogramaId), payload);
-      setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 });
+      const created = await createCronogramaTarefa(Number(cronogramaId), payload);
+      
+      if (form.file) {
+        await uploadCronogramaTarefaEvidencia(Number(cronogramaId), created.id, form.file);
+      }
+
+      setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0, file: null });
       await loadTarefas();
       toast.success(t('task_added'));
       setShowNewModal(false);
@@ -167,7 +220,7 @@ export default function CronogramaRevisao() {
   const onNew = () => {
     setEditingTaskId(null);
     setSelectedTaskId(null);
-    setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0 });
+    setForm({ nome: '', tipo: 'Tarefa', responsavel_id: '', data_inicio: '', data_fim: '', status: 'Pendente', progresso_percentual: 0, file: null });
     setShowNewModal(true);
   };
 
@@ -184,6 +237,7 @@ export default function CronogramaRevisao() {
       data_fim: t.data_fim || '',
       status: t.status || 'Pendente',
       progresso_percentual: Number(t.progresso_percentual ?? 0),
+      file: null
     });
     toast.success(t('editing_task'));
   };
@@ -191,6 +245,11 @@ export default function CronogramaRevisao() {
   const onSave = async () => {
     try {
       if (editingTaskId) {
+        if (!checkDurationLimit(form.data_inicio, form.data_fim, editingTaskId)) {
+            toast.error('O cronograma não pode ultrapassar 92 dias');
+            return;
+        }
+
         const payload = {
           tipo: form.tipo || undefined,
           nome: form.nome || undefined,
@@ -276,32 +335,43 @@ export default function CronogramaRevisao() {
 
   const columns = [
     { key: 'nome', header: 'Tarefa', render: (v, row) => (
-      <span className={row.tipo === 'Título' ? 'uppercase font-bold' : ''}>{v}</span>
+      <span className={row.tipo === 'Título' ? 'uppercase font-bold text-slate-800 dark:text-slate-100' : ''}>{v}</span>
     ) },
     { key: 'responsavel_id', header: 'Responsável', render: (v) => (users.find((u) => u.id === v)?.nome_completo || '') },
     { key: 'data_inicio', header: 'Início', render: (v) => (v || '') },
     { key: 'data_fim', header: 'Fim', render: (v) => (v || '') },
     { key: 'status', header: 'Status' },
     { key: 'progresso_percentual', header: '%', render: (v) => `${v ?? 0}%` },
+    { key: 'actions', header: 'Ações', render: (_, row) => (
+        <Button variant="ghost" size="sm" title="Upload de Evidência" onClick={(e) => { e.stopPropagation(); handleTableUploadClick(row.id); }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </Button>
+    ) },
   ];
 
   const timeline = React.useMemo(() => {
     const ds = tarefas.map((t) => toDate(t.data_inicio)).filter(Boolean);
     const df = tarefas.map((t) => toDate(t.data_fim)).filter(Boolean);
-    const min = ds.length ? new Date(Math.min(...ds.map((d) => d.getTime()))) : null;
-    const max = df.length ? new Date(Math.max(...df.map((d) => d.getTime()))) : null;
+    if (ds.length === 0 || df.length === 0) return { start: new Date(), end: new Date() };
+    const min = new Date(Math.min(...ds.map((d) => d.getTime())));
+    const max = new Date(Math.max(...df.map((d) => d.getTime())));
+    // Ensure at least 1 day duration to avoid division by zero
+    if (max.getTime() <= min.getTime()) {
+      max.setDate(min.getDate() + 7);
+    }
     return { start: min, end: max };
   }, [tarefas]);
 
   const ganttItems = React.useMemo(() => {
     if (!timeline.start || !timeline.end) return [];
     const total = timeline.end.getTime() - timeline.start.getTime();
+    const safeTotal = total > 0 ? total : 1;
     return tarefas.map((t) => {
       const di = toDate(t.data_inicio) || timeline.start;
       const df = toDate(t.data_fim) || timeline.end;
-      const left = ((di.getTime() - timeline.start.getTime()) / total) * 100;
-      const width = ((df.getTime() - di.getTime()) / total) * 100;
-      return { id: t.id, nome: t.nome, left: Math.max(0, left), width: Math.max(2, width), status: t.status };
+      const left = ((di.getTime() - timeline.start.getTime()) / safeTotal) * 100;
+      const width = ((df.getTime() - di.getTime()) / safeTotal) * 100;
+      return { id: t.id, nome: t.nome, left: Math.max(0, left), width: Math.max(0.5, width), status: t.status };
     });
   }, [timeline, tarefas]);
 
@@ -447,12 +517,14 @@ export default function CronogramaRevisao() {
         <TabPanel active={activeTab === 'gantt'}>
           <div className="mt-2">
             <div className="text-lg font-semibold mb-2">Gantt</div>
-            <div className="relative w-full h-48 rounded-lg border overflow-hidden">
-              <div className="absolute inset-0">
-                {ganttItems.map((g) => (
-                  <div key={g.id} title={g.nome}
-                       className={"absolute h-6 rounded-full " + (g.status === 'Concluída' ? 'bg-emerald-500' : g.status === 'Em Andamento' ? 'bg-blue-500' : g.status === 'Atrasada' ? 'bg-red-500' : 'bg-slate-400')}
-                       style={{ left: `${g.left}%`, width: `${g.width}%`, top: `${(g.id % 10) * 14}px` }} />
+            <div className="relative w-full rounded-lg border overflow-auto bg-slate-50 dark:bg-slate-900/50" style={{ height: Math.max(300, ganttItems.length * 40 + 40) + 'px' }}>
+              <div className="absolute inset-0 m-4">
+                {ganttItems.map((g, idx) => (
+                  <div key={g.id} title={`${g.nome} (${g.status})`}
+                       className={"absolute h-6 rounded-md shadow-sm border border-black/10 flex items-center px-2 text-xs text-white overflow-hidden whitespace-nowrap " + (g.status === 'Concluída' ? 'bg-emerald-500' : g.status === 'Em Andamento' ? 'bg-blue-500' : g.status === 'Atrasada' ? 'bg-red-500' : 'bg-slate-400')}
+                       style={{ left: `${g.left}%`, width: `${g.width}%`, top: `${idx * 32}px` }}>
+                       {g.width > 5 && g.nome}
+                  </div>
                 ))}
               </div>
             </div>
@@ -478,6 +550,10 @@ export default function CronogramaRevisao() {
                 {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
               </Select>
               <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
+              <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium">Anexo (opcional)</label>
+                  <input type="file" className="text-sm" onChange={(e) => setForm((f) => ({ ...f, file: e.target.files[0] }))} />
+              </div>
             </div>
             <div className="mt-3 flex gap-2 justify-end">
               <Button variant="secondary" onClick={() => { setShowNewModal(false); }}>{t('cancel')}</Button>
@@ -486,6 +562,7 @@ export default function CronogramaRevisao() {
           </div>
         </div>
       )}
+      <input type="file" ref={fileInputRef} className="hidden" onChange={handleTableFileChange} />
     </section>
   );
 }

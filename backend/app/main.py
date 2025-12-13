@@ -585,6 +585,15 @@ def health():
         # Não expor credenciais, apenas o tipo do erro
         return JSONResponse(status_code=503, content={"status": "error", "db": "error", "detail": e.__class__.__name__})
 
+@app.get("/debug/schema/{table_name}")
+def debug_schema(table_name: str, db: Session = Depends(get_db)):
+    try:
+        insp = sa.inspect(engine)
+        columns = [c["name"] for c in insp.get_columns(table_name)]
+        return {"table": table_name, "columns": columns}
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/")
 def root():
     return {"message": "Asset Life API"}
@@ -817,14 +826,26 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
     if template:
         inicio = getattr(per, "data_abertura", None)
         fim_prev = getattr(per, "data_fechamento_prevista", None)
-        tarefas = [
-            ("Inventário físico", None, None),
-            ("Levantamento técnico das condições", None, None),
-            ("Análise contábil", None, None),
-            ("Preparação do laudo", None, None),
-            ("Aprovação pelos gestores", None, None),
-            ("Atualização no ERP", None, None),
+        
+        # New structure: (tipo, nome, descricao)
+        tarefas_padrao = [
+            ("Título", "Iniciação", None),
+            ("Tarefa", "Reunião Kick Off", None),
+            ("Título", "Planejamento", None),
+            ("Tarefa", "Consolidação da Base de Dados", None),
+            ("Tarefa", "Abertura do Período", None),
+            ("Tarefa", "Delegação de itens", None),
+            ("Tarefa", "Treinamento", None),
+            ("Título", "Execução", None),
+            ("Tarefa", "Revisão Vidas Úteis", "Uma linha para cada revisor"),
+            ("Título", "Encerramento", None),
+            ("Tarefa", "Fechar Período", None),
+            ("Tarefa", "Confeccionar Laudo", None),
+            ("Tarefa", "Assinatura de Laudo", None),
+            ("Tarefa", "Abertura de Chamado", None),
+            ("Tarefa", "Ajustes no Sistema", None),
         ]
+
         has_tipo = False
         try:
             insp = sa.inspect(engine)
@@ -832,23 +853,25 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
             has_tipo = "tipo" in cols
         except Exception:
             has_tipo = False
+            
         try:
-            for nome, di, df in tarefas:
+            for tipo, nome, desc in tarefas_padrao:
                 if has_tipo:
                     t = CronogramaTarefaModel(
                         cronograma_id=c.id,
-                        tipo="Tarefa",
+                        tipo=tipo,
                         nome=nome,
-                        descricao=None,
-                        data_inicio=di or inicio,
-                        data_fim=df or fim_prev,
+                        descricao=desc,
+                        data_inicio=inicio,
+                        data_fim=fim_prev,
                         responsavel_id=None,
                         status="Pendente",
                         progresso_percentual=0,
                     )
                     db.add(t)
-                    db.flush()
                 else:
+                    # Fallback for when 'tipo' column is missing: prepend Título to name if needed
+                    final_nome = f"[TÍTULO] {nome}" if tipo == "Título" else nome
                     db.execute(sa.text(
                         """
                         INSERT INTO cronogramas_tarefas (
@@ -861,10 +884,10 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
                         """
                     ), {
                         "cronograma_id": c.id,
-                        "nome": nome,
-                        "descricao": None,
-                        "data_inicio": di or inicio,
-                        "data_fim": df or fim_prev,
+                        "nome": final_nome,
+                        "descricao": desc,
+                        "data_inicio": inicio,
+                        "data_fim": fim_prev,
                         "responsavel_id": None,
                         "status": "Pendente",
                         "progresso_percentual": 0,
@@ -885,17 +908,23 @@ def get_cronograma(cronograma_id: int, db: Session = Depends(get_db)):
 
 @app.get("/cronogramas/{cronograma_id}/tarefas", response_model=List[CronogramaTarefa])
 def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
+    log_path = os.path.join(os.path.dirname(__file__), "..", "debug_log.txt")
+    def log(msg):
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"[{datetime.now()}] {msg}\n")
+        except: pass
+
+    log(f"list_cronograma_tarefas called for ID: {cronograma_id}")
+
     try:
         # Check if cronograma exists
         c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
         if not c:
             raise HTTPException(status_code=404, detail="Cronograma não encontrado")
 
-        # Explicitly define columns that are known to exist in the migration (a4c5d6e7f8a9)
+        # Explicitly define columns that are known to exist in the migration
         # We exclude 'tipo' because it is not in the migration.
-        # We hardcode 'Tarefa' as tipo in the selection to satisfy the Pydantic model.
-        
-        # Columns to select from DB
         db_cols = [
             "id", "cronograma_id", "nome", "descricao",
             "data_inicio", "data_fim", "responsavel_id", 
@@ -903,9 +932,6 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
             "criado_em"
         ]
         
-        # Build the SELECT statement
-        # We use 'Tarefa' as tipo for the Pydantic model
-        # FIX: Ensure we only select existing columns to prevent errors
         cols_str = ", ".join(db_cols)
         sql = sa.text(f"SELECT {cols_str} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id")
 
@@ -913,51 +939,76 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         try:
             # Try full fetch first
             rows = db.execute(sql, {"cid": cronograma_id}).mappings().all()
+            log(f"Full fetch success, rows: {len(rows)}")
         except Exception as e:
+            log(f"Full fetch failed: {e}")
             print(f"Full fetch failed: {e}")
             # Fallback: Minimal fetch (id, nome, status, data_fim) which are critical
-            # We assume 'tipo' is 'Tarefa'
             try:
                 sql_min = sa.text("SELECT id, cronograma_id, nome, status, data_fim FROM cronogramas_tarefas WHERE cronograma_id = :cid")
                 rows = db.execute(sql_min, {"cid": cronograma_id}).mappings().all()
+                log(f"Minimal fetch success, rows: {len(rows)}")
             except Exception as e2:
+                log(f"Minimal fetch failed: {e2}")
                 print(f"Minimal fetch failed: {e2}")
-                return []
+                # Try absolute minimal fetch to verify connectivity/existence
+                try:
+                    count = db.execute(sa.text("SELECT count(*) FROM cronogramas_tarefas WHERE cronograma_id = :cid"), {"cid": cronograma_id}).scalar()
+                    log(f"Count check: {count}")
+                    if count > 0:
+                        raise HTTPException(status_code=500, detail=f"Erro crítico: Existem {count} tarefas, mas falha ao listar colunas. Erro: {str(e2)}")
+                except Exception as e3:
+                    log(f"Count check failed: {e3}")
+                
+                raise HTTPException(status_code=500, detail=f"Erro ao buscar tarefas (min): {str(e2)}")
 
         now = date.today()
         result = []
+        last_error = None
         for r in rows:
-            # Safe extraction of values
-            status = r.get("status", "Pendente")
-            df = r.get("data_fim")
-            
-            # Check for delay
-            if df and isinstance(df, date) and df < now and status != "Concluída":
-                status = "Atrasada"
-            
-            # Construct Pydantic model safely
-            task = CronogramaTarefa(
-                id=r["id"], 
-                cronograma_id=r["cronograma_id"], 
-                tipo="Tarefa", # Hardcoded as it's missing in DB
-                nome=r["nome"],
-                descricao=r.get("descricao"), 
-                data_inicio=r.get("data_inicio"), 
-                data_fim=df,
-                responsavel_id=r.get("responsavel_id"), 
-                status=status,
-                progresso_percentual=r.get("progresso_percentual") or 0,
-                dependente_tarefa_id=r.get("dependente_tarefa_id"),
-                criado_em=r.get("criado_em")
-            )
-            result.append(task)
-            
+            try:
+                # Safe extraction of values
+                status = r.get("status") or "Pendente"
+                df = r.get("data_fim")
+
+                # Check for delay
+                if df and isinstance(df, date) and df < now and status != "Concluída":
+                    status = "Atrasada"
+
+                # Construct Pydantic model safely
+                task = CronogramaTarefa(
+                    id=r["id"], 
+                    cronograma_id=r["cronograma_id"], 
+                    tipo="Tarefa", # Hardcoded as it's missing in DB
+                    nome=r["nome"],
+                    descricao=r.get("descricao"), 
+                    data_inicio=r.get("data_inicio"), 
+                    data_fim=df,
+                    responsavel_id=r.get("responsavel_id"), 
+                    status=status,
+                    progresso_percentual=r.get("progresso_percentual") or 0,
+                    dependente_tarefa_id=r.get("dependente_tarefa_id"),
+                    criado_em=r.get("criado_em")
+                )
+                result.append(task)
+            except Exception as loop_e:
+                last_error = loop_e
+                log(f"Error creating task object: {loop_e}")
+                continue
+
+        if not result and len(rows) > 0:
+            # If we have rows but no result, it means all failed.
+            keys = list(rows[0].keys()) if rows else "No rows"
+            log(f"All rows failed conversion. Keys: {keys}. Last error: {last_error}")
+            raise HTTPException(status_code=500, detail=f"Erro de validação dos dados (chaves: {keys}): {str(last_error)}")
+
         return result
     except HTTPException:
         raise
     except Exception as e:
+        log(f"Critical error in list_cronograma_tarefas: {e}")
         print(f"Critical error in list_cronograma_tarefas: {e}")
-        return []
+        raise HTTPException(status_code=500, detail=f"Erro interno ao listar tarefas: {str(e)}")
 
 @app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
 def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate, db: Session = Depends(get_db)):
