@@ -986,8 +986,60 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 stats_rows = db.execute(stats_query, {"pid": c.periodo_id}).mappings().all()
                 stats_map = {row['revisor_id']: row for row in stats_rows}
                 log(f"Stats map calculated: {len(stats_map)} entries")
+
+                # SYNC: Check for missing revisors in the schedule
+                # Find all revisors with active delegations in this period
+                active_revisors = db.query(RevisaoDelegacaoModel.revisor_id).filter(
+                    RevisaoDelegacaoModel.periodo_id == c.periodo_id,
+                    RevisaoDelegacaoModel.status == 'Ativo'
+                ).distinct().all()
+                active_revisors_ids = set(r[0] for r in active_revisors)
+
+                # Find revisors who already have a task in this cronograma
+                existing_task_revisors = db.query(CronogramaTarefaModel.responsavel_id).filter(
+                    CronogramaTarefaModel.cronograma_id == cronograma_id,
+                    CronogramaTarefaModel.nome.like('Revisão de Vidas úteis - %')
+                ).all()
+                existing_revisors_ids = set(r[0] for r in existing_task_revisors if r[0] is not None)
+
+                # Identify missing revisors
+                missing_ids = active_revisors_ids - existing_revisors_ids
+                
+                if missing_ids:
+                    log(f"Found {len(missing_ids)} missing revisors in schedule. Syncing...")
+                    for rid in missing_ids:
+                        user = db.query(UsuarioModel).filter(UsuarioModel.id == rid).first()
+                        if not user: continue
+                        
+                        # Calculate initial progress
+                        s = stats_map.get(rid, {'total': 0, 'revisados': 0})
+                        progresso = 0
+                        if s['total'] > 0:
+                            progresso = int(round((s['revisados'] / s['total']) * 100))
+                        
+                        # Get period dates for task duration
+                        per = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == c.periodo_id).first()
+                        data_inicio = getattr(per, "data_abertura", None)
+                        data_fim = getattr(per, "data_fechamento_prevista", None)
+
+                        new_task = CronogramaTarefaModel(
+                            cronograma_id=cronograma_id,
+                            tipo="Tarefa",
+                            nome=f"Revisão de Vidas úteis - {user.nome_completo}",
+                            descricao=f"Revisor: {user.nome_completo}",
+                            data_inicio=data_inicio,
+                            data_fim=data_fim,
+                            responsavel_id=rid,
+                            status="Concluída" if progresso == 100 else ("Em Andamento" if progresso > 0 else "Pendente"),
+                            progresso_percentual=progresso
+                        )
+                        db.add(new_task)
+                    
+                    db.commit()
+                    log("Sync completed.")
+
         except Exception as e_stats:
-            log(f"Error calculating stats: {e_stats}")
+            log(f"Error calculating stats or syncing revisors: {e_stats}")
 
         # Explicitly define columns that are known to exist in the migration
         # We exclude 'tipo' because it is not in the migration.
