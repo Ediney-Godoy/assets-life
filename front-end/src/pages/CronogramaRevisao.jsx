@@ -296,21 +296,67 @@ export default function CronogramaRevisao() {
   };
 
   const exportPDF = () => {
-    const win = window.open('', 'PRINT', 'height=700,width=900');
-    const rows = tarefas.map((t) => `<div style="padding:8px;border:1px solid #ddd;border-radius:8px;margin-bottom:6px;">
-      <div style="font-weight:bold">${t.nome || ''}</div>
-      <div>Responsável: ${users.find((u) => u.id === t.responsavel_id)?.nome_completo || ''}</div>
-      <div>Período: ${formatDate(t.data_inicio)} → ${formatDate(t.data_fim)}</div>
-      <div>Status: ${t.status || ''} • Progresso: ${t.progresso_percentual ?? 0}%</div>
-    </div>`).join('');
-    win.document.write(`<html><head><title>Cronograma</title></head><body>
-      <h3 style="font-family:Arial">Tarefas do Cronograma</h3>
-      ${rows}
-    </body></html>`);
+    const win = window.open('', 'PRINT', 'height=700,width=1100');
+    
+    // Build table header
+    const tableHeader = `
+      <thead>
+        <tr style="background-color: #f1f5f9; text-align: left;">
+          <th style="padding: 8px; border: 1px solid #cbd5e1;">Atividade</th>
+          <th style="padding: 8px; border: 1px solid #cbd5e1;">Responsável</th>
+          <th style="padding: 8px; border: 1px solid #cbd5e1;">Início</th>
+          <th style="padding: 8px; border: 1px solid #cbd5e1;">Fim</th>
+          <th style="padding: 8px; border: 1px solid #cbd5e1;">Status</th>
+          <th style="padding: 8px; border: 1px solid #cbd5e1;">Progresso</th>
+        </tr>
+      </thead>
+    `;
+
+    // Build table body
+    const tableRows = tarefas.map((t) => {
+        const isTitle = t.tipo === 'Título' || /^(\[TÍTULO\]|\(TÍTULO\))/i.test(t.nome);
+        const bg = isTitle ? '#e2e8f0' : '#fff';
+        const fw = isTitle ? 'bold' : 'normal';
+        return `
+        <tr style="background-color: ${bg}; font-weight: ${fw};">
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${t.nome || ''}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${users.find((u) => u.id === t.responsavel_id)?.nome_completo || ''}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatDate(t.data_inicio)}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatDate(t.data_fim)}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${t.status || ''}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${t.progresso_percentual ?? 0}%</td>
+        </tr>
+        `;
+    }).join('');
+
+    win.document.write(`<html>
+      <head>
+        <title>Cronograma</title>
+        <style>
+          @page { size: landscape; margin: 1cm; }
+          body { font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          h3 { margin-bottom: 10px; }
+        </style>
+      </head>
+      <body>
+        <h3>Tarefas do Cronograma</h3>
+        <table>
+          ${tableHeader}
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </body>
+    </html>`);
+    
     win.document.close();
     win.focus();
-    win.print();
-    win.close();
+    // Delay print slightly to ensure render
+    setTimeout(() => {
+        win.print();
+        win.close();
+    }, 500);
     toast.success(t('export_pdf_done'));
   };
 
@@ -336,15 +382,29 @@ export default function CronogramaRevisao() {
   // --- New Gantt Logic ---
   const timeline = React.useMemo(() => {
     const ds = tarefas.map((t) => toDate(t.data_inicio)).filter(Boolean);
-    if (ds.length === 0) return { start: new Date() };
+    const de = tarefas.map((t) => toDate(t.data_fim)).filter(Boolean);
+    
+    if (ds.length === 0) return { start: new Date(), days: 60 };
+    
     // Find min date
     const min = new Date(Math.min(...ds.map((d) => d.getTime())));
+    const max = de.length > 0 ? new Date(Math.max(...de.map((d) => d.getTime()))) : new Date(min.getTime() + (60 * 24 * 60 * 60 * 1000));
+    
     // Normalize to UTC midnight to avoid timezone offsets affecting diffs
     const start = new Date(Date.UTC(min.getUTCFullYear(), min.getUTCMonth(), min.getUTCDate()));
-    return { start };
+    const end = new Date(Date.UTC(max.getUTCFullYear(), max.getUTCMonth(), max.getUTCDate()));
+    
+    // Calculate difference in days
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 5; // +5 buffer
+    
+    // Clamp between 60 and 92
+    const days = Math.min(92, Math.max(60, diffDays));
+    
+    return { start, days };
   }, [tarefas]);
 
-  const totalDays = 60; 
+  const totalDays = timeline.days; 
   const dayWidth = 40; // Increased width for better visibility
 
   // Generate array of Date objects for the header
@@ -381,7 +441,23 @@ export default function CronogramaRevisao() {
 
   return (
     <section>
-      <div className="mb-4 px-4 flex items-center justify-between gap-2 flex-wrap">
+      <style>{`
+        @media print {
+            @page { size: landscape; margin: 5mm; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print, header, nav, footer, .sidebar, button:not(.print-visible) { display: none !important; }
+            section { margin: 0; padding: 0; width: 100%; max-width: none; }
+            /* Expand the scrollable area for print */
+            .overflow-auto { overflow: visible !important; height: auto !important; max-height: none !important; }
+            /* Adjust font size for print to fit more */
+            .text-xs, .text-sm { font-size: 10px !important; }
+            /* Hide action column in print */
+            .sticky.left-\[830px\] { display: none !important; } 
+            /* Hide the column header for actions */
+            .sticky.left-\[830px\] + div { display: none !important; }
+        }
+      `}</style>
+      <div className="mb-4 px-4 flex items-center justify-between gap-2 flex-wrap no-print">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Cronogramas de Revisão</h2>
         <ActionToolbar
           onNew={onNew}
@@ -399,7 +475,7 @@ export default function CronogramaRevisao() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 mb-4 no-print">
         <Select label="Período Aberto" value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
           <option value="">Selecione</option>
           {periodos.map((p) => (
@@ -418,7 +494,7 @@ export default function CronogramaRevisao() {
       </div>
 
       {resumo && (
-        <div className="px-4 mb-4 grid grid-cols-2 md:grid-cols-6 gap-2">
+        <div className="px-4 mb-4 grid grid-cols-2 md:grid-cols-6 gap-2 no-print">
           <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Total: {resumo.total_tarefas}</div>
           <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Concluídas: {resumo.concluido}</div>
           <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Em andamento: {resumo.em_andamento}</div>
