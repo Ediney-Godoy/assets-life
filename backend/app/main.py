@@ -1022,20 +1022,45 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                         data_inicio = getattr(per, "data_abertura", None)
                         data_fim = getattr(per, "data_fechamento_prevista", None)
 
-                        new_task = CronogramaTarefaModel(
-                            cronograma_id=cronograma_id,
-                            tipo="Tarefa",
-                            nome=f"Revisão de Vidas úteis - {user.nome_completo}",
-                            descricao=f"Revisor: {user.nome_completo}",
-                            data_inicio=data_inicio,
-                            data_fim=data_fim,
-                            responsavel_id=rid,
-                            status="Concluída" if progresso == 100 else ("Em Andamento" if progresso > 0 else "Pendente"),
-                            progresso_percentual=progresso
-                        )
-                        db.add(new_task)
+                        try:
+                            new_task = CronogramaTarefaModel(
+                                cronograma_id=cronograma_id,
+                                tipo="Tarefa",
+                                nome=f"Revisão de Vidas úteis - {user.nome_completo}",
+                                descricao=f"Revisor: {user.nome_completo}",
+                                data_inicio=data_inicio,
+                                data_fim=data_fim,
+                                responsavel_id=rid,
+                                status="Concluída" if progresso == 100 else ("Em Andamento" if progresso > 0 else "Pendente"),
+                                progresso_percentual=progresso
+                            )
+                            db.add(new_task)
+                            db.commit()
+                        except (sa.exc.ProgrammingError, sa.exc.DBAPIError, sa.exc.IntegrityError):
+                            db.rollback()
+                            # Fallback if 'tipo' column is missing or other DB issue
+                            log(f"Fallback insert for revisor {rid}")
+                            db.execute(sa.text(
+                                """
+                                INSERT INTO cronogramas_tarefas (
+                                    cronograma_id, nome, descricao, data_inicio, data_fim,
+                                    responsavel_id, status, progresso_percentual
+                                ) VALUES (
+                                    :cid, :nome, :desc, :di, :df, :rid, :st, :prog
+                                )
+                                """
+                            ), {
+                                "cid": cronograma_id,
+                                "nome": f"Revisão de Vidas úteis - {user.nome_completo}",
+                                "desc": f"Revisor: {user.nome_completo}",
+                                "di": data_inicio,
+                                "df": data_fim,
+                                "rid": rid,
+                                "st": "Concluída" if progresso == 100 else ("Em Andamento" if progresso > 0 else "Pendente"),
+                                "prog": progresso
+                            })
+                            db.commit()
                     
-                    db.commit()
                     log("Sync completed.")
 
         except Exception as e_stats:
