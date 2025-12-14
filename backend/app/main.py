@@ -1115,9 +1115,12 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 df = r.get("data_fim")
                 rid = r.get("responsavel_id")
 
-                # Dynamic progress calculation
+                # Dynamic progress calculation (Only for revision tasks)
                 progresso = r.get("progresso_percentual") or 0
-                if rid and rid in stats_map:
+                # Only auto-calculate if it's a revision task
+                is_revision_task = r.get("nome", "").startswith("Revisão de Vidas úteis")
+                
+                if is_revision_task and rid and rid in stats_map:
                     s = stats_map[rid]
                     if s['total'] > 0:
                         progresso = int(round((s['revisados'] / s['total']) * 100))
@@ -1128,16 +1131,18 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                                 db.commit()
                             except Exception as e_upd:
                                 log(f"Failed to update progress for task {r['id']}: {e_upd}")
-
+                
                 # Check for delay
                 if df and isinstance(df, date) and df < now and status != "Concluída":
                     status = "Atrasada"
                 
                 # Auto-complete status if 100% (optional, but makes sense)
-                if progresso == 100 and status == "Pendente":
-                    status = "Concluída"
-                elif progresso < 100 and status == "Concluída":
-                    status = "Em Andamento"
+                # Only for revision tasks to avoid overriding manual status of other tasks
+                if is_revision_task:
+                    if progresso == 100 and status == "Pendente":
+                        status = "Concluída"
+                    elif progresso < 100 and status == "Concluída":
+                        status = "Em Andamento"
 
                 # Construct Pydantic model safely
                 task = CronogramaTarefa(
