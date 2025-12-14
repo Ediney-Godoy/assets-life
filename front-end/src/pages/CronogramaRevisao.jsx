@@ -6,7 +6,7 @@ import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import ActionToolbar from '../components/ActionToolbar';
 // import Table from '../components/ui/Table'; // Custom table implementation used
-import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload } from 'lucide-react';
+import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download } from 'lucide-react';
 import { 
   getReviewPeriods,
   getUsers,
@@ -19,6 +19,7 @@ import {
   listCronogramaTarefaEvidencias,
   uploadCronogramaTarefaEvidencia,
   downloadCronogramaTarefaEvidencia,
+  deleteCronogramaTarefaEvidencia,
 } from '../apiClient';
 
 function toDate(d) {
@@ -44,6 +45,7 @@ export default function CronogramaRevisao() {
   const [uploadFile, setUploadFile] = React.useState(null);
   const [viewTaskId, setViewTaskId] = React.useState(null);
   const [viewEvidencias, setViewEvidencias] = React.useState([]);
+  const [selectedEvidencias, setSelectedEvidencias] = React.useState([]);
 
   const loadBase = React.useCallback(() => {
     setLoading(true);
@@ -125,6 +127,7 @@ export default function CronogramaRevisao() {
   const handleViewEvidencias = async (taskId) => {
     setViewTaskId(taskId);
     setViewEvidencias([]); 
+    setSelectedEvidencias([]);
     try {
       const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(taskId));
       setViewEvidencias(Array.isArray(list) ? list : []);
@@ -439,6 +442,20 @@ export default function CronogramaRevisao() {
     return dateStr;
   };
 
+  const handleDeleteEvidencias = async () => {
+    if (selectedEvidencias.length === 0) return;
+    if (!window.confirm(t('confirm_delete') || 'Tem certeza?')) return;
+    try {
+      await Promise.all(selectedEvidencias.map(id => deleteCronogramaTarefaEvidencia(Number(cronogramaId), Number(viewTaskId), Number(id))));
+      toast.success('Evidências excluídas');
+      setSelectedEvidencias([]);
+      const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(viewTaskId));
+      setViewEvidencias(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error('Erro ao excluir evidências');
+    }
+  };
+
   return (
     <section>
       <style>{`
@@ -489,7 +506,9 @@ export default function CronogramaRevisao() {
           ))}
         </Select>
         <div className="flex items-end">
-          <Button onClick={onCreateCronograma} disabled={!periodoId || cronogramas.length > 0} title={cronogramas.length > 0 ? t('schedule_already_exists') : ''}>Criar Cronograma</Button>
+          <Button onClick={onCreateCronograma} disabled={!periodoId || cronogramas.length > 0} title={cronogramas.length > 0 ? t('schedule_already_exists') : 'Criar Cronograma'} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center">
+            <Plus size={18} />
+          </Button>
         </div>
       </div>
 
@@ -676,7 +695,14 @@ export default function CronogramaRevisao() {
           <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl p-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <div className="text-lg font-semibold">Evidências da Tarefa</div>
-              <Button variant="ghost" size="sm" onClick={() => setViewTaskId(null)}>✕</Button>
+              <div className="flex items-center gap-2">
+                 {selectedEvidencias.length > 0 && (
+                    <Button variant="danger" size="sm" className="h-8 w-8 p-0 justify-center" title="Excluir selecionados" onClick={handleDeleteEvidencias}>
+                        <Trash size={16} />
+                    </Button>
+                 )}
+                 <Button variant="ghost" size="sm" onClick={() => setViewTaskId(null)}>✕</Button>
+              </div>
             </div>
             
             {viewEvidencias.length === 0 ? (
@@ -685,11 +711,22 @@ export default function CronogramaRevisao() {
               <div className="grid grid-cols-1 gap-2">
                 {viewEvidencias.map((ev) => (
                   <div key={ev.id} className="p-3 rounded border flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
-                    <div>
-                      <div className="font-medium break-all">{ev.nome_arquivo}</div>
-                      <div className="text-xs text-slate-500">{Math.round((ev.tamanho_bytes || 0) / 1024)} KB</div>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedEvidencias.includes(ev.id)}
+                        onChange={(e) => {
+                            if (e.target.checked) setSelectedEvidencias(prev => [...prev, ev.id]);
+                            else setSelectedEvidencias(prev => prev.filter(id => id !== ev.id));
+                        }}
+                        className="rounded border-slate-300"
+                      />
+                      <div>
+                        <div className="font-medium break-all">{ev.nome_arquivo}</div>
+                        <div className="text-xs text-slate-500">{Math.round((ev.tamanho_bytes || 0) / 1024)} KB</div>
+                      </div>
                     </div>
-                    <Button variant="secondary" size="sm" onClick={async () => {
+                    <Button variant="secondary" size="sm" className="h-8 w-8 p-0 justify-center" title="Baixar" onClick={async () => {
                       try {
                         const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(viewTaskId), Number(ev.id));
                         const url = URL.createObjectURL(blob);
@@ -702,7 +739,7 @@ export default function CronogramaRevisao() {
                         toast.error(err?.message || t('download_failed'));
                       }
                     }}>
-                      Baixar
+                      <Download size={16} />
                     </Button>
                   </div>
                 ))}
