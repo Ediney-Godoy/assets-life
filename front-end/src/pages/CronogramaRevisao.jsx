@@ -300,7 +300,7 @@ export default function CronogramaRevisao() {
     const rows = tarefas.map((t) => `<div style="padding:8px;border:1px solid #ddd;border-radius:8px;margin-bottom:6px;">
       <div style="font-weight:bold">${t.nome || ''}</div>
       <div>Responsável: ${users.find((u) => u.id === t.responsavel_id)?.nome_completo || ''}</div>
-      <div>Período: ${t.data_inicio || ''} → ${t.data_fim || ''}</div>
+      <div>Período: ${formatDate(t.data_inicio)} → ${formatDate(t.data_fim)}</div>
       <div>Status: ${t.status || ''} • Progresso: ${t.progresso_percentual ?? 0}%</div>
     </div>`).join('');
     win.document.write(`<html><head><title>Cronograma</title></head><body>
@@ -371,6 +371,14 @@ export default function CronogramaRevisao() {
     return 'bg-slate-400 border-slate-500 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:10px_10px]'; 
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    // Assume YYYY-MM-DD
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
+  };
+
   return (
     <section>
       <div className="mb-4 px-4 flex items-center justify-between gap-2 flex-wrap">
@@ -437,7 +445,6 @@ export default function CronogramaRevisao() {
             
             {/* Gantt Header */}
             <div className="flex">
-                <div className="flex-shrink-0 border-r text-center flex items-center justify-center text-[10px] text-slate-500 font-bold bg-amber-100 dark:bg-amber-900/20 px-2 sticky left-[890px]">PERÍODOS</div>
                 {headerDates.map(d => (
                     <div key={d.toISOString()} className="flex-shrink-0 border-r text-center flex flex-col items-center justify-center text-[10px] text-slate-500" style={{ width: dayWidth }}>
                         <span className="font-bold">{d.getUTCDate()}</span>
@@ -478,8 +485,8 @@ export default function CronogramaRevisao() {
                         
                         {/* Sticky Columns */}
                         <div className={`sticky left-0 z-30 w-[40px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Visualizar Evidências" onClick={(e) => { e.stopPropagation(); handleViewEvidencias(t.id); }}>
-                                <Eye className="w-4 h-4 text-blue-500" />
+                            <Button variant="ghost" size="sm" className="h-10 w-10 p-0" title="Visualizar Evidências" onClick={(e) => { e.stopPropagation(); handleViewEvidencias(t.id); }}>
+                                <Eye className="w-6 h-6 text-blue-500" />
                             </Button>
                         </div>
                         <div className={`sticky left-[40px] z-30 w-[300px] p-2 border-r flex items-center gap-2 truncate ${stickyBg} ${isTitle ? 'font-bold uppercase text-slate-700 dark:text-slate-200' : ''}`}>
@@ -490,10 +497,10 @@ export default function CronogramaRevisao() {
                              {users.find((u) => u.id === t.responsavel_id)?.nome_completo || ''}
                         </div>
                         <div className={`sticky left-[490px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
-                             {t.data_inicio}
+                             {formatDate(t.data_inicio)}
                         </div>
                         <div className={`sticky left-[580px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
-                             {t.data_fim}
+                             {formatDate(t.data_fim)}
                         </div>
                         <div className={`sticky left-[670px] z-30 w-[100px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
                              {t.status}
@@ -502,8 +509,8 @@ export default function CronogramaRevisao() {
                              {t.progresso_percentual ?? 0}%
                         </div>
                         <div className={`sticky left-[830px] z-30 w-[60px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Upload" onClick={(e) => { e.stopPropagation(); handleTableUploadClick(t.id); }}>
-                                <Upload size={14} />
+                            <Button variant="ghost" size="sm" className="h-10 w-10 p-0" title="Upload" onClick={(e) => { e.stopPropagation(); handleTableUploadClick(t.id); }}>
+                                <Upload size={22} />
                             </Button>
                         </div>
 
