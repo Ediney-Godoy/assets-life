@@ -970,6 +970,25 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         if not c:
             raise HTTPException(status_code=404, detail="Cronograma não encontrado")
 
+        # Calculate progress from revisions (Fix for Julio Cesar Carvalho issue)
+        stats_map = {}
+        try:
+            if c.periodo_id:
+                stats_query = sa.text("""
+                    SELECT d.revisor_id, 
+                           COUNT(*) as total, 
+                           SUM(CASE WHEN (i.status IN ('Revisado', 'Aprovado') OR i.alterado = TRUE) THEN 1 ELSE 0 END) as revisados
+                    FROM revisoes_delegacoes d
+                    JOIN revisoes_itens i ON d.ativo_id = i.id
+                    WHERE d.periodo_id = :pid
+                    GROUP BY d.revisor_id
+                """)
+                stats_rows = db.execute(stats_query, {"pid": c.periodo_id}).mappings().all()
+                stats_map = {row['revisor_id']: row for row in stats_rows}
+                log(f"Stats map calculated: {len(stats_map)} entries")
+        except Exception as e_stats:
+            log(f"Error calculating stats: {e_stats}")
+
         # Explicitly define columns that are known to exist in the migration
         # We exclude 'tipo' because it is not in the migration.
         db_cols = [
@@ -1017,10 +1036,31 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 # Safe extraction of values
                 status = r.get("status") or "Pendente"
                 df = r.get("data_fim")
+                rid = r.get("responsavel_id")
+
+                # Dynamic progress calculation
+                progresso = r.get("progresso_percentual") or 0
+                if rid and rid in stats_map:
+                    s = stats_map[rid]
+                    if s['total'] > 0:
+                        progresso = int(round((s['revisados'] / s['total']) * 100))
+                        # Update DB if different
+                        if progresso != (r.get("progresso_percentual") or 0):
+                            try:
+                                db.execute(sa.text("UPDATE cronogramas_tarefas SET progresso_percentual = :p WHERE id = :id"), {"p": progresso, "id": r["id"]})
+                                db.commit()
+                            except Exception as e_upd:
+                                log(f"Failed to update progress for task {r['id']}: {e_upd}")
 
                 # Check for delay
                 if df and isinstance(df, date) and df < now and status != "Concluída":
                     status = "Atrasada"
+                
+                # Auto-complete status if 100% (optional, but makes sense)
+                if progresso == 100 and status == "Pendente":
+                    status = "Concluída"
+                elif progresso < 100 and status == "Concluída":
+                    status = "Em Andamento"
 
                 # Construct Pydantic model safely
                 task = CronogramaTarefa(
@@ -1031,9 +1071,9 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                     descricao=r.get("descricao"), 
                     data_inicio=r.get("data_inicio"), 
                     data_fim=df,
-                    responsavel_id=r.get("responsavel_id"), 
+                    responsavel_id=rid, 
                     status=status,
-                    progresso_percentual=r.get("progresso_percentual") or 0,
+                    progresso_percentual=progresso,
                     dependente_tarefa_id=r.get("dependente_tarefa_id"),
                     criado_em=r.get("criado_em")
                 )
