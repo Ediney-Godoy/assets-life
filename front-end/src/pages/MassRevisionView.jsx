@@ -275,7 +275,17 @@ export default function MassRevisionView() {
   }, [items]);
   const uniqueClasses = React.useMemo(() => {
     const vals = Array.from(new Set((items || []).map((i) => i.classe).filter(Boolean)));
-    return vals;
+    return vals.sort();
+  }, [items]);
+
+  const classDesc = React.useMemo(() => {
+    const m = new Map();
+    (items || []).forEach((i) => {
+      if (i.classe && i.descricao_classe && !m.has(i.classe)) {
+        m.set(i.classe, i.descricao_classe);
+      }
+    });
+    return m;
   }, [items]);
   const uniqueUGs = React.useMemo(() => {
     const seen = new Set();
@@ -614,10 +624,10 @@ export default function MassRevisionView() {
         </Select>
 
         {filterType === 'classe' && (
-          <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-36 md:w-40 shrink-0">
+          <Select label="" name="filterValue" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} className="w-56 shrink-0">
             <option value="">{t('all')}</option>
             {uniqueClasses.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>{classDesc.get(c) ? `${c} - ${classDesc.get(c)}` : c}</option>
             ))}
           </Select>
         )}
