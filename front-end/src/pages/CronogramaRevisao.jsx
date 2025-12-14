@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import ActionToolbar from '../components/ActionToolbar';
 // import Table from '../components/ui/Table'; // Custom table implementation used
 import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { 
   getReviewPeriods,
   getUsers,
@@ -275,27 +276,21 @@ export default function CronogramaRevisao() {
     }
   };
 
-  const exportCSV = () => {
-    const rows = [
-      ['Tarefa','Responsável','Início','Fim','Status','Progresso (%)'],
-      ...tarefas.map((t) => [
-        t.nome || '',
-        users.find((u) => u.id === t.responsavel_id)?.nome_completo || '',
-        t.data_inicio || '',
-        t.data_fim || '',
-        t.status || '',
-        String(t.progresso_percentual ?? 0),
-      ]),
-    ];
-    const csv = rows.map((r) => r.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'cronograma_tarefas.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Exportado CSV');
+  const exportExcel = () => {
+    const data = tarefas.map((t) => ({
+      'Tarefa': t.nome || '',
+      'Responsável': users.find((u) => u.id === t.responsavel_id)?.nome_completo || '',
+      'Início': t.data_inicio ? formatDate(t.data_inicio) : '',
+      'Fim': t.data_fim ? formatDate(t.data_fim) : '',
+      'Status': t.status || '',
+      'Progresso (%)': t.progresso_percentual ?? 0
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cronograma");
+    XLSX.writeFile(wb, "cronograma_tarefas.xlsx");
+    toast.success('Exportado Excel');
   };
 
   const exportPDF = () => {
@@ -483,7 +478,7 @@ export default function CronogramaRevisao() {
           onDelete={() => toast.error(t('delete_not_available'))}
           onPrint={() => window.print()}
           onExportPdf={exportPDF}
-          onExportExcel={exportCSV}
+          onExportExcel={exportExcel}
           canEditDelete={!!selectedTaskId}
         />
         <div className="flex items-center gap-2">
@@ -696,11 +691,9 @@ export default function CronogramaRevisao() {
             <div className="flex justify-between items-center mb-4">
               <div className="text-lg font-semibold">Evidências da Tarefa</div>
               <div className="flex items-center gap-2">
-                 {selectedEvidencias.length > 0 && (
-                    <Button variant="danger" size="sm" className="h-8 w-8 p-0 justify-center" title="Excluir selecionados" onClick={handleDeleteEvidencias}>
-                        <Trash size={16} />
-                    </Button>
-                 )}
+                 <Button variant="danger" size="sm" className="h-8 w-8 p-0 justify-center" title="Excluir selecionados" onClick={handleDeleteEvidencias} disabled={selectedEvidencias.length === 0}>
+                    <Trash size={16} />
+                 </Button>
                  <Button variant="ghost" size="sm" onClick={() => setViewTaskId(null)}>✕</Button>
               </div>
             </div>
@@ -745,10 +738,6 @@ export default function CronogramaRevisao() {
                 ))}
               </div>
             )}
-            
-            <div className="mt-4 flex justify-end">
-              <Button onClick={() => setViewTaskId(null)}>Fechar</Button>
-            </div>
           </div>
         </div>
       )}
