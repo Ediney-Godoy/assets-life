@@ -249,17 +249,17 @@ export default function CronogramaRevisao() {
 
   const onEditSelected = () => {
     if (!selectedTaskId) { toast.error(t('error_generic')); return; }
-    const t = tarefas.find((x) => x.id === selectedTaskId);
-    if (!t) { toast.error(t('task_not_found')); return; }
-    setEditingTaskId(t.id);
+    const task = tarefas.find((x) => x.id === selectedTaskId);
+    if (!task) { toast.error(t('task_not_found')); return; }
+    setEditingTaskId(task.id);
     setForm({
-      nome: t.nome || '',
-      tipo: t.tipo || 'Tarefa',
-      responsavel_id: t.responsavel_id ? String(t.responsavel_id) : '',
-      data_inicio: t.data_inicio || '',
-      data_fim: t.data_fim || '',
-      status: t.status || 'Pendente',
-      progresso_percentual: Number(t.progresso_percentual ?? 0),
+      nome: task.nome || '',
+      tipo: task.tipo || 'Tarefa',
+      responsavel_id: task.responsavel_id ? String(task.responsavel_id) : '',
+      data_inicio: task.data_inicio || '',
+      data_fim: task.data_fim || '',
+      status: task.status || 'Pendente',
+      progresso_percentual: Number(task.progresso_percentual ?? 0),
       file: null
     });
     toast.success(t('editing_task'));
@@ -295,13 +295,13 @@ export default function CronogramaRevisao() {
   };
 
   const exportExcel = () => {
-    const data = tarefas.map((t) => ({
-      [t('task_name')]: t.nome || '',
-      [t('task_responsible')]: users.find((u) => u.id === t.responsavel_id)?.nome_completo || '',
-      [t('task_start')]: t.data_inicio ? formatDate(t.data_inicio) : '',
-      [t('task_end')]: t.data_fim ? formatDate(t.data_fim) : '',
-      [t('task_status')]: t.status || '',
-      [`${t('task_progress')} (%)`]: t.progresso_percentual ?? 0
+    const data = tarefas.map((task) => ({
+      [t('task_name')]: task.nome || '',
+      [t('task_responsible')]: users.find((u) => u.id === task.responsavel_id)?.nome_completo || '',
+      [t('task_start')]: task.data_inicio ? formatDate(task.data_inicio) : '',
+      [t('task_end')]: task.data_fim ? formatDate(task.data_fim) : '',
+      [t('task_status')]: task.status || '',
+      [`${t('task_progress')} (%)`]: task.progresso_percentual ?? 0
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -329,19 +329,19 @@ export default function CronogramaRevisao() {
     `;
 
     // Build table body
-    const tableRows = tarefas.map((t) => {
-        const isTitle = t.tipo === 'Título' || /^(\[TÍTULO\]|\(TÍTULO\))/i.test(t.nome);
+    const tableRows = tarefas.map((task) => {
+        const isTitle = task.tipo === 'Título' || /^(\[TÍTULO\]|\(TÍTULO\))/i.test(task.nome);
         const bg = isTitle ? '#e2e8f0' : '#fff';
         const fw = isTitle ? 'bold' : 'normal';
         
         return `
         <tr style="background-color: ${bg}; font-weight: ${fw};">
-            <td style="padding: 8px; border: 1px solid #cbd5e1;">${t.nome || ''}</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1;">${users.find((u) => u.id === t.responsavel_id)?.nome_completo || ''}</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatDate(t.data_inicio)}</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatDate(t.data_fim)}</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1;">${t.status || ''}</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1;">${t.progresso_percentual ?? 0}%</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${task.nome || ''}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${users.find((u) => u.id === task.responsavel_id)?.nome_completo || ''}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatDate(task.data_inicio)}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatDate(task.data_fim)}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${task.status || ''}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1;">${task.progresso_percentual ?? 0}%</td>
         </tr>
         `;
     }).join('');
@@ -566,10 +566,10 @@ export default function CronogramaRevisao() {
 
         {/* Body */}
         <div className="min-w-max">
-            {tarefas.map((t, idx) => {
-                const isTitle = t.tipo === 'Título' || /^(\[TÍTULO\]|\(TÍTULO\))/i.test(t.nome);
-                const startDate = toDate(t.data_inicio);
-                const endDate = toDate(t.data_fim);
+            {tarefas.map((task, idx) => {
+                const isTitle = task.tipo === 'Título' || /^(\[TÍTULO\]|\(TÍTULO\))/i.test(task.nome);
+                const startDate = toDate(task.data_inicio);
+                const endDate = toDate(task.data_fim);
                 let startDiff = 0;
                 let duration = 0;
 
@@ -584,62 +584,70 @@ export default function CronogramaRevisao() {
                     duration = Math.floor(durTime / (1000 * 60 * 60 * 24)) + 1;
                 }
 
-                const isSelected = t.id === selectedTaskId;
+                const isSelected = task.id === selectedTaskId;
                 const rowBg = isTitle ? 'bg-slate-200 dark:bg-slate-800' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950';
                 const stickyBg = isTitle ? 'bg-slate-200 dark:bg-slate-800' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/50';
 
                 return (
-                    <div key={t.id} 
+                    <div key={task.id} 
                          className={`flex border-b text-sm group hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${rowBg}`}
-                         onClick={() => setSelectedTaskId(t.id)}>
+                         onClick={() => setSelectedTaskId(task.id)}>
                         
                         {/* Sticky Columns */}
                         <div className={`sticky left-0 z-30 w-[40px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
-                            <Button variant="ghost" size="sm" className="h-10 w-10 p-0" title={t('view_evidence_btn')} onClick={(e) => { e.stopPropagation(); handleViewEvidencias(t.id); }}>
+                            <Button variant="ghost" size="sm" className="h-10 w-10 p-0" title={t('view_evidence_btn')} onClick={(e) => { e.stopPropagation(); handleViewEvidencias(task.id); }}>
                                 <Eye className="w-6 h-6 text-blue-500" />
                             </Button>
                         </div>
                         <div className={`sticky left-[40px] z-30 w-[300px] p-2 border-r flex items-center gap-2 truncate ${stickyBg} ${isTitle ? 'font-bold uppercase text-slate-700 dark:text-slate-200' : ''}`}>
                              {!isTitle && <ClipboardList size={14} className="text-slate-400 flex-shrink-0" />}
-                             <span title={t.nome}>{t.nome.replace(/^(\[TÍTULO\]|\(TÍTULO\))\s*/i, '')}</span>
+                             <span title={task.nome}>{task.nome.replace(/^(\[TÍTULO\]|\(TÍTULO\))\s*/i, '')}</span>
                         </div>
                         <div className={`sticky left-[340px] z-30 w-[150px] p-2 border-r flex items-center truncate ${stickyBg}`}>
-                             {users.find((u) => u.id === t.responsavel_id)?.nome_completo || ''}
+                             {users.find((u) => u.id === task.responsavel_id)?.nome_completo || ''}
                         </div>
                         <div className={`sticky left-[490px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
-                             {formatDate(t.data_inicio)}
+                             {formatDate(task.data_inicio)}
                         </div>
                         <div className={`sticky left-[580px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
-                             {formatDate(t.data_fim)}
+                             {formatDate(task.data_fim)}
                         </div>
                         <div className={`sticky left-[670px] z-30 w-[100px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
-                             {t.status}
+                             {task.status}
                         </div>
                         <div className={`sticky left-[770px] z-30 w-[60px] p-2 border-r flex items-center justify-center text-xs ${stickyBg}`}>
-                             {t.progresso_percentual ?? 0}%
+                             {task.progresso_percentual ?? 0}%
                         </div>
                         <div className={`sticky left-[830px] z-30 w-[60px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
-                            <Button variant="ghost" size="sm" disabled={!canEdit} className="h-10 w-10 p-0" title={t('upload_evidence')} onClick={(e) => { e.stopPropagation(); handleTableUploadClick(t.id); }}>
-                                <Upload size={22} />
-                            </Button>
+                           {/* Actions */}
+                           {canEdit && (
+                            <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" title={t('edit_task_title')} onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); onEditSelected(); }}>
+                                    <FileText size={14} />
+                                </Button>
+                            </div>
+                           )}
                         </div>
 
-                        {/* Gantt Cell */}
-                        <div className="relative h-9 flex items-center" style={{ width: totalDays * dayWidth }}>
-                            {/* Grid Lines Background */}
-                            <div className="absolute inset-0 flex pointer-events-none">
-                                {Array.from({ length: totalDays }).map((_, i) => <div key={i} className="flex-shrink-0 border-r h-full" style={{ width: dayWidth }}></div>)}
-                            </div>
-                            
-                            {/* Bar */}
-                            {!isTitle && startDate && (
-                                <div className={`absolute h-5 rounded-sm shadow-sm border transition-all ${getStatusColor(t.status, t.progresso_percentual)}`}
-                                    style={{ left: startDiff * dayWidth, width: Math.max(dayWidth / 2, duration * dayWidth) }}>
-                                </div>
+                        {/* Gantt Bar */}
+                        <div className="flex relative" style={{ height: '40px' }}>
+                            {startDiff >= 0 && duration > 0 && (
+                                <div className={`absolute top-2 h-6 rounded border shadow-sm ${getStatusColor(task.status, task.progresso_percentual)}`}
+                                     style={{
+                                         left: startDiff * dayWidth,
+                                         width: duration * dayWidth,
+                                         opacity: 0.9
+                                     }}
+                                     title={`${task.nome} (${formatDate(task.data_inicio)} - ${formatDate(task.data_fim)})`}
+                                />
                             )}
+                            {/* Grid lines */}
+                            {headerDates.map(d => (
+                                <div key={d.toISOString()} className="border-r h-full" style={{ width: dayWidth }} />
+                            ))}
                         </div>
                     </div>
-                )
+                );
             })}
         </div>
       </div>
