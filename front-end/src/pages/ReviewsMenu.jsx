@@ -71,25 +71,7 @@ export default function ReviewsMenu() {
           </button>
         )}
 
-        {hasPerm('/reviews/cronogramas') && (
-          <button
-            type="button"
-            onClick={() => navigate('/reviews/cronogramas')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-indigo-50/60 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30 hover:border-indigo-200 dark:hover:border-indigo-800"
-            aria-label={t('reviews_menu_schedules_title') || 'Cronogramas'}
-            title={t('reviews_menu_schedules_title') || 'Cronogramas'}
-          >
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
-                <BarChart3 size={22} />
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Cronogramas</div>
-                <div className="text-sm text-slate-600 dark:text-slate-300">Planejamento e acompanhamento</div>
-              </div>
-            </div>
-          </button>
-        )}
+
 
         {hasPerm('/reviews/delegacao') && (
           <button
