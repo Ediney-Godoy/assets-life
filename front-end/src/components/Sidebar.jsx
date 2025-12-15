@@ -88,7 +88,7 @@ export default function Sidebar({ collapsed = false }) {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto no-scrollbar">
         {sections.map((section) => {
           const Icon = section.icon;
-          const isActive = location.pathname === section.to || location.pathname.startsWith(section.to + '/');
+          const isActive = location.pathname === section.to || (location.pathname.startsWith(section.to + '/') && !(section.to === '/reviews' && location.pathname.startsWith('/reviews/cronogramas')));
 
           return (
             <NavLink
