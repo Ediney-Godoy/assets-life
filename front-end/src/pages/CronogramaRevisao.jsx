@@ -735,32 +735,53 @@ export default function CronogramaRevisao() {
          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
               <div className="text-lg font-semibold mb-2">{t('edit_task_title')}</div>
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                <Select label={t('task_type')} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
-                  {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s === 'Tarefa' ? t('type_task') : t('type_title')}</option>))}
-                </Select>
-                <Input label={t('task_name')} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-                <Select label={t('task_responsible')} value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
-                  <option value="">{t('select')}</option>
-                  {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
-                </Select>
-                <Input label={t('task_start')} type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
-                <Input label={t('task_end')} type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
-                <Select label={t('task_status')} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-                  {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{getStatusLabel(s)}</option>))}
-                </Select>
-                <Input label={`${t('task_progress')} (%)`} type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div className="md:col-span-3">
+                    <Select label={t('task_type')} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
+                    {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s === 'Tarefa' ? t('type_task') : t('type_title')}</option>))}
+                    </Select>
+                </div>
+                <div className="md:col-span-9">
+                    <Input label={t('task_name')} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+                </div>
+                
+                <div className="md:col-span-4">
+                    <Select label={t('task_responsible')} value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
+                    <option value="">{t('select')}</option>
+                    {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
+                    </Select>
+                </div>
+                <div className="md:col-span-2">
+                    <Input label={t('task_start')} type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                    <Input label={t('task_end')} type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                    <Select label={t('task_status')} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                    {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{getStatusLabel(s)}</option>))}
+                    </Select>
+                </div>
+                <div className="md:col-span-2">
+                    <Input label={`${t('task_progress')} (%)`} type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
+                </div>
               </div>
               
               <div className="mt-4 border-t border-slate-200 dark:border-slate-800 pt-3">
-                <div className="font-medium mb-2 text-slate-900 dark:text-slate-100">{t('attachments_title') || 'Anexos'}</div>
+                <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{t('attachments_title') || 'Anexos'}</div>
+                    <label className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-slate-100 text-slate-900 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-800/80 h-9 w-9 cursor-pointer" title={t('add_attachment') || 'Adicionar Anexo'}>
+                        <Upload size={18} />
+                        <input type="file" className="hidden" onChange={handleEditFileUpload} />
+                    </label>
+                </div>
                 
                 <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
                     {viewEvidencias.map((ev) => (
                         <div key={ev.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/50 rounded border border-slate-200 dark:border-slate-700 text-sm">
                             <div className="truncate flex-1 mr-2 text-slate-700 dark:text-slate-300">{ev.nome_arquivo}</div>
                             <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title={t('download')} onClick={async () => {
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title={t('download')} onClick={async () => {
                                       try {
                                         const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(editingTaskId), Number(ev.id));
                                         const url = URL.createObjectURL(blob);
@@ -773,23 +794,15 @@ export default function CronogramaRevisao() {
                                         toast.error(err?.message || t('download_failed'));
                                       }
                                 }}>
-                                    <Download size={14} />
+                                    <Download size={16} />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500 hover:text-red-600" title={t('delete')} onClick={() => handleEditFileDelete(ev.id)}>
-                                    <Trash size={14} />
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-600" title={t('delete')} onClick={() => handleEditFileDelete(ev.id)}>
+                                    <Trash size={16} />
                                 </Button>
                             </div>
                         </div>
                     ))}
                     {viewEvidencias.length === 0 && <div className="text-slate-500 text-sm italic">{t('no_attachments') || 'Sem anexos.'}</div>}
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <label className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-slate-100 text-slate-900 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-800/80 h-9 px-3 cursor-pointer gap-2">
-                        <Upload size={14} />
-                        {t('add_attachment') || 'Adicionar Anexo'}
-                        <input type="file" className="hidden" onChange={handleEditFileUpload} />
-                    </label>
                 </div>
               </div>
 
