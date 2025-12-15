@@ -134,7 +134,7 @@ export default function ReviewsMenu() {
         {hasPerm('/reviews/vidas-uteis') && (
           <button
             type="button"
-            onClick={() => navigate('/reviews/vidas-uteis')}
+            onClick={() => navigate('/reviews/cronogramas', { state: { tab: 'vidas_uteis' } })}
             className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-amber-50/60 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 hover:border-amber-200 dark:hover:border-amber-800"
             aria-label={t('reviews_menu_useful_lives_title')}
             title={t('reviews_menu_useful_lives_title')}

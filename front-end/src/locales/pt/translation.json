@@ -436,6 +436,8 @@
   "help_tip_filters": "Use os filtros e busca para localizar itens rapidamente.",
   "help_tip_shortcuts": "Aproveite o painel colapsável para ganhar espaço na tela.",
   "schedule_already_exists": "Já existe um cronograma para este período.",
+  "tab_cronograma": "Cronograma",
+  "tab_vidas_uteis": "Revisão de Vidas Úteis",
   "help_tip_permissions": "Sem acesso? Verifique permissões e empresa selecionada no topo.",
   "notifications": "Notificações",
   "notification": "Notificação",

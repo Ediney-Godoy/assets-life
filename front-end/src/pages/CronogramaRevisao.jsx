@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
@@ -8,6 +9,7 @@ import ActionToolbar from '../components/ActionToolbar';
 // import Table from '../components/ui/Table'; // Custom table implementation used
 import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import RevisaoVidasUteis from './RevisaoVidasUteis';
 import { 
   getReviewPeriods,
   getUsers,
@@ -30,6 +32,8 @@ function toDate(d) {
 
 export default function CronogramaRevisao() {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = React.useState(location.state?.tab || 'cronograma');
   const getStatusLabel = (s) => {
     if (s === 'Pendente') return t('status_pending');
     if (s === 'Em Andamento') return t('status_in_progress');
@@ -55,14 +59,18 @@ export default function CronogramaRevisao() {
   const [viewEvidencias, setViewEvidencias] = React.useState([]);
   const [selectedEvidencias, setSelectedEvidencias] = React.useState([]);
   const [canEdit, setCanEdit] = React.useState(false);
+  const [canViewVidasUteis, setCanViewVidasUteis] = React.useState(false);
 
   React.useEffect(() => {
     try {
       const perms = JSON.parse(localStorage.getItem('assetlife_permissoes') || '{}');
       const rotas = perms.rotas || [];
       setCanEdit(rotas.includes('/reviews/cronogramas/edit'));
+      const hasVU = rotas.includes('/reviews/vidas-uteis') || rotas.includes('/revisoes/vidas-uteis') || rotas.includes('/revisao/vidas-uteis') || rotas.includes('/reviews/rvu');
+      setCanViewVidasUteis(hasVU);
     } catch {
       setCanEdit(false);
+      setCanViewVidasUteis(false);
     }
   }, []);
 
@@ -472,8 +480,26 @@ export default function CronogramaRevisao() {
   };
 
   return (
-    <section>
-      <style>{`
+    <div className="p-6">
+      <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6 no-print">
+          <button
+             onClick={() => setActiveTab('cronograma')}
+             className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'cronograma' ? 'border-amber-500 text-amber-600 dark:text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+          >
+             {t('tab_cronograma')}
+          </button>
+          {canViewVidasUteis && (
+          <button
+             onClick={() => setActiveTab('vidas_uteis')}
+             className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'vidas_uteis' ? 'border-amber-500 text-amber-600 dark:text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+          >
+             {t('tab_vidas_uteis')}
+          </button>
+          )}
+      </div>
+      <div className={activeTab === 'cronograma' ? 'block' : 'hidden'}>
+        <section>
+          <style>{`
         @media print {
             @page { size: landscape; margin: 5mm; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -772,6 +798,13 @@ export default function CronogramaRevisao() {
         </div>
       )}
       <input type="file" ref={fileInputRef} className="hidden" onChange={handleTableFileChange} />
-    </section>
+        </section>
+      </div>
+      {activeTab === 'vidas_uteis' && canViewVidasUteis && (
+        <div className="mt-4">
+          <RevisaoVidasUteis />
+        </div>
+      )}
+    </div>
   );
 }

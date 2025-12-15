@@ -401,6 +401,8 @@
   "help_tip_filters": "Use filters and search to quickly locate items.",
   "help_tip_shortcuts": "Leverage the collapsible panel to gain screen space.",
   "schedule_already_exists": "A schedule already exists for this period.",
+  "tab_cronograma": "Schedule",
+  "tab_vidas_uteis": "Useful Life Review",
   "help_tip_permissions": "No access? Check permissions and selected company at the top.",
   "notifications": "Notifications",
   "notification": "Notification",
