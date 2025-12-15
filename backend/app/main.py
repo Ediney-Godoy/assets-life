@@ -223,6 +223,32 @@ def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int
         empresas_ids = [current_user.empresa_id]
     return empresas_ids
 
+def check_permission(db: Session, user: UsuarioModel, route: str):
+    # Check if transaction exists
+    transacao = db.query(TransacaoModel).filter(TransacaoModel.rota == route).first()
+    if not transacao:
+        # If the transaction is not defined in the system, we might want to block by default
+        # or allow if it's not meant to be protected. 
+        # But for "edit" restriction, we expect it to exist.
+        raise HTTPException(status_code=403, detail="Permissão não configurada")
+    
+    # Get user groups
+    user_groups = db.query(GrupoUsuarioModel.grupo_id).filter(GrupoUsuarioModel.usuario_id == user.id).all()
+    group_ids = [ug.grupo_id for ug in user_groups]
+    
+    if not group_ids:
+        raise HTTPException(status_code=403, detail="Acesso negado (sem grupo)")
+        
+    # Check link
+    has_perm = db.query(GrupoTransacaoModel).filter(
+        GrupoTransacaoModel.grupo_id.in_(group_ids),
+        GrupoTransacaoModel.transacao_id == transacao.id
+    ).first()
+    
+    if not has_perm:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    return True
+
 @app.post("/auth/login", response_model=TokenResponse)
 def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)):
     identifier = (payload.identificador or (payload.email or "")).strip()
@@ -504,6 +530,7 @@ def on_startup():
             {"nome_tela": "Revisões - Vidas Úteis", "rota": "/reviews/vidas-uteis", "descricao": "Revisão de vidas úteis"},
             {"nome_tela": "Revisões - Massa", "rota": "/revisoes-massa", "descricao": "Revisões em massa de ativos"},
             {"nome_tela": "Revisões - Cronogramas", "rota": "/reviews/cronogramas", "descricao": "Cronogramas de revisão"},
+            {"nome_tela": "Revisões - Cronogramas (Edição)", "rota": "/reviews/cronogramas/edit", "descricao": "Permissão para editar cronogramas"},
             {"nome_tela": "Relatórios", "rota": "/reports", "descricao": "Relatórios"},
             {"nome_tela": "Ativos", "rota": "/assets", "descricao": "Gestão de ativos"},
         ]
@@ -794,7 +821,8 @@ def list_cronogramas(periodo_id: Optional[int] = None, empresa_id: Optional[int]
     return q.order_by(CronogramaModel.id.desc()).all()
 
 @app.post("/cronogramas", response_model=Cronograma)
-def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Session = Depends(get_db)):
+def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
+    check_permission(db, current_user, "/reviews/cronogramas/edit")
     per = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == payload.periodo_id).first()
     if not per:
         raise HTTPException(status_code=404, detail="Período não encontrado")
@@ -1180,7 +1208,8 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro interno ao listar tarefas: {str(e)}")
 
 @app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
-def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate, db: Session = Depends(get_db)):
+def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate, db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
+    check_permission(db, current_user, "/reviews/cronogramas/edit")
     c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Cronograma não encontrado")
@@ -1244,7 +1273,8 @@ def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate
             raise HTTPException(status_code=400, detail="Falha ao criar tarefa")
 
 @app.put("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}", response_model=CronogramaTarefa)
-def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: CronogramaTarefaUpdate, db: Session = Depends(get_db)):
+def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: CronogramaTarefaUpdate, db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
+    check_permission(db, current_user, "/reviews/cronogramas/edit")
     try:
         t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
         if not t:
@@ -1310,6 +1340,7 @@ def list_evidencias(cronograma_id: int, tarefa_id: int, db: Session = Depends(ge
 
 @app.post("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias", response_model=CronogramaTarefaEvidencia)
 async def upload_evidencia(cronograma_id: int, tarefa_id: int, file: UploadFile = File(...), current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    check_permission(db, current_user, "/reviews/cronogramas/edit")
     # Raw SQL check
     exists = db.execute(sa.text("SELECT id FROM cronogramas_tarefas WHERE id=:id AND cronograma_id=:cid"), {"id": tarefa_id, "cid": cronograma_id}).scalar()
     if not exists:
@@ -1344,7 +1375,8 @@ def download_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db
     return Response(content=ev.conteudo, media_type=ev.content_type or "application/octet-stream", headers=headers)
 
 @app.delete("/cronogramas/{cronograma_id}/tarefas/{tarefa_id}/evidencias/{evidencia_id}")
-def delete_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db: Session = Depends(get_db)):
+def delete_evidencia(cronograma_id: int, tarefa_id: int, evidencia_id: int, db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
+    check_permission(db, current_user, "/reviews/cronogramas/edit")
     exists = db.execute(sa.text("SELECT id FROM cronogramas_tarefas WHERE id=:id AND cronograma_id=:cid"), {"id": tarefa_id, "cid": cronograma_id}).scalar()
     if not exists:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")

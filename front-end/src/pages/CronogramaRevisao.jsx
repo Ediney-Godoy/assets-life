@@ -47,6 +47,17 @@ export default function CronogramaRevisao() {
   const [viewTaskId, setViewTaskId] = React.useState(null);
   const [viewEvidencias, setViewEvidencias] = React.useState([]);
   const [selectedEvidencias, setSelectedEvidencias] = React.useState([]);
+  const [canEdit, setCanEdit] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      const perms = JSON.parse(localStorage.getItem('assetlife_permissoes') || '{}');
+      const rotas = perms.rotas || [];
+      setCanEdit(rotas.includes('/reviews/cronogramas/edit'));
+    } catch {
+      setCanEdit(false);
+    }
+  }, []);
 
   const loadBase = React.useCallback(() => {
     setLoading(true);
@@ -438,6 +449,7 @@ export default function CronogramaRevisao() {
   };
 
   const handleDeleteEvidencias = async () => {
+    if (!canEdit) return;
     if (selectedEvidencias.length === 0) return;
     if (!window.confirm(t('confirm_delete') || 'Tem certeza?')) return;
     try {
@@ -472,18 +484,18 @@ export default function CronogramaRevisao() {
       <div className="mb-4 px-4 flex items-center justify-between gap-2 flex-wrap no-print">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Cronogramas de Revisão</h2>
         <ActionToolbar
-          onNew={onNew}
-          onSave={onSave}
-          onEdit={onEditSelected}
+          onNew={canEdit ? onNew : undefined}
+          onSave={canEdit ? onSave : undefined}
+          onEdit={canEdit ? onEditSelected : undefined}
           onDelete={() => toast.error(t('delete_not_available'))}
           onPrint={() => window.print()}
           onExportPdf={exportPDF}
           onExportExcel={exportExcel}
-          canEditDelete={!!selectedTaskId}
+          canEditDelete={!!selectedTaskId && canEdit}
         />
         <div className="flex items-center gap-2">
-          <Button variant="secondary" title="Mover para cima" aria-label="Mover para cima" onClick={() => moveSelected('up')} disabled={!canMoveUp} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronUp size={18} /></Button>
-          <Button variant="secondary" title="Mover para baixo" aria-label="Mover para baixo" onClick={() => moveSelected('down')} disabled={!canMoveDown} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronDown size={18} /></Button>
+          <Button variant="secondary" title="Mover para cima" aria-label="Mover para cima" onClick={() => moveSelected('up')} disabled={!canMoveUp || !canEdit} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronUp size={18} /></Button>
+          <Button variant="secondary" title="Mover para baixo" aria-label="Mover para baixo" onClick={() => moveSelected('down')} disabled={!canMoveDown || !canEdit} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronDown size={18} /></Button>
         </div>
       </div>
 
@@ -501,7 +513,7 @@ export default function CronogramaRevisao() {
           ))}
         </Select>
         <div className="flex items-end">
-          <Button onClick={onCreateCronograma} disabled={!periodoId || cronogramas.length > 0} title={cronogramas.length > 0 ? t('schedule_already_exists') : 'Criar Cronograma'} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center">
+          <Button onClick={onCreateCronograma} disabled={!periodoId || cronogramas.length > 0 || !canEdit} title={cronogramas.length > 0 ? t('schedule_already_exists') : 'Criar Cronograma'} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center">
             <Plus size={18} />
           </Button>
         </div>
@@ -599,7 +611,7 @@ export default function CronogramaRevisao() {
                              {t.progresso_percentual ?? 0}%
                         </div>
                         <div className={`sticky left-[830px] z-30 w-[60px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
-                            <Button variant="ghost" size="sm" className="h-10 w-10 p-0" title="Upload" onClick={(e) => { e.stopPropagation(); handleTableUploadClick(t.id); }}>
+                            <Button variant="ghost" size="sm" disabled={!canEdit} className="h-10 w-10 p-0" title="Upload" onClick={(e) => { e.stopPropagation(); handleTableUploadClick(t.id); }}>
                                 <Upload size={22} />
                             </Button>
                         </div>
@@ -691,9 +703,11 @@ export default function CronogramaRevisao() {
             <div className="flex justify-between items-center mb-4">
               <div className="text-lg font-semibold">Evidências da Tarefa</div>
               <div className="flex items-center gap-2">
-                 <Button variant="danger" size="sm" className="h-8 w-8 p-0 justify-center" title="Excluir selecionados" onClick={handleDeleteEvidencias} disabled={selectedEvidencias.length === 0}>
-                    <Trash size={16} />
-                 </Button>
+                 {canEdit && (
+                   <Button variant="danger" size="sm" className="h-8 w-8 p-0 justify-center" title="Excluir selecionados" onClick={handleDeleteEvidencias} disabled={selectedEvidencias.length === 0}>
+                      <Trash size={16} />
+                   </Button>
+                 )}
                  <Button variant="ghost" size="sm" onClick={() => setViewTaskId(null)}>✕</Button>
               </div>
             </div>

@@ -144,7 +144,7 @@ export default function RevisaoVidasUteis() {
     if (!start || !end) return null;
     let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
     if (end.getDate() < start.getDate()) months -= 1;
-    return months < 0 ? 0 : months;
+    return months;
   };
 
   const splitYearsMonths = (totalMonths) => {
@@ -557,6 +557,10 @@ export default function RevisaoVidasUteis() {
           setError(t('error_increment_decrease_requires_less'));
           return;
         }
+        if (!editForm.justificativa) {
+          setError(t('error_justification_required_decrease') || 'Justificativa obrigatória para redução de vida útil.');
+          return;
+        }
       } else if (editForm.incremento === 'Acréscimo') {
         // Para aumento, a vida útil TOTAL deve ser maior que a original
         if (totalNewMonths == null || !(totalNewMonths > originalMonths)) {
@@ -752,6 +756,7 @@ export default function RevisaoVidasUteis() {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg w-full max-w-2xl p-4">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('edit_review_title')}</h3>
+            {error && <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">{error}</div>}
 
             {/* Linha 1: Condição Física e Incremento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">

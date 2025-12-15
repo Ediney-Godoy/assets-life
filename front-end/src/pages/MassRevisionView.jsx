@@ -204,7 +204,7 @@ export default function MassRevisionView() {
     if (!start || !end) return null;
     let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
     if (end.getDate() < start.getDate()) months -= 1;
-    return months < 0 ? 0 : months;
+    return months;
   };
   const monthsDiffSigned = (start, end) => {
     if (!start || !end) return 0;
@@ -549,6 +549,11 @@ export default function MassRevisionView() {
   };
 
   const confirmApply = async () => {
+    if (form.incremento === 'Decréscimo' && !form.justificativa) {
+      setPreviewOpen(false);
+      setError(t('error_justification_required_decrease') || 'Justificativa obrigatória para redução de vida útil. Selecione um motivo.');
+      return;
+    }
     try {
       const payload = {
         ativos_ids: Array.from(selected),
