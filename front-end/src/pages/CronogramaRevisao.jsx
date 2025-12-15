@@ -252,10 +252,13 @@ export default function CronogramaRevisao() {
     setShowNewModal(true);
   };
 
-  const onEditSelected = () => {
+  const onEditSelected = async () => {
     if (!selectedTaskId) { toast.error(t('error_generic')); return; }
     const task = tarefas.find((x) => x.id === selectedTaskId);
     if (!task) { toast.error(t('task_not_found')); return; }
+    
+    setViewEvidencias([]);
+    
     setEditingTaskId(task.id);
     setForm({
       nome: task.nome || '',
@@ -267,7 +270,43 @@ export default function CronogramaRevisao() {
       progresso_percentual: Number(task.progresso_percentual ?? 0),
       file: null
     });
+    
+    // Load evidences for edit modal
+    try {
+      const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(task.id));
+      setViewEvidencias(Array.isArray(list) ? list : []);
+    } catch {
+      setViewEvidencias([]);
+    }
+
     toast.success(t('editing_task'));
+  };
+
+  const handleEditFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !editingTaskId) return;
+    try {
+      await uploadCronogramaTarefaEvidencia(Number(cronogramaId), Number(editingTaskId), file);
+      toast.success(t('evidence_sent'));
+      const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(editingTaskId));
+      setViewEvidencias(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err.message || t('error_sending_evidence'));
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleEditFileDelete = async (evidenceId) => {
+    if (!window.confirm(t('confirm_delete'))) return;
+    try {
+      await deleteCronogramaTarefaEvidencia(Number(cronogramaId), Number(editingTaskId), Number(evidenceId));
+      toast.success(t('evidences_deleted'));
+      const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(editingTaskId));
+      setViewEvidencias(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(t('error_deleting_evidences'));
+    }
   };
 
   const onSave = async () => {
@@ -712,6 +751,48 @@ export default function CronogramaRevisao() {
                 </Select>
                 <Input label={`${t('task_progress')} (%)`} type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
               </div>
+              
+              <div className="mt-4 border-t border-slate-200 dark:border-slate-800 pt-3">
+                <div className="font-medium mb-2 text-slate-900 dark:text-slate-100">{t('attachments_title') || 'Anexos'}</div>
+                
+                <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
+                    {viewEvidencias.map((ev) => (
+                        <div key={ev.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/50 rounded border border-slate-200 dark:border-slate-700 text-sm">
+                            <div className="truncate flex-1 mr-2 text-slate-700 dark:text-slate-300">{ev.nome_arquivo}</div>
+                            <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title={t('download')} onClick={async () => {
+                                      try {
+                                        const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(editingTaskId), Number(ev.id));
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = ev.nome_arquivo || 'arquivo';
+                                        a.click();
+                                        URL.revokeObjectURL(url);
+                                      } catch (err) {
+                                        toast.error(err?.message || t('download_failed'));
+                                      }
+                                }}>
+                                    <Download size={14} />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500 hover:text-red-600" title={t('delete')} onClick={() => handleEditFileDelete(ev.id)}>
+                                    <Trash size={14} />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                    {viewEvidencias.length === 0 && <div className="text-slate-500 text-sm italic">{t('no_attachments') || 'Sem anexos.'}</div>}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-slate-100 text-slate-900 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-800/80 h-9 px-3 cursor-pointer gap-2">
+                        <Upload size={14} />
+                        {t('add_attachment') || 'Adicionar Anexo'}
+                        <input type="file" className="hidden" onChange={handleEditFileUpload} />
+                    </label>
+                </div>
+              </div>
+
               <div className="mt-3 flex gap-2 justify-end">
                 <Button variant="secondary" onClick={() => { setEditingTaskId(null); }}>{t('cancel')}</Button>
                 <Button onClick={onSave} disabled={!cronogramaId}>{t('save')}</Button>
