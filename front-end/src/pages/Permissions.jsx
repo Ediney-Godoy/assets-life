@@ -62,7 +62,7 @@ export default function PermissionsPage() {
       setLoading(true);
       let tx = transactions.length ? transactions : (await getTransactions()) || [];
       const requiredRoutes = new Set([
-        '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas',
+        '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
         '/notifications','/notifications/new'
       ]);
       const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));
@@ -102,7 +102,7 @@ export default function PermissionsPage() {
       setUsers(Array.isArray(us) ? us : []);
       let baseTx = Array.isArray(ts) ? ts : [];
       const requiredRoutes = new Set([
-        '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas',
+        '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
         '/notifications','/notifications/new'
       ]);
       const existingRoutes = new Set(baseTx.map((tr) => String(tr.rota || '')));
@@ -156,7 +156,7 @@ export default function PermissionsPage() {
       try {
         let tx = transactions.length ? transactions : (await getTransactions()) || [];
         const requiredRoutes = new Set([
-          '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas',
+          '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
           '/notifications','/notifications/new'
         ]);
         const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));
@@ -197,7 +197,7 @@ export default function PermissionsPage() {
         try {
           let tx = transactions.length ? transactions : (await getTransactions()) || [];
           const requiredRoutes = new Set([
-            '/reviews','/reviews/periodos','/reviews/cronogramas','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis',
+            '/reviews','/reviews/periodos','/reviews/cronogramas','/reviews/cronogramas/edit','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis',
             '/notifications','/notifications/new'
           ]);
           const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));

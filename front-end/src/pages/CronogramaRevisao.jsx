@@ -29,7 +29,14 @@ function toDate(d) {
 }
 
 export default function CronogramaRevisao() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const getStatusLabel = (s) => {
+    if (s === 'Pendente') return t('status_pending');
+    if (s === 'Em Andamento') return t('status_in_progress');
+    if (s === 'Concluída') return t('status_completed');
+    if (s === 'Atrasada') return t('status_delayed');
+    return s;
+  };
   const [periodos, setPeriodos] = React.useState([]);
   const [users, setUsers] = React.useState([]);
   const [periodoId, setPeriodoId] = React.useState('');
@@ -144,7 +151,7 @@ export default function CronogramaRevisao() {
       const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(taskId));
       setViewEvidencias(Array.isArray(list) ? list : []);
     } catch {
-      toast.error('Erro ao carregar evidências');
+      toast.error(t('error_loading_evidences'));
     }
   };
 
@@ -191,10 +198,10 @@ export default function CronogramaRevisao() {
     if (!file || !uploadTaskId) return;
     try {
       await uploadCronogramaTarefaEvidencia(Number(cronogramaId), Number(uploadTaskId), file);
-      toast.success('Evidência enviada com sucesso');
+      toast.success(t('evidence_sent'));
       if (selectedTaskId === uploadTaskId) loadEvidencias();
     } catch (err) {
-      toast.error(err.message || 'Erro ao enviar evidência');
+      toast.error(err.message || t('error_sending_evidence'));
     } finally {
       setUploadTaskId(null);
       e.target.value = '';
@@ -203,10 +210,10 @@ export default function CronogramaRevisao() {
 
   const onAddTask = async () => {
     try {
-      if (!cronogramaId) { toast.error('Selecione um cronograma'); return; }
-      if (!form.nome) { toast.error('Nome é obrigatório'); return; }
+      if (!cronogramaId) { toast.error(t('select_cronogram')); return; }
+      if (!form.nome) { toast.error(t('name_required')); return; }
       if (!checkDurationLimit(form.data_inicio, form.data_fim)) {
-        toast.error('O cronograma não pode ultrapassar 92 dias');
+        toast.error(t('cronogram_duration_limit'));
         return;
       }
       const payload = {
@@ -243,7 +250,7 @@ export default function CronogramaRevisao() {
   const onEditSelected = () => {
     if (!selectedTaskId) { toast.error(t('error_generic')); return; }
     const t = tarefas.find((x) => x.id === selectedTaskId);
-    if (!t) { toast.error('Tarefa não encontrada'); return; }
+    if (!t) { toast.error(t('task_not_found')); return; }
     setEditingTaskId(t.id);
     setForm({
       nome: t.nome || '',
@@ -262,7 +269,7 @@ export default function CronogramaRevisao() {
     try {
       if (editingTaskId) {
         if (!checkDurationLimit(form.data_inicio, form.data_fim, editingTaskId)) {
-            toast.error('O cronograma não pode ultrapassar 92 dias');
+            toast.error(t('cronogram_duration_limit'));
             return;
         }
         const payload = {
@@ -275,7 +282,7 @@ export default function CronogramaRevisao() {
           progresso_percentual: Math.max(0, Math.min(100, Number(form.progresso_percentual ?? 0))),
         };
         const updated = await updateCronogramaTarefa(Number(cronogramaId), Number(editingTaskId), payload);
-        toast.success('Tarefa atualizada');
+        toast.success(t('task_updated'));
         setEditingTaskId(null);
         setSelectedTaskId(updated?.id || null);
         await loadTarefas();
@@ -289,36 +296,36 @@ export default function CronogramaRevisao() {
 
   const exportExcel = () => {
     const data = tarefas.map((t) => ({
-      'Tarefa': t.nome || '',
-      'Responsável': users.find((u) => u.id === t.responsavel_id)?.nome_completo || '',
-      'Início': t.data_inicio ? formatDate(t.data_inicio) : '',
-      'Fim': t.data_fim ? formatDate(t.data_fim) : '',
-      'Status': t.status || '',
-      'Progresso (%)': t.progresso_percentual ?? 0
+      [t('task_name')]: t.nome || '',
+      [t('task_responsible')]: users.find((u) => u.id === t.responsavel_id)?.nome_completo || '',
+      [t('task_start')]: t.data_inicio ? formatDate(t.data_inicio) : '',
+      [t('task_end')]: t.data_fim ? formatDate(t.data_fim) : '',
+      [t('task_status')]: t.status || '',
+      [`${t('task_progress')} (%)`]: t.progresso_percentual ?? 0
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Cronograma");
-    XLSX.writeFile(wb, "cronograma_tarefas.xlsx");
-    toast.success('Exportado Excel');
+    XLSX.utils.book_append_sheet(wb, ws, 'Cronograma');
+    XLSX.writeFile(wb, `cronograma_${cronogramaId}.xlsx`);
+    toast.success(t('export_excel_done'));
   };
 
   const exportPDF = () => {
-    const win = window.open('', 'PRINT', 'height=700,width=1100');
+    const win = window.open('', '', 'height=700,width=1000');
     
     // Build table header
     const tableHeader = `
-      <thead>
-        <tr style="background-color: #f1f5f9; text-align: left;">
-          <th style="padding: 8px; border: 1px solid #cbd5e1;">Atividade</th>
-          <th style="padding: 8px; border: 1px solid #cbd5e1;">Responsável</th>
-          <th style="padding: 8px; border: 1px solid #cbd5e1;">Início</th>
-          <th style="padding: 8px; border: 1px solid #cbd5e1;">Fim</th>
-          <th style="padding: 8px; border: 1px solid #cbd5e1;">Status</th>
-          <th style="padding: 8px; border: 1px solid #cbd5e1;">Progresso</th>
+    <thead>
+        <tr>
+            <th style="text-align: left; padding: 8px; border: 1px solid #cbd5e1;">${t('task_name')}</th>
+            <th style="text-align: left; padding: 8px; border: 1px solid #cbd5e1;">${t('task_responsible')}</th>
+            <th style="text-align: left; padding: 8px; border: 1px solid #cbd5e1;">${t('task_start')}</th>
+            <th style="text-align: left; padding: 8px; border: 1px solid #cbd5e1;">${t('task_end')}</th>
+            <th style="text-align: left; padding: 8px; border: 1px solid #cbd5e1;">${t('task_status')}</th>
+            <th style="text-align: left; padding: 8px; border: 1px solid #cbd5e1;">${t('task_progress')} (%)</th>
         </tr>
-      </thead>
+    </thead>
     `;
 
     // Build table body
@@ -326,6 +333,7 @@ export default function CronogramaRevisao() {
         const isTitle = t.tipo === 'Título' || /^(\[TÍTULO\]|\(TÍTULO\))/i.test(t.nome);
         const bg = isTitle ? '#e2e8f0' : '#fff';
         const fw = isTitle ? 'bold' : 'normal';
+        
         return `
         <tr style="background-color: ${bg}; font-weight: ${fw};">
             <td style="padding: 8px; border: 1px solid #cbd5e1;">${t.nome || ''}</td>
@@ -340,7 +348,7 @@ export default function CronogramaRevisao() {
 
     win.document.write(`<html>
       <head>
-        <title>Cronograma</title>
+        <title>${t('cronogram_schedule_label')}</title>
         <style>
           @page { size: landscape; margin: 1cm; }
           body { font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; }
@@ -349,7 +357,7 @@ export default function CronogramaRevisao() {
         </style>
       </head>
       <body>
-        <h3>Tarefas do Cronograma</h3>
+        <h3>${t('cronogram_tasks_title')}</h3>
         <table>
           ${tableHeader}
           <tbody>
@@ -451,15 +459,15 @@ export default function CronogramaRevisao() {
   const handleDeleteEvidencias = async () => {
     if (!canEdit) return;
     if (selectedEvidencias.length === 0) return;
-    if (!window.confirm(t('confirm_delete') || 'Tem certeza?')) return;
+    if (!window.confirm(t('confirm_delete'))) return;
     try {
       await Promise.all(selectedEvidencias.map(id => deleteCronogramaTarefaEvidencia(Number(cronogramaId), Number(viewTaskId), Number(id))));
-      toast.success('Evidências excluídas');
+      toast.success(t('evidences_deleted'));
       setSelectedEvidencias([]);
       const list = await listCronogramaTarefaEvidencias(Number(cronogramaId), Number(viewTaskId));
       setViewEvidencias(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error('Erro ao excluir evidências');
+      toast.error(t('error_deleting_evidences'));
     }
   };
 
@@ -482,7 +490,7 @@ export default function CronogramaRevisao() {
         }
       `}</style>
       <div className="mb-4 px-4 flex items-center justify-between gap-2 flex-wrap no-print">
-        <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Cronogramas de Revisão</h2>
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('cronogram_title')}</h2>
         <ActionToolbar
           onNew={canEdit ? onNew : undefined}
           onSave={canEdit ? onSave : undefined}
@@ -500,20 +508,20 @@ export default function CronogramaRevisao() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 mb-4 no-print">
-        <Select label="Período Aberto" value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
-          <option value="">Selecione</option>
+        <Select label={t('period_label')} value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
+          <option value="">{t('select')}</option>
           {periodos.map((p) => (
             <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
           ))}
         </Select>
-        <Select label="Cronograma" value={cronogramaId} onChange={(e) => setCronogramaId(e.target.value)}>
-          <option value="">Selecione</option>
+        <Select label={t('cronogram_schedule_label')} value={cronogramaId} onChange={(e) => setCronogramaId(e.target.value)}>
+          <option value="">{t('select')}</option>
           {cronogramas.map((c) => (
             <option key={c.id} value={c.id}>{c.descricao || `Cronograma ${c.id}`}</option>
           ))}
         </Select>
         <div className="flex items-end">
-          <Button onClick={onCreateCronograma} disabled={!periodoId || cronogramas.length > 0 || !canEdit} title={cronogramas.length > 0 ? t('schedule_already_exists') : 'Criar Cronograma'} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center">
+          <Button onClick={onCreateCronograma} disabled={!periodoId || cronogramas.length > 0 || !canEdit} title={cronogramas.length > 0 ? t('schedule_already_exists') : t('create_cronogram_btn')} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center">
             <Plus size={18} />
           </Button>
         </div>
@@ -537,20 +545,20 @@ export default function CronogramaRevisao() {
             <div className="sticky left-0 z-50 bg-slate-100 dark:bg-slate-900 w-[40px] p-2 border-r flex items-center justify-center">
               <Eye size={16} />
             </div>
-            <div className="sticky left-[40px] z-50 bg-slate-100 dark:bg-slate-900 w-[300px] p-2 border-r flex items-center">Atividade</div>
-            <div className="sticky left-[340px] z-50 bg-slate-100 dark:bg-slate-900 w-[150px] p-2 border-r flex items-center">Responsável</div>
-            <div className="sticky left-[490px] z-50 bg-slate-100 dark:bg-slate-900 w-[90px] p-2 border-r flex items-center">Início</div>
-            <div className="sticky left-[580px] z-50 bg-slate-100 dark:bg-slate-900 w-[90px] p-2 border-r flex items-center">Fim</div>
-            <div className="sticky left-[670px] z-50 bg-slate-100 dark:bg-slate-900 w-[100px] p-2 border-r flex items-center">Status</div>
-            <div className="sticky left-[770px] z-50 bg-slate-100 dark:bg-slate-900 w-[60px] p-2 border-r flex items-center text-center">Execução</div>
-            <div className="sticky left-[830px] z-50 bg-slate-100 dark:bg-slate-900 w-[60px] p-2 border-r flex items-center text-center">Ações</div>
+            <div className="sticky left-[40px] z-50 bg-slate-100 dark:bg-slate-900 w-[300px] p-2 border-r flex items-center">{t('activity')}</div>
+            <div className="sticky left-[340px] z-50 bg-slate-100 dark:bg-slate-900 w-[150px] p-2 border-r flex items-center">{t('task_responsible')}</div>
+            <div className="sticky left-[490px] z-50 bg-slate-100 dark:bg-slate-900 w-[90px] p-2 border-r flex items-center">{t('task_start')}</div>
+            <div className="sticky left-[580px] z-50 bg-slate-100 dark:bg-slate-900 w-[90px] p-2 border-r flex items-center">{t('task_end')}</div>
+            <div className="sticky left-[670px] z-50 bg-slate-100 dark:bg-slate-900 w-[100px] p-2 border-r flex items-center">{t('task_status')}</div>
+            <div className="sticky left-[770px] z-50 bg-slate-100 dark:bg-slate-900 w-[60px] p-2 border-r flex items-center text-center">{t('execution_col')}</div>
+            <div className="sticky left-[830px] z-50 bg-slate-100 dark:bg-slate-900 w-[60px] p-2 border-r flex items-center text-center">{t('actions')}</div>
             
             {/* Gantt Header */}
             <div className="flex">
                 {headerDates.map(d => (
                     <div key={d.toISOString()} className="flex-shrink-0 border-r text-center flex flex-col items-center justify-center text-[10px] text-slate-500" style={{ width: dayWidth }}>
                         <span className="font-bold">{d.getUTCDate()}</span>
-                        <span className="text-[9px]">{d.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }).replace('.','')}</span>
+                        <span className="text-[9px]">{d.toLocaleString(i18n.language, { month: 'short', timeZone: 'UTC' }).replace('.','')}</span>
                     </div>
                 ))}
             </div>
@@ -587,7 +595,7 @@ export default function CronogramaRevisao() {
                         
                         {/* Sticky Columns */}
                         <div className={`sticky left-0 z-30 w-[40px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
-                            <Button variant="ghost" size="sm" className="h-10 w-10 p-0" title="Visualizar Evidências" onClick={(e) => { e.stopPropagation(); handleViewEvidencias(t.id); }}>
+                            <Button variant="ghost" size="sm" className="h-10 w-10 p-0" title={t('view_evidence_btn')} onClick={(e) => { e.stopPropagation(); handleViewEvidencias(t.id); }}>
                                 <Eye className="w-6 h-6 text-blue-500" />
                             </Button>
                         </div>
@@ -611,7 +619,7 @@ export default function CronogramaRevisao() {
                              {t.progresso_percentual ?? 0}%
                         </div>
                         <div className={`sticky left-[830px] z-30 w-[60px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
-                            <Button variant="ghost" size="sm" disabled={!canEdit} className="h-10 w-10 p-0" title="Upload" onClick={(e) => { e.stopPropagation(); handleTableUploadClick(t.id); }}>
+                            <Button variant="ghost" size="sm" disabled={!canEdit} className="h-10 w-10 p-0" title={t('upload_evidence')} onClick={(e) => { e.stopPropagation(); handleTableUploadClick(t.id); }}>
                                 <Upload size={22} />
                             </Button>
                         </div>
@@ -641,28 +649,28 @@ export default function CronogramaRevisao() {
           <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
             <div className="text-lg font-semibold mb-2">{t('new_record')}</div>
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-              <Select label="Tipo" value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
-                {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s}</option>))}
+              <Select label={t('task_type')} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
+                {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s === 'Tarefa' ? t('type_task') : t('type_title')}</option>))}
               </Select>
-              <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-              <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
-                <option value="">Selecione</option>
+              <Input label={t('task_name')} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+              <Select label={t('task_responsible')} value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
+                <option value="">{t('select')}</option>
                 {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
               </Select>
-              <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
-              <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
-              <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-                {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
+              <Input label={t('task_start')} type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+              <Input label={t('task_end')} type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
+              <Select label={t('task_status')} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{getStatusLabel(s)}</option>))}
               </Select>
-              <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
+              <Input label={`${t('task_progress')} (%)`} type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
               <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium">Anexo (opcional)</label>
-                  <input type="file" className="text-sm" onChange={(e) => setForm((f) => ({ ...f, file: e.target.files[0] }))} />
+                  <label className="text-sm font-medium">{t('task_file')} ({t('optional')})</label>
+                  <Input type="file" onChange={(e) => setForm((f) => ({ ...f, file: e.target.files[0] }))} />
               </div>
             </div>
             <div className="mt-3 flex gap-2 justify-end">
-              <Button variant="secondary" onClick={() => { setShowNewModal(false); }}>{t('cancel')}</Button>
-              <Button onClick={onAddTask} disabled={!cronogramaId}>{t('add')}</Button>
+              <Button variant="secondary" onClick={() => setShowNewModal(false)}>{t('cancel')}</Button>
+              <Button onClick={onAddTask} disabled={!periodoId || !cronogramaId}>{t('save')}</Button>
             </div>
           </div>
         </div>
@@ -672,22 +680,22 @@ export default function CronogramaRevisao() {
       {editingTaskId && !showNewModal && (
          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
-              <div className="text-lg font-semibold mb-2">Editar Tarefa</div>
+              <div className="text-lg font-semibold mb-2">{t('edit_task_title')}</div>
               <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                <Select label="Tipo" value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
-                  {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s}</option>))}
+                <Select label={t('task_type')} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
+                  {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s === 'Tarefa' ? t('type_task') : t('type_title')}</option>))}
                 </Select>
-                <Input label="Nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-                <Select label="Responsável" value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
-                  <option value="">Selecione</option>
+                <Input label={t('task_name')} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+                <Select label={t('task_responsible')} value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
+                  <option value="">{t('select')}</option>
                   {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
                 </Select>
-                <Input label="Início" type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
-                <Input label="Fim" type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
-                <Select label="Status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-                  {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{s}</option>))}
+                <Input label={t('task_start')} type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+                <Input label={t('task_end')} type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
+                <Select label={t('task_status')} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                  {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{getStatusLabel(s)}</option>))}
                 </Select>
-                <Input label="Progresso (%)" type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
+                <Input label={`${t('task_progress')} (%)`} type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
               </div>
               <div className="mt-3 flex gap-2 justify-end">
                 <Button variant="secondary" onClick={() => { setEditingTaskId(null); }}>{t('cancel')}</Button>
@@ -701,10 +709,10 @@ export default function CronogramaRevisao() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl p-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <div className="text-lg font-semibold">Evidências da Tarefa</div>
+              <div className="text-lg font-semibold">{t('evidences_title')}</div>
               <div className="flex items-center gap-2">
                  {canEdit && (
-                   <Button variant="danger" size="sm" className="h-8 w-8 p-0 justify-center" title="Excluir selecionados" onClick={handleDeleteEvidencias} disabled={selectedEvidencias.length === 0}>
+                   <Button variant="danger" size="sm" className="h-8 w-8 p-0 justify-center" title={t('delete_selected')} onClick={handleDeleteEvidencias} disabled={selectedEvidencias.length === 0}>
                       <Trash size={16} />
                    </Button>
                  )}
@@ -713,7 +721,7 @@ export default function CronogramaRevisao() {
             </div>
             
             {viewEvidencias.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">Nenhuma evidência encontrada.</div>
+              <div className="text-center py-8 text-slate-500">{t('no_evidences')}</div>
             ) : (
               <div className="grid grid-cols-1 gap-2">
                 {viewEvidencias.map((ev) => (
@@ -733,7 +741,7 @@ export default function CronogramaRevisao() {
                         <div className="text-xs text-slate-500">{Math.round((ev.tamanho_bytes || 0) / 1024)} KB</div>
                       </div>
                     </div>
-                    <Button variant="secondary" size="sm" className="h-8 w-8 p-0 justify-center" title="Baixar" onClick={async () => {
+                    <Button variant="secondary" size="sm" className="h-8 w-8 p-0 justify-center" title={t('download')} onClick={async () => {
                       try {
                         const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(viewTaskId), Number(ev.id));
                         const url = URL.createObjectURL(blob);
