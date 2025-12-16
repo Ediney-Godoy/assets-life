@@ -573,13 +573,13 @@ export default function CronogramaRevisao() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 mb-4 no-print">
-        <Select label={t('period_label')} value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
+        <Select label={<span className="text-slate-700 dark:text-slate-100">{t('period_label')}</span>} value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
           <option value="">{t('select')}</option>
           {periodos.map((p) => (
             <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
           ))}
         </Select>
-        <Select label={t('cronogram_schedule_label')} value={cronogramaId} onChange={(e) => setCronogramaId(e.target.value)}>
+        <Select label={<span className="text-slate-700 dark:text-slate-100">{t('cronogram_schedule_label')}</span>} value={cronogramaId} onChange={(e) => setCronogramaId(e.target.value)}>
           <option value="">{t('select')}</option>
           {cronogramas.map((c) => (
             <option key={c.id} value={c.id}>{c.descricao || `Cronograma ${c.id}`}</option>
@@ -594,19 +594,19 @@ export default function CronogramaRevisao() {
 
       {resumo && (
         <div className="px-4 mb-4 grid grid-cols-2 md:grid-cols-6 gap-2 no-print">
-          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Total: {resumo.total_tarefas}</div>
-          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Concluídas: {resumo.concluido}</div>
-          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Em andamento: {resumo.em_andamento}</div>
-          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Pendentes: {resumo.pendente}</div>
-          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Atrasadas: {resumo.atrasada}</div>
-          <div className="p-3 rounded-lg border bg-white dark:bg-slate-900 shadow-sm">Progresso: {resumo.progresso_percentual}%</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-800 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100">Total: {resumo.total_tarefas}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-800 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100">Concluídas: {resumo.concluido}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-800 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100">Em andamento: {resumo.em_andamento}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-800 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100">Pendentes: {resumo.pendente}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-800 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100">Atrasadas: {resumo.atrasada}</div>
+          <div className="p-3 rounded-lg border bg-white dark:bg-slate-800 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100">Progresso: {resumo.progresso_percentual}%</div>
         </div>
       )}
 
       {/* Main Combined View */}
       <div className="mx-4 overflow-auto border rounded-lg h-[600px] relative bg-white dark:bg-slate-950 shadow-sm">
         {/* Header */}
-        <div className="flex min-w-max border-b bg-slate-100 dark:bg-slate-900 sticky top-0 z-40 font-semibold text-xs text-slate-700 dark:text-slate-300 shadow-sm">
+        <div className="flex min-w-max border-b bg-slate-100 dark:bg-slate-900 sticky top-0 z-40 font-semibold text-xs text-slate-700 dark:text-slate-100 shadow-sm">
             <div className="sticky left-0 z-50 bg-slate-100 dark:bg-slate-900 w-[40px] p-2 border-r flex items-center justify-center">
               <Eye size={16} />
             </div>
@@ -621,7 +621,7 @@ export default function CronogramaRevisao() {
             {/* Gantt Header */}
             <div className="flex">
                 {headerDates.map(d => (
-                    <div key={d.toISOString()} className="flex-shrink-0 border-r text-center flex flex-col items-center justify-center text-[10px] text-slate-500" style={{ width: dayWidth }}>
+                    <div key={d.toISOString()} className="flex-shrink-0 border-r text-center flex flex-col items-center justify-center text-[10px] text-slate-500 dark:text-slate-400" style={{ width: dayWidth }}>
                         <span className="font-bold">{d.getUTCDate()}</span>
                         <span className="text-[9px]">{d.toLocaleString(i18n.language, { month: 'short', timeZone: 'UTC' }).replace('.','')}</span>
                     </div>
@@ -655,7 +655,7 @@ export default function CronogramaRevisao() {
 
                 return (
                     <div key={task.id} 
-                         className={`flex border-b text-sm group hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${rowBg}`}
+                         className={`flex border-b text-sm group hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${rowBg} text-slate-900 dark:text-slate-100`}
                          onClick={() => setSelectedTaskId(task.id)}>
                         
                         {/* Sticky Columns */}
@@ -664,23 +664,23 @@ export default function CronogramaRevisao() {
                                 <Eye className="w-6 h-6 text-blue-500" />
                             </Button>
                         </div>
-                        <div className={`sticky left-[40px] z-30 w-[300px] p-2 border-r flex items-center gap-2 truncate ${stickyBg} ${isTitle ? 'font-bold uppercase text-slate-700 dark:text-slate-200' : ''}`}>
+                        <div className={`sticky left-[40px] z-30 w-[300px] p-2 border-r flex items-center gap-2 truncate ${stickyBg} ${isTitle ? 'font-bold uppercase text-slate-700 dark:text-slate-200' : 'text-slate-900 dark:text-slate-100'}`}>
                              {!isTitle && <ClipboardList size={14} className="text-slate-400 flex-shrink-0" />}
                              <span title={task.nome}>{task.nome.replace(/^(\[TÍTULO\]|\(TÍTULO\))\s*/i, '')}</span>
                         </div>
-                        <div className={`sticky left-[340px] z-30 w-[150px] p-2 border-r flex items-center truncate ${stickyBg}`}>
+                        <div className={`sticky left-[340px] z-30 w-[150px] p-2 border-r flex items-center truncate ${stickyBg} text-slate-900 dark:text-slate-100`}>
                              {users.find((u) => u.id === task.responsavel_id)?.nome_completo || ''}
                         </div>
-                        <div className={`sticky left-[490px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
+                        <div className={`sticky left-[490px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg} text-slate-900 dark:text-slate-100`}>
                              {formatDate(task.data_inicio)}
                         </div>
-                        <div className={`sticky left-[580px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
+                        <div className={`sticky left-[580px] z-30 w-[90px] p-2 border-r flex items-center text-xs ${stickyBg} text-slate-900 dark:text-slate-100`}>
                              {formatDate(task.data_fim)}
                         </div>
-                        <div className={`sticky left-[670px] z-30 w-[100px] p-2 border-r flex items-center text-xs ${stickyBg}`}>
+                        <div className={`sticky left-[670px] z-30 w-[100px] p-2 border-r flex items-center text-xs ${stickyBg} text-slate-900 dark:text-slate-100`}>
                              {task.status}
                         </div>
-                        <div className={`sticky left-[770px] z-30 w-[60px] p-2 border-r flex items-center justify-center text-xs ${stickyBg}`}>
+                        <div className={`sticky left-[770px] z-30 w-[60px] p-2 border-r flex items-center justify-center text-xs ${stickyBg} text-slate-900 dark:text-slate-100`}>
                              {task.progresso_percentual ?? 0}%
                         </div>
                         <div className={`sticky left-[830px] z-30 w-[60px] p-2 border-r flex items-center justify-center ${stickyBg}`}>

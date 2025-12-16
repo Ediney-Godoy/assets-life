@@ -513,5 +513,8 @@
   "task_updated": "Tarea actualizada",
   "evidence_sent": "Evidencia enviada con éxito",
   "error_sending_evidence": "Error al enviar evidencia",
-  "error_loading_evidences": "Error al cargar evidencias"
+  "error_loading_evidences": "Error al cargar evidencias",
+  "to_review_count_tooltip": "A Revisar / Delegados",
+  "reviewed_count_tooltip": "Revisados / Delegados",
+  "selected_items_tooltip": "Seleccionados"
 }

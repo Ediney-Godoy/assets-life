@@ -513,5 +513,8 @@
   "task_updated": "Task updated",
   "evidence_sent": "Evidence sent successfully",
   "error_sending_evidence": "Error sending evidence",
-  "error_loading_evidences": "Error loading evidences"
+  "error_loading_evidences": "Error loading evidences",
+  "to_review_count_tooltip": "To Review / Delegated",
+  "reviewed_count_tooltip": "Reviewed / Delegated",
+  "selected_items_tooltip": "Selected"
 }
