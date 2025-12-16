@@ -7,7 +7,7 @@ import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import ActionToolbar from '../components/ActionToolbar';
 // import Table from '../components/ui/Table'; // Custom table implementation used
-import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download, Lock } from 'lucide-react';
+import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download, Lock, CalendarPlus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 import { 
@@ -587,7 +587,7 @@ export default function CronogramaRevisao() {
         </Select>
         <div className="flex items-end">
           <Button onClick={onCreateCronograma} disabled={!periodoId || cronogramas.length > 0 || !canEdit} title={cronogramas.length > 0 ? t('schedule_already_exists') : t('create_cronogram_btn')} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center">
-            <Plus size={18} />
+            <CalendarPlus size={18} />
           </Button>
         </div>
       </div>
@@ -717,43 +717,13 @@ export default function CronogramaRevisao() {
         </div>
       </div>
 
-      {showNewModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
-            <div className="text-lg font-semibold mb-2">{t('new_record')}</div>
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-              <Select label={t('task_type')} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
-                {['Tarefa','Título'].map((s) => (<option key={s} value={s}>{s === 'Tarefa' ? t('type_task') : t('type_title')}</option>))}
-              </Select>
-              <Input label={t('task_name')} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-              <Select label={t('task_responsible')} value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
-                <option value="">{t('select')}</option>
-                {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
-              </Select>
-              <Input label={t('task_start')} type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
-              <Input label={t('task_end')} type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
-              <Select label={t('task_status')} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-                {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{getStatusLabel(s)}</option>))}
-              </Select>
-              <Input label={`${t('task_progress')} (%)`} type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
-              <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium">{t('task_file')} ({t('optional')})</label>
-                  <Input type="file" onChange={(e) => setForm((f) => ({ ...f, file: e.target.files[0] }))} />
-              </div>
-            </div>
-            <div className="mt-3 flex gap-2 justify-end">
-              <Button variant="secondary" onClick={() => setShowNewModal(false)}>{t('cancel')}</Button>
-              <Button onClick={onAddTask} disabled={!periodoId || !cronogramaId}>{t('save')}</Button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Editing Form (if needed outside modal, or just reuse modal? The original code had a separate editing form below the table in the TabPanel. I will put it in a Modal or below the table.) */}
-      {editingTaskId && !showNewModal && (
+
+      {/* Unified Task Modal */}
+      {(showNewModal || editingTaskId) && (
          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-4">
-              <div className="text-lg font-semibold mb-2">{t('edit_task_title')}</div>
+              <div className="text-lg font-semibold mb-2">{editingTaskId ? t('edit_task_title') : t('new_record')}</div>
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                 <div className="md:col-span-3">
                     <Select label={t('task_type')} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}>
@@ -791,42 +761,58 @@ export default function CronogramaRevisao() {
                     <div className="font-medium text-slate-900 dark:text-slate-100">{t('attachments_title') || 'Anexos'}</div>
                     <label className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-slate-100 text-slate-900 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-800/80 h-9 w-9 cursor-pointer" title={t('add_attachment') || 'Adicionar Anexo'}>
                         <Upload size={18} />
-                        <input type="file" className="hidden" onChange={handleEditFileUpload} />
+                        <input type="file" className="hidden" onChange={(e) => {
+                            if (editingTaskId) {
+                                handleEditFileUpload(e);
+                            } else {
+                                const file = e.target.files[0];
+                                if (file) setForm(f => ({ ...f, file }));
+                                e.target.value = '';
+                            }
+                        }} />
                     </label>
                 </div>
                 
                 <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
-                    {viewEvidencias.map((ev) => (
+                    {(editingTaskId ? viewEvidencias : (form.file ? [{ id: 'new', nome_arquivo: form.file.name, isNew: true }] : [])).map((ev) => (
                         <div key={ev.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/50 rounded border border-slate-200 dark:border-slate-700 text-sm">
                             <div className="truncate flex-1 mr-2 text-slate-700 dark:text-slate-300">{ev.nome_arquivo}</div>
                             <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title={t('download')} onClick={async () => {
-                                      try {
-                                        const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(editingTaskId), Number(ev.id));
-                                        const url = URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.href = url;
-                                        a.download = ev.nome_arquivo || 'arquivo';
-                                        a.click();
-                                        URL.revokeObjectURL(url);
-                                      } catch (err) {
-                                        toast.error(err?.message || t('download_failed'));
-                                      }
+                                {!ev.isNew && (
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title={t('download')} onClick={async () => {
+                                          try {
+                                            const blob = await downloadCronogramaTarefaEvidencia(Number(cronogramaId), Number(editingTaskId), Number(ev.id));
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = ev.nome_arquivo || 'arquivo';
+                                            a.click();
+                                            URL.revokeObjectURL(url);
+                                          } catch (err) {
+                                            toast.error(err?.message || t('download_failed'));
+                                          }
+                                    }}>
+                                        <Download size={16} />
+                                    </Button>
+                                )}
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-600" title={t('delete')} onClick={() => {
+                                    if (ev.isNew) {
+                                        setForm(f => ({ ...f, file: null }));
+                                    } else {
+                                        handleEditFileDelete(ev.id);
+                                    }
                                 }}>
-                                    <Download size={16} />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-600" title={t('delete')} onClick={() => handleEditFileDelete(ev.id)}>
                                     <Trash size={16} />
                                 </Button>
                             </div>
                         </div>
                     ))}
-                    {viewEvidencias.length === 0 && <div className="text-slate-500 text-sm italic">{t('no_attachments') || 'Sem anexos.'}</div>}
+                    {((editingTaskId && viewEvidencias.length === 0) || (!editingTaskId && !form.file)) && <div className="text-slate-500 text-sm italic">{t('no_attachments') || 'Sem anexos.'}</div>}
                 </div>
               </div>
 
               <div className="mt-3 flex gap-2 justify-end">
-                <Button variant="secondary" onClick={() => { setEditingTaskId(null); }}>{t('cancel')}</Button>
+                <Button variant="secondary" onClick={() => { setEditingTaskId(null); setShowNewModal(false); }}>{t('cancel')}</Button>
                 <Button onClick={onSave} disabled={!cronogramaId}>{t('save')}</Button>
               </div>
             </div>
