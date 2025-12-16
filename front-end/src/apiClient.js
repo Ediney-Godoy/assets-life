@@ -658,6 +658,10 @@ export async function createCronograma(payload, { template = true } = {}) {
   }
 }
 
+export async function updateCronograma(id, payload) {
+  return request(`/cronogramas/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
 export async function getCronogramaTarefas(cronogramaId) {
   return request(`/cronogramas/${cronogramaId}/tarefas`);
 }

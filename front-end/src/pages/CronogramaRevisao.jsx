@@ -7,7 +7,7 @@ import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import ActionToolbar from '../components/ActionToolbar';
 // import Table from '../components/ui/Table'; // Custom table implementation used
-import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download } from 'lucide-react';
+import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download, Lock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 import { 
@@ -15,6 +15,7 @@ import {
   getUsers,
   getCronogramas,
   createCronograma,
+  updateCronograma,
   getCronogramaTarefas,
   createCronogramaTarefa,
   updateCronogramaTarefa,
@@ -59,6 +60,23 @@ export default function CronogramaRevisao() {
   const [viewEvidencias, setViewEvidencias] = React.useState([]);
   const [selectedEvidencias, setSelectedEvidencias] = React.useState([]);
   const [canEdit, setCanEdit] = React.useState(false);
+
+  const currentCronograma = React.useMemo(() => cronogramas.find(c => String(c.id) === String(cronogramaId)), [cronogramas, cronogramaId]);
+  const isLocked = currentCronograma?.status === 'Concluído';
+  const isEditable = canEdit && !isLocked;
+
+  const handleCloseCronograma = async () => {
+    if (!cronogramaId) return;
+    if (!window.confirm('Certifique-se de que todas as tarefas foram concluídas e todas às evidencias foram anexadas. Essa ação não poderá ser desfeita, deseja continuar?')) return;
+    
+    try {
+        await updateCronograma(Number(cronogramaId), { status: 'Concluído' });
+        toast.success('Cronograma encerrado com sucesso');
+        await loadCronogramas();
+    } catch (err) {
+        toast.error(err.message || 'Erro ao encerrar cronograma');
+    }
+  };
 
 
   React.useEffect(() => {
@@ -501,7 +519,7 @@ export default function CronogramaRevisao() {
   };
 
   const handleDeleteEvidencias = async () => {
-    if (!canEdit) return;
+    if (!isEditable) return;
     if (selectedEvidencias.length === 0) return;
     if (!window.confirm(t('confirm_delete'))) return;
     try {
@@ -538,18 +556,19 @@ export default function CronogramaRevisao() {
       <div className="mb-4 px-4 flex items-center justify-between gap-2 flex-wrap no-print">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('cronogram_title')}</h2>
         <ActionToolbar
-          onNew={canEdit ? onNew : undefined}
-          onSave={canEdit ? onSave : undefined}
-          onEdit={canEdit ? onEditSelected : undefined}
+          onNew={isEditable ? onNew : undefined}
+          onSave={isEditable ? onSave : undefined}
+          onEdit={isEditable ? onEditSelected : undefined}
           onDelete={() => toast.error(t('delete_not_available'))}
           onPrint={() => window.print()}
           onExportPdf={exportPDF}
           onExportExcel={exportExcel}
-          canEditDelete={!!selectedTaskId && canEdit}
+          canEditDelete={!!selectedTaskId && isEditable}
         />
         <div className="flex items-center gap-2">
-          <Button variant="secondary" title="Mover para cima" aria-label="Mover para cima" onClick={() => moveSelected('up')} disabled={!canMoveUp || !canEdit} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronUp size={18} /></Button>
-          <Button variant="secondary" title="Mover para baixo" aria-label="Mover para baixo" onClick={() => moveSelected('down')} disabled={!canMoveDown || !canEdit} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronDown size={18} /></Button>
+          <Button variant="secondary" title="Mover para cima" aria-label="Mover para cima" onClick={() => moveSelected('up')} disabled={!canMoveUp || !isEditable} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronUp size={18} /></Button>
+          <Button variant="secondary" title="Mover para baixo" aria-label="Mover para baixo" onClick={() => moveSelected('down')} disabled={!canMoveDown || !isEditable} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronDown size={18} /></Button>
+          <Button variant="secondary" title="Encerrar Cronograma" aria-label="Encerrar Cronograma" onClick={handleCloseCronograma} disabled={!cronogramaId || !isEditable} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center text-red-600 hover:text-red-700 hover:bg-red-50"><Lock size={18} /></Button>
         </div>
       </div>
 
@@ -666,7 +685,7 @@ export default function CronogramaRevisao() {
                         </div>
                         <div className={`sticky left-[830px] z-30 w-[60px] p-2 border-r flex items-center justify-center ${stickyBg}`}>
                            {/* Actions */}
-                           {canEdit && (
+                           {isEditable && (
                             <div className="flex gap-1">
                                 <Button variant="ghost" size="icon" className="h-6 w-6" title={t('edit_task_title')} onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); onEditSelected(); }}>
                                     <FileText size={14} />
