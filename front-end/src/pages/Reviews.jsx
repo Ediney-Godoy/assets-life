@@ -285,6 +285,31 @@ export default function ReviewsPage() {
             const warns = Array.isArray(result.alertas) ? result.alertas.length : 0;
             const summary = `Importação: ${result.importados} importados, ${result.rejeitados} rejeitados` + (warns ? `, ${warns} alertas` : '.');
             toast.success(summary);
+
+            // Atualiza status para "Em andamento" se estiver "Aberto"
+            try {
+              const currentPeriod = periods.find(p => p.id === editingId);
+              if (currentPeriod && currentPeriod.status === 'Aberto') {
+                const payload = {
+                  descricao: currentPeriod.descricao,
+                  data_abertura: currentPeriod.data_abertura || undefined,
+                  data_inicio_nova_vida_util: currentPeriod.data_inicio_nova_vida_util || undefined,
+                  data_fechamento_prevista: currentPeriod.data_fechamento_prevista || undefined,
+                  data_fechamento: currentPeriod.data_fechamento || undefined,
+                  empresa_id: currentPeriod.empresa_id ? Number(currentPeriod.empresa_id) : undefined,
+                  responsavel_id: currentPeriod.responsavel_id ? Number(currentPeriod.responsavel_id) : undefined,
+                  ug_id: currentPeriod.ug_id ? Number(currentPeriod.ug_id) : undefined,
+                  status: 'Em Andamento',
+                  observacoes: currentPeriod.observacoes || undefined,
+                };
+                await updateReviewPeriod(editingId, payload);
+                setForm((f) => ({ ...f, status: 'Em Andamento' }));
+                await load();
+              }
+            } catch (stErr) {
+              console.error('Erro ao atualizar status após upload', stErr);
+            }
+
       // Opcional: buscar itens
       try {
         await getReviewItems(editingId);

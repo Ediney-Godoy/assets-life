@@ -93,7 +93,7 @@ export default function CronogramaRevisao() {
     setLoading(true);
     Promise.all([getReviewPeriods(), getUsers()])
       .then(([ps, us]) => {
-        const abertos = (ps || []).filter((p) => p.status === 'Aberto');
+        const abertos = (ps || []).filter((p) => ['Aberto', 'Em Andamento', 'Em andamento'].includes(p.status));
         setPeriodos(abertos);
         setUsers(us || []);
       })
