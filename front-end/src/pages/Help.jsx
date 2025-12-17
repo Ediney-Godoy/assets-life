@@ -296,6 +296,96 @@ export default function HelpPage() {
             </div>
         );
 
+      case 'cronogramas':
+        return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-2">
+                <Calendar className="text-blue-600 dark:text-blue-400" /> {t('tab_cronograma') || 'Cronogramas'}
+                </h2>
+                <p className="text-slate-600 dark:text-slate-400 text-lg">
+                Organize e acompanhe as atividades de revisão, distribuindo tarefas e monitorando prazos.
+                </p>
+            </div>
+            
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-950 shadow-sm">
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-b border-slate-200 dark:border-slate-800 font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <FileText size={18} /> Guia de Utilização
+              </div>
+              <div className="p-6 space-y-8">
+                {/* Passo 1 */}
+                <div className="flex gap-4">
+                  <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm ring-4 ring-blue-50 dark:ring-blue-900/20 dark:bg-blue-900 dark:text-blue-300">1</div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-lg mb-1">Seleção Inicial</h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-2">
+                        Para acessar ou criar um cronograma, primeiro utilize os filtros no topo da tela:
+                    </p>
+                    <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                        <li><strong>Período:</strong> Selecione o período de revisão desejado.</li>
+                        <li><strong>Usuário:</strong> Escolha o responsável pelas atividades (opcional para visão geral).</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Passo 2 */}
+                <div className="flex gap-4">
+                  <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm ring-4 ring-blue-50 dark:ring-blue-900/20 dark:bg-blue-900 dark:text-blue-300">2</div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-lg mb-1">Gerar ou Visualizar Cronograma</h3>
+                    <p className="text-slate-600 dark:text-slate-400">
+                        Se não houver cronograma para a combinação selecionada, clique em <strong>Gerar Cronograma</strong>. 
+                        O sistema criará a estrutura base para o usuário selecionado naquele período.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Passo 3 */}
+                <div className="flex gap-4">
+                  <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm ring-4 ring-blue-50 dark:ring-blue-900/20 dark:bg-blue-900 dark:text-blue-300">3</div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-lg mb-1">Gerenciamento de Tarefas</h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-3">
+                        Adicione e gerencie os itens do cronograma:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+                            <strong className="block mb-2 text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-1">Adicionar/Editar</strong>
+                            <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-400 space-y-2">
+                                <li>Clique em <strong>Novo Item</strong> para adicionar uma tarefa.</li>
+                                <li>Defina <strong>Datas de Início e Fim</strong>, Responsável e Progresso.</li>
+                                <li>Clique sobre uma tarefa na lista para editá-la.</li>
+                            </ul>
+                        </div>
+                        <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+                            <strong className="block mb-2 text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-1">Evidências</strong>
+                            <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-400 space-y-2">
+                                <li>Ao editar uma tarefa, você pode enviar arquivos.</li>
+                                <li>Use a coluna de upload na tabela para envio rápido.</li>
+                                <li>Formatos aceitos: Documentos e Imagens.</li>
+                            </ul>
+                        </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Passo 4 */}
+                <div className="flex gap-4">
+                  <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm ring-4 ring-blue-50 dark:ring-blue-900/20 dark:bg-blue-900 dark:text-blue-300">4</div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-lg mb-1">Status e Encerramento</h3>
+                    <p className="text-slate-600 dark:text-slate-400">
+                        Acompanhe o status de cada tarefa (<em>Pendente, Em Andamento, Concluída, Atrasada</em>). 
+                        Ao finalizar todas as atividades, use a opção <strong>Encerrar Cronograma</strong> para travar edições e finalizar o ciclo.
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        );
+
       case 'reviews':
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
