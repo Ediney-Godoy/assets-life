@@ -526,12 +526,17 @@ export default function RevisaoVidasUteis() {
       const now = new Date();
       const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthsToEnd = novaFim ? monthsUntil(novaFim) : (mesesRevisados != null ? monthsUntil(addMonths(inicioNovaVida, mesesRevisados)) : null);
-      const originalMonths = Number(editingItem.vida_util_periodos || 0);
+      
+      // Fallback: se vida_util_periodos for 0 ou nulo, tentar usar vida_util_anos * 12
+      const originalMonths = Number(editingItem.vida_util_periodos || (editingItem.vida_util_anos ? editingItem.vida_util_anos * 12 : 0));
 
       // Comparação deve ser feita sobre a vida útil TOTAL (início da depreciação -> nova data fim)
       const inicioOriginal = parseDate(editingItem.data_inicio_depreciacao);
       const novoFimCalculado = novaFim || (inicioNovaVida && mesesRevisados != null ? addMonths(inicioNovaVida, mesesRevisados) : null);
       const totalNewMonths = (inicioOriginal && novoFimCalculado) ? monthsDiff(inicioOriginal, novoFimCalculado) : null;
+      
+      // Recuperar data fim original para comparação fina (em dias) quando meses são iguais
+      const fimOriginal = editingItem.data_fim_revisada ? parseDate(editingItem.data_fim_revisada) : parseDate(editingItem.data_fim_depreciacao);
 
       if (editForm.incremento !== 'Manter' && novaFim && novaFim < startOfThisMonth) {
         const ok = window.confirm(t('confirm_past_end_msg') || 'A nova data de fim está anterior ao mês corrente. Deseja continuar?');
@@ -553,8 +558,11 @@ export default function RevisaoVidasUteis() {
         mesesRevisados = null; // ignora alterações de vida útil
       } else if (editForm.incremento === 'Decréscimo') {
         // Para redução, a vida útil TOTAL deve ser menor que a original
-        if (totalNewMonths == null || !(totalNewMonths < originalMonths)) {
-          setError(t('error_increment_decrease_requires_less'));
+        // Permite se meses iguais mas data efetiva menor (ajuste de dias)
+        const isLessDays = (totalNewMonths === originalMonths) && (novoFimCalculado && fimOriginal && novoFimCalculado < fimOriginal);
+        
+        if (totalNewMonths == null || (!(totalNewMonths < originalMonths) && !isLessDays)) {
+          setError(`${t('error_increment_decrease_requires_less')} (Atual: ${originalMonths}, Novo: ${totalNewMonths})`);
           return;
         }
         if (!editForm.justificativa) {
@@ -563,8 +571,11 @@ export default function RevisaoVidasUteis() {
         }
       } else if (editForm.incremento === 'Acréscimo') {
         // Para aumento, a vida útil TOTAL deve ser maior que a original
-        if (totalNewMonths == null || !(totalNewMonths > originalMonths)) {
-          setError(t('error_increment_increase_requires_more'));
+        // Permite se meses iguais mas data efetiva maior
+        const isMoreDays = (totalNewMonths === originalMonths) && (novoFimCalculado && fimOriginal && novoFimCalculado > fimOriginal);
+
+        if (totalNewMonths == null || (!(totalNewMonths > originalMonths) && !isMoreDays)) {
+          setError(`${t('error_increment_increase_requires_more')} (Atual: ${originalMonths}, Novo: ${totalNewMonths})`);
           return;
         }
       }

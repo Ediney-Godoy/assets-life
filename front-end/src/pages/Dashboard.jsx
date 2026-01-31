@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, Users2, UserCog, Layers, FolderKanban, Wallet, Network, Crosshair, CalendarDays, ChevronLeft, ChevronRight, Filter, Package, UserCheck, CheckCircle2, Percent, AlertTriangle } from 'lucide-react';
-import { getCompanies, getReviewPeriods, getReviewItems, getReviewDelegations } from '../apiClient';
+import { getCompanies, getReviewPeriods, getReviewDelegations, listarSupervisaoRVU } from '../apiClient';
 import Pie3D from '../components/charts/Pie3D';
 import BarChart from '../components/charts/BarChart';
 import LineChart from '../components/charts/LineChart';
@@ -48,7 +48,7 @@ export default function DashboardPage({ registrationsOnly }) {
           const open = list.find((p) => (p.status || '').toLowerCase() === 'aberto') || list[0];
           const pid = open.id;
           const [items, delegs] = await Promise.all([
-            getReviewItems(pid),
+            listarSupervisaoRVU({ periodo_id: pid }),
             getReviewDelegations(pid),
           ]);
           const itemsArr = Array.isArray(items) ? items : [];
@@ -59,7 +59,7 @@ export default function DashboardPage({ registrationsOnly }) {
           const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
           const reviewedList = itemsArr.filter((i) => {
             const s = normalize(i.status);
-            const statusReviewed = (s === 'revisado' || s === 'revisada');
+            const statusReviewed = (s === 'revisado' || s === 'revisada' || s === 'aprovado' || s === 'concluido');
             const adjusted = Boolean(i.alterado);
             const hasJustification = Boolean(String(i.justificativa || '').trim());
             const hasCondicao = Boolean(String(i.condicao_fisica || '').trim());

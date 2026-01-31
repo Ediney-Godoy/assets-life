@@ -270,31 +270,7 @@ export default function HelpPage() {
             </div>
           );
 
-      case 'cronogramas':
-        return (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Calendar className="text-blue-600 dark:text-blue-400" /> {t('tab_cronograma') || 'Cronogramas'}
-                </h2>
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 shadow-sm">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{t('help_reviews_menu_title') || 'Menu de Revisões'}</h3>
-                    <ul className="space-y-3">
-                        <li className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
-                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 flex-none"></span>
-                            <span>{t('help_reviews_menu_item_periods') || 'Períodos de Revisão: Defina os intervalos de tempo para as auditorias.'}</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
-                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 flex-none"></span>
-                            <span>{t('help_reviews_menu_item_delegation') || 'Delegação: Atribua responsáveis para revisar grupos de ativos.'}</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
-                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 flex-none"></span>
-                            <span>{t('help_reviews_menu_item_individual') || 'Revisão Individual: Analise item a item.'}</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        );
+
 
       case 'cronogramas':
         return (

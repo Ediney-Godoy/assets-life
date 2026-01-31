@@ -260,6 +260,10 @@ def listar(
             'periodo_id': getattr(it, 'periodo_id', None),
             'periodo_status': periodo_status,
             'ultimo_comentario': last_comment,
+            'data_inicio_depreciacao': getattr(it, 'data_inicio_depreciacao', None),
+            'data_fim_depreciacao': getattr(it, 'data_fim_depreciacao', None),
+            'data_fim_revisada': getattr(it, 'data_fim_revisada', None),
+            'alterado': getattr(it, 'alterado', False),
         })
     return data
 
