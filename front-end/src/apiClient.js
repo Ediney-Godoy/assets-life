@@ -504,7 +504,7 @@ export async function deleteManagementUnit(id) {
 
 export async function getUsers(empresaId) {
   // Lista de usuários pode ter volume considerável; dar mais margem
-  const opts = { timeout: 8000 };
+  const opts = { timeout: 30000 };
   if (empresaId) {
     opts.headers = { 'X-Company-Id': String(empresaId) };
   }
@@ -611,7 +611,7 @@ export async function uploadReviewBase(periodoId, file) {
   // Listar itens importados de um período específico
   export async function getReviewItems(periodoId) {
   // Carregamento pode ser pesado; aumentar timeout para evitar abort precoce
-  return request(`/revisoes/itens/${periodoId}`, { timeout: 20000 });
+  return request(`/revisoes/itens/${periodoId}`, { timeout: 60000 });
 }
 
 // Atualizar item de revisão (útil para ajustar vida útil, data fim e metadados)
@@ -622,13 +622,13 @@ export async function updateReviewItem(periodoId, itemId, payload) {
 // Aplicar revisão em massa
 export async function applyMassRevision(payload) {
   // payload: { ativos_ids: number[], incremento?, nova_vida_util_anos?, nova_vida_util_meses?, nova_data_fim?, condicao_fisica?, motivo?, justificativa? }
-  return request('/revisoes/massa', { method: 'POST', body: JSON.stringify(payload), timeout: 20000 });
+  return request('/revisoes/massa', { method: 'POST', body: JSON.stringify(payload), timeout: 60000 });
 }
 
 // Delegações de Revisão
 export async function getReviewDelegations(periodoId) {
   // Pode haver volume razoável; aumentar timeout
-  return request(`/revisoes/delegacoes/${periodoId}`, { timeout: 15000 });
+  return request(`/revisoes/delegacoes/${periodoId}`, { timeout: 60000 });
 }
 
 export async function createReviewDelegation(payload) {
