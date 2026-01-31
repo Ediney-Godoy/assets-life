@@ -134,33 +134,6 @@ def ensure_tables():
 # e respeitam a flag ALLOW_DDL.
 
 
-def _filters_query(db: Session, params: dict, allowed_company_ids: list[int] | None = None):
-    q = db.query(RevisaoItemModel)
-    # Sempre junta com período quando houver restrição por empresa/UG ou lista de permitidas
-    if params.get('empresa_id') or params.get('ug_id') or (allowed_company_ids and len(allowed_company_ids) > 0):
-        q = q.join(RevisaoPeriodoModel, RevisaoPeriodoModel.id == RevisaoItemModel.periodo_id)
-        # Empresas permitidas do usuário
-        if allowed_company_ids:
-            q = q.filter(RevisaoPeriodoModel.empresa_id.in_(allowed_company_ids))
-        # Empresa/UG explícitas da consulta
-        if params.get('empresa_id'):
-            q = q.filter(RevisaoPeriodoModel.empresa_id == int(params['empresa_id']))
-        if params.get('ug_id'):
-            q = q.filter(RevisaoPeriodoModel.ug_id == int(params['ug_id']))
-    # Revisor (via criado_por best-effort)
-    if params.get('revisor_id'):
-        q = q.filter(RevisaoItemModel.criado_por == int(params['revisor_id']))
-    # Período por data de início de depreciação
-    if params.get('periodo_inicio'):
-        q = q.filter(RevisaoItemModel.data_inicio_depreciacao >= params['periodo_inicio'])
-    if params.get('periodo_fim'):
-        q = q.filter(RevisaoItemModel.data_inicio_depreciacao <= params['periodo_fim'])
-    # Status
-    if params.get('status') and params['status'] != 'Todos':
-        q = q.filter(RevisaoItemModel.status == params['status'])
-    return q
-
-
 class ComentarioCreate(BaseModel):
     ativo_id: int
     supervisor_id: int
@@ -199,50 +172,83 @@ def listar(
     allowed = get_allowed_company_ids(db, current_user)
     if empresa_id is not None and allowed and empresa_id not in allowed:
         raise HTTPException(status_code=403, detail='Acesso negado à empresa informada')
-    params = {
-        'empresa_id': empresa_id,
-        'ug_id': ug_id,
-        'revisor_id': revisor_id,
-        'status': status or 'Todos',
-        'periodo_inicio': periodo_inicio,
-        'periodo_fim': periodo_fim,
-    }
-    q = _filters_query(db, params, allowed)
+    
+    # Query otimizada com joins para evitar N+1
+    q = db.query(
+        RevisaoItemModel,
+        RevisaoPeriodoModel.status.label('periodo_status'),
+        UsuarioModel.nome_completo.label('revisor_nome')
+    ).join(
+        RevisaoPeriodoModel, RevisaoItemModel.periodo_id == RevisaoPeriodoModel.id
+    ).outerjoin(
+        UsuarioModel, RevisaoItemModel.criado_por == UsuarioModel.id
+    )
+
+    # Filtros (incorporando lógica de _filters_query)
+    # Empresas permitidas
+    if allowed:
+        q = q.filter(RevisaoPeriodoModel.empresa_id.in_(allowed))
+    
+    # Filtros explícitos
+    if empresa_id:
+        q = q.filter(RevisaoPeriodoModel.empresa_id == int(empresa_id))
+    if ug_id:
+        q = q.filter(RevisaoPeriodoModel.ug_id == int(ug_id))
+    if revisor_id:
+        q = q.filter(RevisaoItemModel.criado_por == int(revisor_id))
     if periodo_id:
         q = q.filter(RevisaoItemModel.periodo_id == int(periodo_id))
-    items = q.order_by(RevisaoItemModel.id.desc()).all()
+    
+    # Filtro por data de início de depreciação
+    if periodo_inicio:
+        q = q.filter(RevisaoItemModel.data_inicio_depreciacao >= periodo_inicio)
+    if periodo_fim:
+        q = q.filter(RevisaoItemModel.data_inicio_depreciacao <= periodo_fim)
+        
+    # Status
+    if status and status != 'Todos':
+        q = q.filter(RevisaoItemModel.status == status)
+
+    # Ordenação e execução
+    results = q.order_by(RevisaoItemModel.id.desc()).all()
+    
+    # Carregamento em lote dos comentários
+    comments_map = {}
+    item_ids = [row[0].id for row in results]
+    if item_ids:
+        try:
+            # Busca todos os comentários dos itens listados
+            # Ordena por data ASC para que o último processado seja o mais recente
+            stmt = sa.text("""
+                SELECT ativo_id, comentario 
+                FROM revisoes_comentarios 
+                WHERE ativo_id IN :ids 
+                ORDER BY data_comentario ASC
+            """)
+            # Necessário bindar a lista como tupla para o IN funcionar corretamente no execute
+            # SQLAlchemy moderno suporta lista com expanding=True, mas approach manual é seguro:
+            # Vamos iterar ou usar tuple(item_ids). 
+            # Obs: :ids no text() com execute() direto pode exigir tratamento específico dependendo do driver.
+            # Approach seguro: iterar no python se driver der problema, mas para performance:
+            rs = db.execute(stmt.bindparams(sa.bindparam('ids', expanding=True)), {'ids': item_ids})
+            for row in rs.mappings():
+                comments_map[row['ativo_id']] = row['comentario']
+        except Exception:
+            # Tabela pode não existir ou erro de driver
+            pass
+
     data = []
-    for it in items:
-        # período e status
-        periodo_status = None
-        if it.periodo_id:
-            per = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == it.periodo_id).first()
-            periodo_status = getattr(per, 'status', None)
+    for row in results:
+        it, periodo_status, revisor_nome = row
+        
         # vida útil atual
         atual_total = (it.vida_util_periodos or 0)
         if atual_total == 0 and (it.vida_util_anos or 0) > 0:
             atual_total = (it.vida_util_anos or 0) * 12
-        # Vida útil revisada: quando não houver revisão, manter como None para exibição
+            
+        # Vida útil revisada
         revisada_total = it.vida_util_revisada if getattr(it, 'vida_util_revisada', None) is not None else None
-        # Revisor
-        revisor_nome = None
-        if it.criado_por:
-            u = db.query(UsuarioModel).filter(UsuarioModel.id == it.criado_por).first()
-            revisor_nome = getattr(u, 'nome_completo', None) if u else None
-        # último comentário (se existir)
-        last_comment = None
-        try:
-            row = db.execute(sa.text("SELECT comentario, data_comentario FROM revisoes_comentarios WHERE ativo_id = :id ORDER BY data_comentario DESC LIMIT 1"), { 'id': it.id }).mappings().first()
-            if row:
-                last_comment = row['comentario']
-        except Exception:
-            # Em caso de erro (ex.: tabela inexistente), limpa transação para evitar "current transaction is aborted"
-            try:
-                db.rollback()
-            except Exception:
-                pass
-            last_comment = None
-
+        
         data.append({
             'id': it.id,
             'numero_imobilizado': getattr(it, 'numero_imobilizado', None),
@@ -259,7 +265,7 @@ def listar(
             'status': getattr(it, 'status', None),
             'periodo_id': getattr(it, 'periodo_id', None),
             'periodo_status': periodo_status,
-            'ultimo_comentario': last_comment,
+            'ultimo_comentario': comments_map.get(it.id),
             'data_inicio_depreciacao': getattr(it, 'data_inicio_depreciacao', None),
             'data_fim_depreciacao': getattr(it, 'data_fim_depreciacao', None),
             'data_fim_revisada': getattr(it, 'data_fim_revisada', None),
