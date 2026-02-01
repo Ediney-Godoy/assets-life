@@ -62,22 +62,25 @@ export default function DashboardPage({ registrationsOnly }) {
              return acc;
           }, {});
 
-          // Filtra apenas Ativos Principais (Sub Nº 0), ignorando incorporações (Sub Nº > 0)
-          // Essa regra aplica-se a todos os indicadores do dashboard
-          const itemsArr = rawItems.filter((it) => {
+          // Lista de itens para cálculos de Revisão (Considera TODOS os itens, incluindo incorporações, para bater com a aba Revisados)
+          const allReviewItems = rawItems;
+
+          // Lista de itens para cálculos de Depreciação (Considera apenas Ativos Principais para não duplicar contagem de ativos físicos)
+          const mainItemsOnly = rawItems.filter((it) => {
             const sub = Number(it.sub_numero);
             return sub === 0;
           });
           
           const delegsArr = Array.isArray(delegs) ? delegs : [];
-          const totalItems = itemsArr.length;
+          
+          // Para o gráfico de evolução, usamos todos os itens (como na aba Revisados)
+          const totalItems = allReviewItems.length;
+          
           const delegatedIds = new Set(delegsArr.map((d) => d.ativo_id));
-          // Considera atribuído apenas se o ID do ativo principal estiver na lista de delegações
-          // (Se a delegação for feita por Centro de Custo, o backend retorna todos os IDs, então isso deve funcionar)
-          const assignedItems = itemsArr.filter((it) => delegatedIds.has(it.id)).length;
+          const assignedItems = allReviewItems.filter((it) => delegatedIds.has(it.id)).length;
           
           const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          const reviewedList = itemsArr.filter((i) => {
+          const reviewedList = allReviewItems.filter((i) => {
             const s = normalize(i.status);
             const statusReviewed = (s === 'revisado' || s === 'revisada' || s === 'aprovado' || s === 'concluido');
             const adjusted = Boolean(i.alterado);
@@ -87,11 +90,11 @@ export default function DashboardPage({ registrationsOnly }) {
           });
           const reviewedItems = reviewedList.length;
           const reviewedPct = totalItems ? Number(((reviewedItems / totalItems) * 100).toFixed(1)) : 0;
-          const adjustedItems = itemsArr.filter((i) => Boolean(i.alterado)).length;
+          const adjustedItems = allReviewItems.filter((i) => Boolean(i.alterado)).length;
           
           // Totalmente depreciados:
           // Regra: Ativo Principal (Sub 0) com valor contábil zerado, E a soma das incorporações (mesmo imobilizado) também deve ser zero.
-          const fullyDepreciated = itemsArr.filter((mainItem) => {
+          const fullyDepreciated = mainItemsOnly.filter((mainItem) => {
              const key = String(mainItem.numero_imobilizado || '');
              const group = assetGroups[key] || [];
              // Soma o valor contábil de todo o grupo (Ativo Principal + Incorporações)
