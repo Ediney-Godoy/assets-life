@@ -1894,6 +1894,7 @@ class ClasseContabil(BaseModel):
     vida_util_anos: int
     taxa_depreciacao: float
     empresa_id: int
+    conta_contabil_id: Optional[int] = None
     status: str
     criado_em: datetime
 
@@ -1906,6 +1907,7 @@ class ClasseContabilCreate(BaseModel):
     vida_util_anos: int
     taxa_depreciacao: float
     empresa_id: int
+    conta_contabil_id: Optional[int] = None
     status: str = "Ativo"
 
 class ClasseContabilUpdate(BaseModel):
@@ -1914,6 +1916,7 @@ class ClasseContabilUpdate(BaseModel):
     vida_util_anos: Optional[int] = None
     taxa_depreciacao: Optional[float] = None
     empresa_id: Optional[int] = None
+    conta_contabil_id: Optional[int] = None
     status: Optional[str] = None
 
 @app.get("/classes_contabeis", response_model=List[ClasseContabil])
@@ -1949,6 +1952,14 @@ def create_classe_contabil(payload: ClasseContabilCreate, db: Session = Depends(
     # Valida empresa
     if not db.query(CompanyModel).filter(CompanyModel.id == data["empresa_id"]).first():
         raise HTTPException(status_code=400, detail="Empresa inválida")
+
+    # Valida Conta Contábil se informada
+    if data.get("conta_contabil_id"):
+        cc = db.query(ContaContabilModel).filter(ContaContabilModel.id == data["conta_contabil_id"]).first()
+        if not cc:
+            raise HTTPException(status_code=400, detail="Conta Contábil não encontrada")
+        if cc.empresa_id != data["empresa_id"]:
+            raise HTTPException(status_code=400, detail="Conta Contábil pertence a outra empresa")
         
     # Check duplicate code in company
     if db.query(ClasseContabilModel).filter(ClasseContabilModel.codigo == data["codigo"], ClasseContabilModel.empresa_id == data["empresa_id"]).first():
@@ -3522,6 +3533,9 @@ def create_revisao_delegacao(payload: DelegacaoCreate, db: Session = Depends(get
     if not periodo:
         raise HTTPException(status_code=404, detail="Período de revisão não encontrado")
 
+    if periodo.status in ['Encerrado', 'Concluído', 'Fechado']:
+        raise HTTPException(status_code=400, detail="Não é permitido criar delegações em um período encerrado.")
+
     item = db.query(RevisaoItemModel).filter(RevisaoItemModel.id == payload.ativo_id).first()
     if not item or item.periodo_id != payload.periodo_id:
         raise HTTPException(status_code=400, detail="Ativo inválido para o período")
@@ -3614,6 +3628,10 @@ def delete_revisao_delegacao(delegacao_id: int, db: Session = Depends(get_db)):
     d = db.query(RevisaoDelegacaoModel).filter(RevisaoDelegacaoModel.id == delegacao_id).first()
     if not d:
         raise HTTPException(status_code=404, detail="Delegação não encontrada")
+
+    periodo = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == d.periodo_id).first()
+    if periodo and periodo.status in ['Encerrado', 'Concluído', 'Fechado']:
+        raise HTTPException(status_code=400, detail="Não é permitido remover delegações em um período encerrado.")
 
     # Regra: não separar ativo principal (Sub nº 0) das incorporações (Sub nº > 0)
     # Ao remover uma delegação, remover todo o grupo do mesmo imobilizado neste período.

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { UserPlus, ArrowRight, ArrowLeft, Search, ChevronDown } from 'lucide-react';
+import { UserPlus, ArrowRight, ArrowLeft, Search, ChevronDown, AlertTriangle } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -421,6 +421,11 @@ export default function DelegacaoPage() {
     }
   };
 
+  const isPeriodClosed = useMemo(() => {
+    if (!periodoInfo) return false;
+    return ['Encerrado', 'Concluído', 'Fechado'].includes(periodoInfo.status);
+  }, [periodoInfo]);
+
   const onPeriodoChange = async (e) => {
     const pid = Number(e.target.value);
     setSelectedPeriodoId(pid || null);
@@ -475,6 +480,15 @@ export default function DelegacaoPage() {
           </div>
         </div>
       </div>
+
+      {isPeriodClosed && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-center gap-3 text-amber-800 dark:text-amber-200">
+          <AlertTriangle size={20} />
+          <p className="font-medium">
+            {t('period_closed_delegation_warning') || 'Este período está encerrado. Não é possível alterar delegações.'}
+          </p>
+        </div>
+      )}
 
       {/* Grid de 2 colunas */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -615,7 +629,7 @@ export default function DelegacaoPage() {
               variant="primary"
               className="btn-md w-full"
               onClick={onDelegateSelected}
-              disabled={selectedItemIds.length === 0}
+              disabled={selectedItemIds.length === 0 || isPeriodClosed}
             >
               <ArrowRight size={18} />
               <span>{t('delegation_delegate_selected') || 'Delegar Selecionados'} ({selectedItemIds.length})</span>
@@ -858,7 +872,7 @@ export default function DelegacaoPage() {
               variant="secondary"
               className="btn-md w-full"
               onClick={onUndelegateSelected}
-              disabled={selectedDelegacaoIds.length === 0}
+              disabled={selectedDelegacaoIds.length === 0 || isPeriodClosed}
             >
               <ArrowLeft size={18} />
               <span>Remover Selecionados ({selectedDelegacaoIds.length})</span>

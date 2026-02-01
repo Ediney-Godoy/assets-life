@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { Pencil, Plus, Save, Trash2, Search } from 'lucide-react';
-import { getClassesContabeis, createClasseContabil, updateClasseContabil, deleteClasseContabil } from '../apiClient';
+import { getClassesContabeis, createClasseContabil, updateClasseContabil, deleteClasseContabil, getContasContabeis } from '../apiClient';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -12,6 +12,7 @@ import ActionToolbar from '../components/ActionToolbar';
 export default function ClassesContabeisPage() {
   const { t } = useTranslation();
   const [items, setItems] = React.useState([]);
+  const [contas, setContas] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [query, setQuery] = React.useState('');
@@ -23,6 +24,7 @@ export default function ClassesContabeisPage() {
     descricao: '',
     vida_util_anos: '',
     taxa_depreciacao: '',
+    conta_contabil_id: '',
     status: 'Ativo',
   });
 
@@ -36,9 +38,20 @@ export default function ClassesContabeisPage() {
       return;
     }
 
-    getClassesContabeis({ empresa_id: empresaId })
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message || 'Error'))
+    Promise.all([
+      getClassesContabeis({ empresa_id: empresaId }),
+      getContasContabeis({ empresa_id: empresaId })
+    ])
+      .then(([data, contasData]) => {
+        console.log('ClassesContabeis loaded:', data);
+        console.log('ContasContabeis loaded:', contasData);
+        setItems(data);
+        setContas(contasData);
+      })
+      .catch((err) => {
+        console.error('Error loading data:', err);
+        setError(err.message || 'Error');
+      })
       .finally(() => setLoading(false));
   }, [t]);
 
@@ -51,6 +64,7 @@ export default function ClassesContabeisPage() {
       descricao: '',
       vida_util_anos: '',
       taxa_depreciacao: '',
+      conta_contabil_id: '',
       status: 'Ativo',
     });
     setErrors({});
@@ -83,6 +97,7 @@ export default function ClassesContabeisPage() {
         empresa_id: parseInt(empresaId),
         vida_util_anos: parseInt(form.vida_util_anos),
         taxa_depreciacao: parseFloat(form.taxa_depreciacao),
+        conta_contabil_id: form.conta_contabil_id ? parseInt(form.conta_contabil_id) : null,
       };
 
       if (editingId) {
@@ -108,6 +123,7 @@ export default function ClassesContabeisPage() {
       descricao: item.descricao || '',
       vida_util_anos: item.vida_util_anos || '',
       taxa_depreciacao: item.taxa_depreciacao || '',
+      conta_contabil_id: item.conta_contabil_id || '',
       status: item.status || 'Ativo',
     });
     setErrors({});
@@ -152,6 +168,14 @@ export default function ClassesContabeisPage() {
           <div className="flex flex-col gap-3">
             <Input label={t('code') || 'Código'} name="codigo" value={form.codigo} onChange={onChange} error={errors.codigo} />
             <Input label={t('description') || 'Descrição'} name="descricao" value={form.descricao} onChange={onChange} error={errors.descricao} />
+            <Select label={t('accounting_account') || 'Conta Contábil'} name="conta_contabil_id" value={form.conta_contabil_id} onChange={onChange}>
+              <option value="">{t('select_option') || 'Selecione...'}</option>
+              {contas.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.codigo} - {c.descricao}
+                </option>
+              ))}
+            </Select>
             <div className="grid grid-cols-2 gap-2">
               <Input label={t('lifespan_years') || 'Vida Útil (Anos)'} name="vida_util_anos" type="number" value={form.vida_util_anos} onChange={onChange} error={errors.vida_util_anos} />
               <Input label={t('depreciation_rate') || 'Taxa Depr. (%)'} name="taxa_depreciacao" type="number" step="0.01" value={form.taxa_depreciacao} onChange={onChange} error={errors.taxa_depreciacao} />

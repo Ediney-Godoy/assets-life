@@ -300,6 +300,9 @@ class ClasseContabil(Base):
     empresa_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
     company = relationship("Company", backref="classes_contabeis")
 
+    conta_contabil_id = Column(Integer, ForeignKey("contas_contabeis.id"), nullable=True, index=True)
+    conta_contabil = relationship("ContaContabil", backref="classes_contabeis")
+
     status = Column(String(20), nullable=False, default="Ativo")
     criado_em = Column(DateTime, server_default=func.now(), nullable=False)
 
