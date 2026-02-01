@@ -54,18 +54,41 @@ def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int
     return empresas_ids
 
 def _filters_query(db: Session, params: dict, allowed_company_ids: list[int]):
+    print(f"DEBUG _filters_query: params={params}, allowed_companies={allowed_company_ids}")
     q = db.query(RevisaoItemModel)
+    
+    # Debug helper
+    def debug_count(label):
+        try:
+            c = q.count()
+            print(f"DEBUG _filters_query [{label}]: {c} items")
+        except Exception as e:
+            print(f"DEBUG _filters_query [{label}]: error counting - {e}")
+
+    debug_count("Initial")
+
     # Filtros por empresa/UG via período
     q = q.join(RevisaoPeriodoModel, RevisaoPeriodoModel.id == RevisaoItemModel.periodo_id)
+    
     if allowed_company_ids:
         q = q.filter(RevisaoPeriodoModel.empresa_id.in_(allowed_company_ids))
+        debug_count("Allowed Companies")
+        
     if params.get('empresa_id'):
         q = q.filter(RevisaoPeriodoModel.empresa_id == int(params['empresa_id']))
+        debug_count("Empresa ID")
+        
     if params.get('ug_id'):
         q = q.filter(RevisaoPeriodoModel.ug_id == int(params['ug_id']))
+        debug_count("UG ID")
+        
     # Classe contábil (string na base importada)
-    if params.get('classe_id'):
-        q = q.filter(RevisaoItemModel.classe == params['classe_id'])
+    if params.get('classe_id') and str(params['classe_id']).lower() not in ['todos', '']:
+        # Converte para string pois o campo na base é String e o front pode enviar int
+        classe_val = str(params['classe_id'])
+        q = q.filter(RevisaoItemModel.classe == classe_val)
+        debug_count("Classe ID")
+        
     # Revisor: filtra por delegações ativas para o item
     if params.get('revisor_id'):
         q = q.join(
@@ -76,14 +99,31 @@ def _filters_query(db: Session, params: dict, allowed_company_ids: list[int]):
                 RevisaoDelegacaoModel.revisor_id == int(params['revisor_id'])
             )
         )
-    # Período: usar data de início de depreciação
+        debug_count("Revisor ID")
+        
+    # Filtro explícito por Período de Revisão
+    if params.get('periodo_id'):
+        q = q.filter(RevisaoItemModel.periodo_id == int(params['periodo_id']))
+        debug_count("Periodo ID")
+
+    # Período: usar data de início de depreciação (somente se não filtrar por ID de período ou se quiser filtrar dentro do período)
     if params.get('periodo_inicio'):
         q = q.filter(RevisaoItemModel.data_inicio_depreciacao >= params['periodo_inicio'])
     if params.get('periodo_fim'):
         q = q.filter(RevisaoItemModel.data_inicio_depreciacao <= params['periodo_fim'])
     # Status do item
-    if params.get('status'):
+    if params.get('status') and params['status'] != 'Todos':
         q = q.filter(RevisaoItemModel.status == params['status'])
+    
+    print(f"DEBUG _filters_query: SQL generated count check...")
+    try:
+        # Debug SQL
+        # print(str(q.statement.compile(compile_kwargs={"literal_binds": True})))
+        count = q.count()
+        print(f"DEBUG _filters_query: Found {count} items matching filters.")
+    except Exception as e:
+        print(f"DEBUG _filters_query: Error counting items: {e}")
+        
     return q
 
 # Helpers de cronograma
@@ -374,6 +414,7 @@ def cronograma_excel(
 @router.get('/pdf')
 def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int | None = None, revisor_id: int | None = None,
         periodo_inicio: date | None = None, periodo_fim: date | None = None, status: str | None = None,
+        periodo_id: int | None = None,
         current_user: UsuarioModel = Depends(get_current_user),
         db: Session = Depends(get_db)):
     try:
@@ -396,6 +437,7 @@ def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int 
         'periodo_inicio': periodo_inicio,
         'periodo_fim': periodo_fim,
         'status': status,
+        'periodo_id': periodo_id,
     }
     q = _filters_query(db, params, allowed)
     items = q.all()

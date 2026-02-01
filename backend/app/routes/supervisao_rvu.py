@@ -238,6 +238,7 @@ def listar(
             pass
 
     data = []
+
     for row in results:
         it, periodo_status, revisor_nome = row
         
