@@ -12,3 +12,4 @@ bcrypt
 openpyxl
 python-multipart
 python-jose[cryptography]
+reportlab
