@@ -981,6 +981,33 @@ def get_cronograma(cronograma_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Cronograma não encontrado")
     return c
 
+@app.put("/cronogramas/{cronograma_id}", response_model=Cronograma)
+def update_cronograma(cronograma_id: int, payload: CronogramaUpdate, db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
+    check_permission(db, current_user, "/reviews/cronogramas/edit")
+    c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+    
+    if payload.descricao is not None:
+        c.descricao = payload.descricao
+    
+    if payload.status is not None:
+        # Check tasks if closing
+        if payload.status == 'Concluído':
+            pending = db.execute(sa.text(
+                "SELECT COUNT(*) FROM cronogramas_tarefas WHERE cronograma_id = :cid AND status != 'Concluída'"
+            ), {"cid": cronograma_id}).scalar()
+            if pending > 0:
+                raise HTTPException(status_code=400, detail="Não é possível concluir o cronograma com tarefas pendentes.")
+        c.status = payload.status
+
+    if payload.progresso_percentual is not None:
+        c.progresso_percentual = payload.progresso_percentual
+        
+    db.commit()
+    db.refresh(c)
+    return c
+
 @app.get("/cronogramas/{cronograma_id}/tarefas", response_model=List[CronogramaTarefa])
 def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
     log_path = os.path.join(os.path.dirname(__file__), "..", "debug_log.txt")

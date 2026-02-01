@@ -96,6 +96,9 @@
   "reviews_pending": "Revisões pendentes",
   "field_required": "Campo obrigatório",
   "invalid_cnpj": "CNPJ inválido",
+  "cronogramas_ativos": "Cronogramas Ativos",
+  "cronogramas_encerrados": "Cronogramas Encerrados",
+  "cronograma_has_pending_tasks": "O cronograma possui tarefas pendentes. Conclua todas as tarefas antes de encerrar.",
 
   "company": "Empresa",
   "ug": "UG",

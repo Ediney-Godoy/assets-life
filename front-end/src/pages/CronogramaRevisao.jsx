@@ -70,6 +70,13 @@ export default function CronogramaRevisao() {
 
   const handleCloseCronograma = async () => {
     if (!cronogramaId) return;
+
+    // Check if tasks are complete
+    if (resumo && (resumo.total_tarefas !== resumo.concluido)) {
+         toast.error(t('cronograma_has_pending_tasks') || 'O cronograma possui tarefas pendentes.');
+         return;
+    }
+
     if (!window.confirm('Certifique-se de que todas as tarefas foram concluídas e todas às evidencias foram anexadas. Essa ação não poderá ser desfeita, deseja continuar?')) return;
     
     try {
