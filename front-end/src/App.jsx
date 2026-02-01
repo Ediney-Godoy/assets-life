@@ -25,6 +25,8 @@ import CostCentersPage from './pages/CostCenters';
 import UsersPage from './pages/Users';
 import PermissionsPage from './pages/Permissions';
 import AssetSpeciesPage from './pages/AssetSpecies';
+import ClassesContabeisPage from './pages/ClassesContabeis';
+import ContasContabeisPage from './pages/ContasContabeis';
 import ReportUsefulLifePage from './pages/ReportUsefulLife';
 import ReportsMenu from './pages/ReportsMenu';
 import PermissionsMenu from './pages/PermissionsMenu';
