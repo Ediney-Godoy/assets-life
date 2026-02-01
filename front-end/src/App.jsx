@@ -228,6 +228,8 @@ export default function App() {
               <Route path="/tabs-demo" element={<RequireAuth><TabsDemo /></RequireAuth>} />
               <Route path="/assets" element={<RequireAuth><Section title={t('nav_assets')} body={t('coming_soon')} /></RequireAuth>} />
               <Route path="/asset-species" element={<RequireAuth><AssetSpeciesPage /></RequireAuth>} />
+              <Route path="/classes-contabeis" element={<RequireAuth><RequireCompany><ClassesContabeisPage /></RequireCompany></RequireAuth>} />
+              <Route path="/contas-contabeis" element={<RequireAuth><RequireCompany><ContasContabeisPage /></RequireCompany></RequireAuth>} />
               <Route path="/reviews" element={<RequireAuth><ReviewsMenu /></RequireAuth>} />
               <Route path="/reviews/periodos" element={<RequireAuth><RequirePermission route="/reviews/periodos"><ErrorBoundary><React.Suspense fallback={<div className="p-4">Carregando…</div>}><ReviewsPageLazy /></React.Suspense></ErrorBoundary></RequirePermission></RequireAuth>} />
               <Route path="/reviews/cronogramas" element={<RequireAuth><RequirePermission route="/reviews/cronogramas"><CronogramasMenu /></RequirePermission></RequireAuth>} />

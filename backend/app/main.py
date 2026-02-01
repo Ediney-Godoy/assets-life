@@ -21,6 +21,8 @@ from .models import RevisaoPeriodo as RevisaoPeriodoModel
 from .models import RevisaoItem as RevisaoItemModel
 from .models import RevisaoDelegacao as RevisaoDelegacaoModel
 from .models import CentroCusto as CentroCustoModel
+from .models import ClasseContabil as ClasseContabilModel
+from .models import ContaContabil as ContaContabilModel
 from .models import (
     GrupoPermissao as GrupoPermissaoModel,
     Transacao as TransacaoModel,
@@ -1881,6 +1883,218 @@ def create_centro_custo(payload: CentroCustoCreate, db: Session = Depends(get_db
     db.commit()
     db.refresh(c)
     return c
+
+# -----------------------------
+# Classes Contábeis - Schemas e CRUD
+# -----------------------------
+class ClasseContabil(BaseModel):
+    id: int
+    codigo: str
+    descricao: str
+    vida_util_anos: int
+    taxa_depreciacao: float
+    empresa_id: int
+    status: str
+    criado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+class ClasseContabilCreate(BaseModel):
+    codigo: str
+    descricao: str
+    vida_util_anos: int
+    taxa_depreciacao: float
+    empresa_id: int
+    status: str = "Ativo"
+
+class ClasseContabilUpdate(BaseModel):
+    codigo: Optional[str] = None
+    descricao: Optional[str] = None
+    vida_util_anos: Optional[int] = None
+    taxa_depreciacao: Optional[float] = None
+    empresa_id: Optional[int] = None
+    status: Optional[str] = None
+
+@app.get("/classes_contabeis", response_model=List[ClasseContabil])
+def list_classes_contabeis(
+    empresa_id: Optional[int] = None,
+    status: Optional[str] = None,
+    current_user: UsuarioModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    q = db.query(ClasseContabilModel)
+    allowed = get_allowed_company_ids(db, current_user)
+    if allowed:
+        q = q.filter(ClasseContabilModel.empresa_id.in_(allowed))
+    if empresa_id:
+        if allowed and empresa_id not in allowed:
+            raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
+        q = q.filter(ClasseContabilModel.empresa_id == empresa_id)
+    if status:
+        q = q.filter(ClasseContabilModel.status == status)
+    return q.order_by(ClasseContabilModel.codigo).all()
+
+@app.get("/classes_contabeis/{id}", response_model=ClasseContabil)
+def get_classe_contabil(id: int, db: Session = Depends(get_db)):
+    c = db.query(ClasseContabilModel).filter(ClasseContabilModel.id == id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Classe Contábil não encontrada")
+    return c
+
+@app.post("/classes_contabeis", response_model=ClasseContabil)
+def create_classe_contabil(payload: ClasseContabilCreate, db: Session = Depends(get_db)):
+    data = payload.dict()
+    
+    # Valida empresa
+    if not db.query(CompanyModel).filter(CompanyModel.id == data["empresa_id"]).first():
+        raise HTTPException(status_code=400, detail="Empresa inválida")
+        
+    # Check duplicate code in company
+    if db.query(ClasseContabilModel).filter(ClasseContabilModel.codigo == data["codigo"], ClasseContabilModel.empresa_id == data["empresa_id"]).first():
+        raise HTTPException(status_code=400, detail="Já existe uma Classe Contábil com este código nesta empresa")
+
+    c = ClasseContabilModel(**data)
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    return c
+
+@app.put("/classes_contabeis/{id}", response_model=ClasseContabil)
+def update_classe_contabil(id: int, payload: ClasseContabilUpdate, db: Session = Depends(get_db)):
+    c = db.query(ClasseContabilModel).filter(ClasseContabilModel.id == id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Classe Contábil não encontrada")
+    
+    data = payload.dict(exclude_unset=True)
+    
+    if "codigo" in data:
+        existing = db.query(ClasseContabilModel).filter(
+            ClasseContabilModel.codigo == data["codigo"], 
+            ClasseContabilModel.empresa_id == (data.get("empresa_id") or c.empresa_id),
+            ClasseContabilModel.id != id
+        ).first()
+        if existing:
+             raise HTTPException(status_code=400, detail="Já existe uma Classe Contábil com este código nesta empresa")
+
+    for key, value in data.items():
+        setattr(c, key, value)
+        
+    db.commit()
+    db.refresh(c)
+    return c
+
+@app.delete("/classes_contabeis/{id}")
+def delete_classe_contabil(id: int, db: Session = Depends(get_db)):
+    c = db.query(ClasseContabilModel).filter(ClasseContabilModel.id == id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Classe Contábil não encontrada")
+    db.delete(c)
+    db.commit()
+    return {"deleted": True}
+
+# -----------------------------
+# Contas Contábeis - Schemas e CRUD
+# -----------------------------
+class ContaContabil(BaseModel):
+    id: int
+    codigo: str
+    descricao: str
+    empresa_id: int
+    status: str
+    criado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+class ContaContabilCreate(BaseModel):
+    codigo: str
+    descricao: str
+    empresa_id: int
+    status: str = "Ativo"
+
+class ContaContabilUpdate(BaseModel):
+    codigo: Optional[str] = None
+    descricao: Optional[str] = None
+    empresa_id: Optional[int] = None
+    status: Optional[str] = None
+
+@app.get("/contas_contabeis", response_model=List[ContaContabil])
+def list_contas_contabeis(
+    empresa_id: Optional[int] = None,
+    status: Optional[str] = None,
+    current_user: UsuarioModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    q = db.query(ContaContabilModel)
+    allowed = get_allowed_company_ids(db, current_user)
+    if allowed:
+        q = q.filter(ContaContabilModel.empresa_id.in_(allowed))
+    if empresa_id:
+         if allowed and empresa_id not in allowed:
+            raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
+         q = q.filter(ContaContabilModel.empresa_id == empresa_id)
+    if status:
+        q = q.filter(ContaContabilModel.status == status)
+    return q.order_by(ContaContabilModel.codigo).all()
+
+@app.get("/contas_contabeis/{id}", response_model=ContaContabil)
+def get_conta_contabil(id: int, db: Session = Depends(get_db)):
+    c = db.query(ContaContabilModel).filter(ContaContabilModel.id == id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Conta Contábil não encontrada")
+    return c
+
+@app.post("/contas_contabeis", response_model=ContaContabil)
+def create_conta_contabil(payload: ContaContabilCreate, db: Session = Depends(get_db)):
+    data = payload.dict()
+    
+    # Valida empresa
+    if not db.query(CompanyModel).filter(CompanyModel.id == data["empresa_id"]).first():
+        raise HTTPException(status_code=400, detail="Empresa inválida")
+
+    # Check duplicate code in company
+    if db.query(ContaContabilModel).filter(ContaContabilModel.codigo == data["codigo"], ContaContabilModel.empresa_id == data["empresa_id"]).first():
+        raise HTTPException(status_code=400, detail="Já existe uma Conta Contábil com este código nesta empresa")
+
+    c = ContaContabilModel(**data)
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    return c
+
+@app.put("/contas_contabeis/{id}", response_model=ContaContabil)
+def update_conta_contabil(id: int, payload: ContaContabilUpdate, db: Session = Depends(get_db)):
+    c = db.query(ContaContabilModel).filter(ContaContabilModel.id == id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Conta Contábil não encontrada")
+    
+    data = payload.dict(exclude_unset=True)
+    
+    if "codigo" in data:
+        existing = db.query(ContaContabilModel).filter(
+            ContaContabilModel.codigo == data["codigo"], 
+            ContaContabilModel.empresa_id == (data.get("empresa_id") or c.empresa_id),
+            ContaContabilModel.id != id
+        ).first()
+        if existing:
+             raise HTTPException(status_code=400, detail="Já existe uma Conta Contábil com este código nesta empresa")
+
+    for key, value in data.items():
+        setattr(c, key, value)
+        
+    db.commit()
+    db.refresh(c)
+    return c
+
+@app.delete("/contas_contabeis/{id}")
+def delete_conta_contabil(id: int, db: Session = Depends(get_db)):
+    c = db.query(ContaContabilModel).filter(ContaContabilModel.id == id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Conta Contábil não encontrada")
+    db.delete(c)
+    db.commit()
+    return {"deleted": True}
 
 # -----------------------------
 # Usuários - Schemas e CRUD

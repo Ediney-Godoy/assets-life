@@ -752,6 +752,56 @@ export async function updateCostCenter(id, payload) {
   return request(`/centros_custos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
+// Classes Contábeis
+export async function getClassesContabeis(filters = {}) {
+  const qs = new URLSearchParams();
+  if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);
+  if (filters.status) qs.set('status', filters.status);
+  const path = qs.toString() ? `/classes_contabeis?${qs.toString()}` : '/classes_contabeis';
+  return request(path);
+}
+
+export async function getClasseContabil(id) {
+  return request(`/classes_contabeis/${id}`);
+}
+
+export async function createClasseContabil(payload) {
+  return request('/classes_contabeis', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateClasseContabil(id, payload) {
+  return request(`/classes_contabeis/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteClasseContabil(id) {
+  return request(`/classes_contabeis/${id}`, { method: 'DELETE' });
+}
+
+// Contas Contábeis
+export async function getContasContabeis(filters = {}) {
+  const qs = new URLSearchParams();
+  if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);
+  if (filters.status) qs.set('status', filters.status);
+  const path = qs.toString() ? `/contas_contabeis?${qs.toString()}` : '/contas_contabeis';
+  return request(path);
+}
+
+export async function getContaContabil(id) {
+  return request(`/contas_contabeis/${id}`);
+}
+
+export async function createContaContabil(payload) {
+  return request('/contas_contabeis', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateContaContabil(id, payload) {
+  return request(`/contas_contabeis/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteContaContabil(id) {
+  return request(`/contas_contabeis/${id}`, { method: 'DELETE' });
+}
+
 // -----------------------------
 // Permissões - Transações e Grupos
 // -----------------------------

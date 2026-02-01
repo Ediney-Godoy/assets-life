@@ -98,7 +98,11 @@ export default function DashboardPage({ registrationsOnly }) {
              const key = String(mainItem.numero_imobilizado || '');
              const group = assetGroups[key] || [];
              // Soma o valor contábil de todo o grupo (Ativo Principal + Incorporações)
-             const totalValue = group.reduce((sum, part) => sum + Number(part.valor_contabil || 0), 0);
+             const totalValue = group.reduce((sum, part) => {
+               let val = parseFloat(part.valor_contabil);
+               if (isNaN(val)) val = 0;
+               return sum + val;
+             }, 0);
              // Considera zerado se a soma for menor que 0.01
              return Math.abs(totalValue) < 0.01;
           }).length;
@@ -179,9 +183,9 @@ export default function DashboardPage({ registrationsOnly }) {
     { title: t('companies_title'), subtitle: t('companies_subtitle'), icon: Building2, action: () => navigate('/companies') },
     { title: t('users_title'), subtitle: t('users_subtitle'), icon: Users2, action: () => navigate('/users') },
     { title: t('collab_title'), subtitle: t('collab_subtitle'), icon: UserCog, action: () => navigate('/employees') },
-    { title: t('acc_classes_title'), subtitle: t('acc_classes_subtitle'), icon: Layers, action: () => alert('Em breve') },
+    { title: t('acc_classes_title'), subtitle: t('acc_classes_subtitle'), icon: Layers, action: () => navigate('/classes-contabeis') },
     { title: t('acc_groups_title'), subtitle: t('acc_groups_subtitle'), icon: FolderKanban, action: () => alert('Em breve') },
-    { title: t('acc_accounts_title'), subtitle: t('acc_accounts_subtitle'), icon: Wallet, action: () => alert('Em breve') },
+    { title: t('acc_accounts_title'), subtitle: t('acc_accounts_subtitle'), icon: Wallet, action: () => navigate('/contas-contabeis') },
     { title: t('ug_title'), subtitle: t('ug_subtitle'), icon: Network, action: () => navigate('/ugs') },
     { title: t('cost_centers_title'), subtitle: t('cost_centers_subtitle'), icon: Crosshair, action: () => navigate('/cost-centers') },
     { title: t('asset_species_title'), subtitle: t('asset_species_subtitle'), icon: CalendarDays, action: () => navigate('/asset-species') },

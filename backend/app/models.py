@@ -286,6 +286,41 @@ class CentroCusto(Base):
     status = Column(String(20), nullable=False, default="Ativo")
 
 # -----------------------------
+# Classes Contábeis
+# -----------------------------
+class ClasseContabil(Base):
+    __tablename__ = "classes_contabeis"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(50), nullable=False, unique=True, index=True)
+    descricao = Column(String(255), nullable=False)
+    vida_util_anos = Column(Integer, nullable=False)
+    taxa_depreciacao = Column(Numeric(5, 2), nullable=False)
+    
+    empresa_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    company = relationship("Company", backref="classes_contabeis")
+
+    status = Column(String(20), nullable=False, default="Ativo")
+    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+
+
+# -----------------------------
+# Contas Contábeis
+# -----------------------------
+class ContaContabil(Base):
+    __tablename__ = "contas_contabeis"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(50), nullable=False, unique=True, index=True)
+    descricao = Column(String(255), nullable=False)
+    
+    empresa_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    company = relationship("Company", backref="contas_contabeis")
+
+    status = Column(String(20), nullable=False, default="Ativo")
+    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+
+# -----------------------------
 # Controle de Acessos (Grupos de Permissão)
 # -----------------------------
 class GrupoPermissao(Base):
