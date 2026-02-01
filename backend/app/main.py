@@ -1160,17 +1160,28 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                             except Exception as e_upd:
                                 log(f"Failed to update progress for task {r['id']}: {e_upd}")
                 
-                # Check for delay
-                if df and isinstance(df, date) and df < now and status != "Concluída":
-                    status = "Atrasada"
-                
-                # Auto-complete status if 100% (optional, but makes sense)
+                # Auto-complete status if 100% (prioritize over delay)
                 # Only for revision tasks to avoid overriding manual status of other tasks
                 if is_revision_task:
-                    if progresso == 100 and status == "Pendente":
+                    if progresso == 100:
                         status = "Concluída"
+                        # Persist completed status if not already
+                        if r.get("status") != "Concluída":
+                            try:
+                                db.execute(sa.text("UPDATE cronogramas_tarefas SET status = 'Concluída' WHERE id = :id"), {"id": r["id"]})
+                                db.commit()
+                            except Exception as e_st:
+                                log(f"Failed to update status to Concluída for task {r['id']}: {e_st}")
                     elif progresso < 100 and status == "Concluída":
                         status = "Em Andamento"
+                        try:
+                            db.execute(sa.text("UPDATE cronogramas_tarefas SET status = 'Em Andamento' WHERE id = :id"), {"id": r["id"]})
+                            db.commit()
+                        except Exception: pass
+
+                # Check for delay (only if not completed)
+                if df and isinstance(df, date) and df < now and status != "Concluída":
+                    status = "Atrasada"
 
                 # Construct Pydantic model safely
                 task = CronogramaTarefa(

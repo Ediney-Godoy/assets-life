@@ -15,6 +15,7 @@ from ..models import (
 import sqlalchemy as sa
 from datetime import date, datetime
 import io
+import traceback
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -279,68 +280,92 @@ def cronograma(
 @router.get('/excel')
 def excel(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int | None = None, revisor_id: int | None = None,
           periodo_inicio: date | None = None, periodo_fim: date | None = None, status: str | None = None,
-          db: Session = Depends(get_db)):
+          current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-      import pandas as pd
+        import pandas as pd
     except Exception:
-      raise HTTPException(status_code=500, detail="Dependências de Excel ausentes (pandas)")
-    params = {
-        'empresa_id': empresa_id,
-        'ug_id': ug_id,
-        'classe_id': classe_id,
-        'revisor_id': revisor_id,
-        'periodo_inicio': periodo_inicio,
-        'periodo_fim': periodo_fim,
-        'status': status,
-    }
-    q = _filters_query(db, params)
-    items = q.all()
-    rows = []
-    for it in items:
-        atual_total = (it.vida_util_periodos or 0)
-        if atual_total == 0 and (it.vida_util_anos or 0) > 0:
-            atual_total = (it.vida_util_anos or 0) * 12
-        atual_anos = (atual_total // 12) if atual_total is not None else 0
-        atual_meses = (atual_total % 12) if atual_total is not None else 0
-        revisada_total = it.vida_util_revisada or 0
-        revisada_anos = (revisada_total // 12) if revisada_total else 0
-        revisada_meses = (revisada_total % 12) if revisada_total else 0
-        revisor_nome = None
-        try:
-            if it.criado_por:
-                u = db.query(UsuarioModel).filter(UsuarioModel.id == it.criado_por).first()
-                revisor_nome = getattr(u, 'nome_completo', None) if u else None
-        except Exception:
+        print("Erro: pandas não instalado.")
+        raise HTTPException(status_code=500, detail="Dependências de Excel ausentes (pandas)")
+
+    try:
+        allowed = get_allowed_company_ids(db, current_user)
+        if empresa_id is not None and allowed and empresa_id not in allowed:
+            raise HTTPException(status_code=403, detail='Acesso negado ao relatório da empresa informada')
+            
+        params = {
+            'empresa_id': empresa_id,
+            'ug_id': ug_id,
+            'classe_id': classe_id,
+            'revisor_id': revisor_id,
+            'periodo_inicio': periodo_inicio,
+            'periodo_fim': periodo_fim,
+            'status': status,
+        }
+        
+        # Correção: passar allowed_company_ids
+        q = _filters_query(db, params, allowed)
+        items = q.all()
+        
+        rows = []
+        for it in items:
+            atual_total = (it.vida_util_periodos or 0)
+            if atual_total == 0 and (it.vida_util_anos or 0) > 0:
+                atual_total = (it.vida_util_anos or 0) * 12
+            atual_anos = (atual_total // 12) if atual_total is not None else 0
+            atual_meses = (atual_total % 12) if atual_total is not None else 0
+            revisada_total = it.vida_util_revisada or 0
+            revisada_anos = (revisada_total // 12) if revisada_total else 0
+            revisada_meses = (revisada_total % 12) if revisada_total else 0
             revisor_nome = None
-        rows.append({
-            'Nº Imobilizado': getattr(it, 'numero_imobilizado', None),
-            'Subnº': getattr(it, 'sub_numero', None),
-            'Descrição': getattr(it, 'descricao', None),
-            'Classe': getattr(it, 'classe', None),
-            'Valor Aquisição': float(getattr(it, 'valor_aquisicao', 0) or 0),
-            'Depreciação Acumulada': float(getattr(it, 'depreciacao_acumulada', 0) or 0),
-            'Valor Contábil': float(getattr(it, 'valor_contabil', 0) or 0),
-            'Vida Útil Atual (a)': atual_anos,
-            'Vida Útil Atual (m)': atual_meses,
-            'Vida Útil Revisada (a)': revisada_anos,
-            'Vida Útil Revisada (m)': revisada_meses,
-            'Data Início': getattr(it, 'data_inicio_depreciacao', None),
-            'Data Fim Atual': getattr(it, 'data_fim_depreciacao', None),
-            'Data Fim Revisada': getattr(it, 'data_fim_revisada', None),
-            'Revisor': revisor_nome,
-            'Status': getattr(it, 'status', None),
-        })
-    df = pd.DataFrame(rows)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Aba 2: Detalhamento (implementação base)
-        df.to_excel(writer, index=False, sheet_name='Detalhamento dos Ativos')
-        # Demais abas como placeholders simples
-        pd.DataFrame({'Info': ['Resumo Geral (placeholder)']}).to_excel(writer, index=False, sheet_name='Resumo Geral')
-        pd.DataFrame({'Info': ['Resumo por UG (placeholder)']}).to_excel(writer, index=False, sheet_name='Resumo por Unidade Gerencial')
-        pd.DataFrame({'Info': ['Resumo por Revisor (placeholder)']}).to_excel(writer, index=False, sheet_name='Resumo por Revisor')
-    output.seek(0)
-    return Response(content=output.read(), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            try:
+                if it.criado_por:
+                    u = db.query(UsuarioModel).filter(UsuarioModel.id == it.criado_por).first()
+                    revisor_nome = getattr(u, 'nome_completo', None) if u else None
+            except Exception:
+                revisor_nome = None
+            rows.append({
+                'Nº Imobilizado': getattr(it, 'numero_imobilizado', None),
+                'Subnº': getattr(it, 'sub_numero', None),
+                'Descrição': getattr(it, 'descricao', None),
+                'Classe': getattr(it, 'classe', None),
+                'Valor Aquisição': float(getattr(it, 'valor_aquisicao', 0) or 0),
+                'Depreciação Acumulada': float(getattr(it, 'depreciacao_acumulada', 0) or 0),
+                'Valor Contábil': float(getattr(it, 'valor_contabil', 0) or 0),
+                'Vida Útil Atual (a)': atual_anos,
+                'Vida Útil Atual (m)': atual_meses,
+                'Vida Útil Revisada (a)': revisada_anos,
+                'Vida Útil Revisada (m)': revisada_meses,
+                'Data Início': getattr(it, 'data_inicio_depreciacao', None),
+                'Data Fim Atual': getattr(it, 'data_fim_depreciacao', None),
+                'Data Fim Revisada': getattr(it, 'data_fim_revisada', None),
+                'Revisor': revisor_nome,
+                'Status': getattr(it, 'status', None),
+            })
+        
+        if not rows:
+             # Retornar planilha vazia com cabeçalhos se não houver itens
+             rows = [{'Mensagem': 'Nenhum item encontrado com os filtros aplicados'}]
+             
+        df = pd.DataFrame(rows)
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Aba 2: Detalhamento (implementação base)
+            df.to_excel(writer, index=False, sheet_name='Detalhamento dos Ativos')
+            # Demais abas como placeholders simples
+            pd.DataFrame({'Info': ['Resumo Geral (placeholder)']}).to_excel(writer, index=False, sheet_name='Resumo Geral')
+        
+        output.seek(0)
+        headers = {
+            'Content-Disposition': 'attachment; filename="Relatorio_RVU.xlsx"'
+        }
+        return Response(content=output.getvalue(), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        print(f"Erro ao gerar Excel: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno ao gerar Excel: {str(e)}")
 
 @router.get('/cronograma/excel')
 def cronograma_excel(
