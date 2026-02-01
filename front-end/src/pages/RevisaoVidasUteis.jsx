@@ -188,7 +188,13 @@ export default function RevisaoVidasUteis() {
   if (!motivosReducao.includes('Melhor Estimativa do LOM')) motivosReducao.push('Melhor Estimativa do LOM');
 
   const isItemRevisado = (it) => {
-    return (it.status === 'Revisado' || it.status === 'Aprovado') || Boolean(it.alterado);
+    const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const s = normalize(it.status);
+    const statusReviewed = (s === 'revisado' || s === 'revisada' || s === 'aprovado' || s === 'concluido');
+    const adjusted = Boolean(it.alterado);
+    const hasJustification = Boolean(String(it.justificativa || '').trim());
+    const hasCondicao = Boolean(String(it.condicao_fisica || '').trim());
+    return statusReviewed || adjusted || hasJustification || hasCondicao;
   };
 
   const columns = [

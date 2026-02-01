@@ -45,17 +45,37 @@ export default function DashboardPage({ registrationsOnly }) {
         const periods = await getReviewPeriods();
         const list = Array.isArray(periods) ? periods.filter((p) => String(p.empresa_id) === String(companyId)) : [];
         if (list.length > 0) {
-          const open = list.find((p) => (p.status || '').toLowerCase() === 'aberto') || list[0];
-          const pid = open.id;
+          // Usa o período mais recente (compatível com a tela de Revisão)
+          const pid = list[0].id;
           const [items, delegs] = await Promise.all([
             listarSupervisaoRVU({ periodo_id: pid }),
             getReviewDelegations(pid),
           ]);
-          const itemsArr = Array.isArray(items) ? items : [];
+          // Mantém lista completa para cálculos de depreciação consolidada
+          const rawItems = Array.isArray(items) ? items : [];
+
+          // Agrupa todos os itens (principais e incorporações) por número do imobilizado
+          const assetGroups = rawItems.reduce((acc, it) => {
+             const key = String(it.numero_imobilizado || '');
+             if (!acc[key]) acc[key] = [];
+             acc[key].push(it);
+             return acc;
+          }, {});
+
+          // Filtra apenas Ativos Principais (Sub Nº 0), ignorando incorporações (Sub Nº > 0)
+          // Essa regra aplica-se a todos os indicadores do dashboard
+          const itemsArr = rawItems.filter((it) => {
+            const sub = Number(it.sub_numero);
+            return sub === 0;
+          });
+          
           const delegsArr = Array.isArray(delegs) ? delegs : [];
           const totalItems = itemsArr.length;
           const delegatedIds = new Set(delegsArr.map((d) => d.ativo_id));
-          const assignedItems = delegatedIds.size;
+          // Considera atribuído apenas se o ID do ativo principal estiver na lista de delegações
+          // (Se a delegação for feita por Centro de Custo, o backend retorna todos os IDs, então isso deve funcionar)
+          const assignedItems = itemsArr.filter((it) => delegatedIds.has(it.id)).length;
+          
           const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
           const reviewedList = itemsArr.filter((i) => {
             const s = normalize(i.status);
@@ -68,26 +88,35 @@ export default function DashboardPage({ registrationsOnly }) {
           const reviewedItems = reviewedList.length;
           const reviewedPct = totalItems ? Number(((reviewedItems / totalItems) * 100).toFixed(1)) : 0;
           const adjustedItems = itemsArr.filter((i) => Boolean(i.alterado)).length;
-          const groups = itemsArr.reduce((acc, it) => {
-            const key = String(it.numero_imobilizado || '');
-            if (!acc[key]) acc[key] = [];
-            acc[key].push(it);
-            return acc;
-          }, {});
-          let fullyDepreciated = 0;
-          Object.values(groups).forEach((list) => {
-            const hasMain = list.some((x) => String(x.sub_numero || '') === '0');
-            const allZero = list.every((x) => Number(x.valor_contabil || 0) === 0);
-            if (hasMain && allZero) fullyDepreciated += 1;
-          });
+          
+          // Totalmente depreciados:
+          // Regra: Ativo Principal (Sub 0) com valor contábil zerado, E a soma das incorporações (mesmo imobilizado) também deve ser zero.
+          const fullyDepreciated = itemsArr.filter((mainItem) => {
+             const key = String(mainItem.numero_imobilizado || '');
+             const group = assetGroups[key] || [];
+             // Soma o valor contábil de todo o grupo (Ativo Principal + Incorporações)
+             const totalValue = group.reduce((sum, part) => sum + Number(part.valor_contabil || 0), 0);
+             // Considera zerado se a soma for menor que 0.01
+             return Math.abs(totalValue) < 0.01;
+          }).length;
+ 
           setMetrics({ totalItems, assignedItems, reviewedItems, reviewedPct, fullyDepreciated, adjustedItems });
 
           const byUser = {};
           delegsArr.forEach((d) => {
-            const name = d.revisor_nome || `ID ${d.revisor_id}`;
-            byUser[name] = (byUser[name] || 0) + 1;
+            // Conta delegações apenas se referirem a ativos principais (opcional, mas consistente com a visão de "Ativos")
+            // Como itemsArr já está filtrado, podemos cruzar IDs se quisermos precisão absoluta, 
+            // mas o gráfico de atribuição costuma mostrar carga de trabalho total. 
+            // Pelo pedido "padrão para todos os indicadores", vamos filtrar também.
+            const isMain = itemsArr.some((it) => it.id === d.ativo_id);
+            if (isMain) {
+              const name = d.revisor_nome || `ID ${d.revisor_id}`;
+              byUser[name] = (byUser[name] || 0) + 1;
+            }
           });
-          const unassigned = Math.max(0, totalItems - delegatedIds.size);
+          // Se assignedItems (calculado acima) for diferente da soma do gráfico, pode causar confusão.
+          // Vamos usar o assignedItems calculado com base nos itens filtrados para consistência.
+          const unassigned = Math.max(0, totalItems - assignedItems);
           const series = Object.entries(byUser).map(([name, count]) => ({ name, y: count }));
           series.push({ name: t('dashboard_unassigned'), y: unassigned });
           setChartData(series);
