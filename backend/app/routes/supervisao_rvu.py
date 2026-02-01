@@ -252,6 +252,7 @@ def listar(
         data.append({
             'id': it.id,
             'numero_imobilizado': getattr(it, 'numero_imobilizado', None),
+            'sub_numero': getattr(it, 'sub_numero', None),
             'descricao': getattr(it, 'descricao', None),
             'classe_contabil': getattr(it, 'classe', None),
             'valor_contabil': float(getattr(it, 'valor_contabil', 0) or 0),
