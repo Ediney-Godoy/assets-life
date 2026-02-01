@@ -60,9 +60,12 @@ export default function CronogramaRevisao() {
   const [viewEvidencias, setViewEvidencias] = React.useState([]);
   const [selectedEvidencias, setSelectedEvidencias] = React.useState([]);
   const [canEdit, setCanEdit] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('active');
+  const [activePeriods, setActivePeriods] = React.useState([]);
+  const [closedPeriods, setClosedPeriods] = React.useState([]);
 
   const currentCronograma = React.useMemo(() => cronogramas.find(c => String(c.id) === String(cronogramaId)), [cronogramas, cronogramaId]);
-  const isLocked = currentCronograma?.status === 'Concluído';
+  const isLocked = currentCronograma?.status === 'Concluído' || activeTab === 'closed';
   const isEditable = canEdit && !isLocked;
 
   const handleCloseCronograma = async () => {
@@ -94,12 +97,19 @@ export default function CronogramaRevisao() {
     Promise.all([getReviewPeriods(), getUsers()])
       .then(([ps, us]) => {
         const abertos = (ps || []).filter((p) => ['Aberto', 'Em Andamento', 'Em andamento'].includes(p.status));
-        setPeriodos(abertos);
+        const fechados = (ps || []).filter((p) => ['Fechado', 'Encerrado', 'Concluído'].includes(p.status));
+        setActivePeriods(abertos);
+        setClosedPeriods(fechados);
         setUsers(us || []);
       })
       .catch((err) => toast.error(err.message || t('error_generic')))
       .finally(() => setLoading(false));
   }, [t]);
+
+  React.useEffect(() => {
+    setPeriodos(activeTab === 'active' ? activePeriods : closedPeriods);
+    setPeriodoId('');
+  }, [activeTab, activePeriods, closedPeriods]);
 
   React.useEffect(() => { loadBase(); }, [loadBase]);
 
@@ -535,6 +545,28 @@ export default function CronogramaRevisao() {
 
   return (
     <div className="p-6">
+        <div className="flex space-x-4 mb-6 border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`pb-2 px-4 text-sm font-medium transition-colors border-b-2 ${
+              activeTab === 'active'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t('cronogramas_ativos') || 'Cronogramas Ativos'}
+          </button>
+          <button
+            onClick={() => setActiveTab('closed')}
+            className={`pb-2 px-4 text-sm font-medium transition-colors border-b-2 ${
+              activeTab === 'closed'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t('cronogramas_encerrados') || 'Cronogramas Encerrados'}
+          </button>
+        </div>
 
         <section>
           <style>{`

@@ -2497,6 +2497,16 @@ def fechar_revisao(rev_id: int, db: Session = Depends(get_db)):
     r = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == rev_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Período não encontrado")
+    
+    # Validar se o cronograma (se existir) está concluído
+    c = db.query(CronogramaModel).filter(CronogramaModel.periodo_id == rev_id).first()
+    if c:
+        pending = db.execute(sa.text(
+            "SELECT COUNT(*) FROM cronogramas_tarefas WHERE cronograma_id = :cid AND status != 'Concluída'"
+        ), {"cid": c.id}).scalar()
+        if pending > 0:
+            raise HTTPException(status_code=400, detail="O cronograma deste período possui tarefas pendentes. Conclua o cronograma antes de fechar o período.")
+
     r.status = "Fechado"
     r.data_fechamento = date.today()
     db.commit()
