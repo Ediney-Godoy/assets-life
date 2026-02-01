@@ -373,23 +373,84 @@ def cronograma_excel(
 
 @router.get('/pdf')
 def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int | None = None, revisor_id: int | None = None,
-        periodo_inicio: datetime | None = None, periodo_fim: datetime | None = None, status: str | None = None,
+        periodo_inicio: date | None = None, periodo_fim: date | None = None, status: str | None = None,
+        current_user: UsuarioModel = Depends(get_current_user),
         db: Session = Depends(get_db)):
     try:
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib import colors
     except Exception:
         raise HTTPException(status_code=500, detail="Dependências de PDF ausentes (reportlab)")
+    
+    allowed = get_allowed_company_ids(db, current_user)
+    if empresa_id is not None and allowed and empresa_id not in allowed:
+        raise HTTPException(status_code=403, detail='Acesso negado ao relatório da empresa informada')
+    
+    params = {
+        'empresa_id': empresa_id,
+        'ug_id': ug_id,
+        'classe_id': classe_id,
+        'revisor_id': revisor_id,
+        'periodo_inicio': periodo_inicio,
+        'periodo_fim': periodo_fim,
+        'status': status,
+    }
+    q = _filters_query(db, params, allowed)
+    items = q.all()
+
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
     styles = getSampleStyleSheet()
     story = []
     story.append(Paragraph("Laudo de Revisão de Vidas Úteis dos Ativos Imobilizados", styles['Title']))
     story.append(Spacer(1, 12))
     story.append(Paragraph("Base normativa: CPC 27 / IAS 16 / Lei 11.638", styles['Normal']))
     story.append(Spacer(1, 12))
-    story.append(Paragraph("Conteúdo consolidado (placeholder)", styles['Normal']))
+
+    if not items:
+        story.append(Paragraph("Nenhum item encontrado com os filtros aplicados.", styles['Normal']))
+    else:
+        # Cabeçalho
+        data = [['Nº Imob', 'Sub', 'Descrição', 'V. Contábil', 'V.U. Atual', 'V.U. Rev', 'Status']]
+        for it in items:
+            # Cálculos (copiado do excel/resumo)
+            atual_total = (it.vida_util_periodos or 0)
+            if atual_total == 0 and (it.vida_util_anos or 0) > 0:
+                atual_total = (it.vida_util_anos or 0) * 12
+            atual_anos = (atual_total // 12) if atual_total is not None else 0
+            
+            revisada_total = it.vida_util_revisada or 0
+            revisada_anos = (revisada_total // 12) if revisada_total else 0
+            
+            desc = getattr(it, 'descricao', '') or ''
+            if len(desc) > 40: desc = desc[:37] + '...'
+            
+            row = [
+                str(getattr(it, 'numero_imobilizado', '')),
+                str(getattr(it, 'sub_numero', '')),
+                desc,
+                f"{float(getattr(it, 'valor_contabil', 0) or 0):.2f}",
+                f"{atual_anos} a",
+                f"{revisada_anos} a" if revisada_total else "-",
+                getattr(it, 'status', '') or ''
+            ]
+            data.append(row)
+        
+        t = Table(data, colWidths=[70, 40, 250, 80, 60, 60, 80])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(t)
+
     doc.build(story)
     pdf_bytes = buffer.getvalue()
     buffer.close()
