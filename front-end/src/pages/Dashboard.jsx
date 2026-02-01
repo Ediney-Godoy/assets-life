@@ -107,12 +107,9 @@ export default function DashboardPage({ registrationsOnly }) {
 
           const byUser = {};
           delegsArr.forEach((d) => {
-            // Conta delegações apenas se referirem a ativos principais (opcional, mas consistente com a visão de "Ativos")
-            // Como itemsArr já está filtrado, podemos cruzar IDs se quisermos precisão absoluta, 
-            // mas o gráfico de atribuição costuma mostrar carga de trabalho total. 
-            // Pelo pedido "padrão para todos os indicadores", vamos filtrar também.
-            const isMain = itemsArr.some((it) => it.id === d.ativo_id);
-            if (isMain) {
+            // Conta delegações considerando todos os itens (principais e incorporações), consistente com os outros gráficos
+            const isValid = allReviewItems.some((it) => it.id === d.ativo_id);
+            if (isValid) {
               const name = d.revisor_nome || `ID ${d.revisor_id}`;
               byUser[name] = (byUser[name] || 0) + 1;
             }
