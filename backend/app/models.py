@@ -145,38 +145,6 @@ class RevisaoPeriodo(Base):
 
     criado_em = Column(DateTime, server_default=func.now(), nullable=False)
 
-# -----------------------------
-# Cadastro de Ativos (Master Data)
-# -----------------------------
-class Asset(Base):
-    __tablename__ = "assets"
-
-    id = Column(Integer, primary_key=True, index=True)
-    numero = Column(String(50), nullable=False, index=True)
-    sub_numero = Column(String(10), nullable=False, default="0")
-    descricao = Column(String(255), nullable=False)
-    
-    data_aquisicao = Column(Date, nullable=False)
-    valor_aquisicao = Column(Numeric(18, 2), nullable=False)
-    
-    empresa_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
-    company = relationship("Company", backref="assets")
-    
-    ug_id = Column(Integer, ForeignKey("unidades_gerenciais.id"), nullable=True, index=True)
-    ug = relationship("ManagementUnit", backref="assets")
-    
-    centro_custo_id = Column(Integer, ForeignKey("centros_custos.id"), nullable=True, index=True)
-    centro_custo = relationship("CentroCusto", backref="assets")
-    
-    classe_id = Column(Integer, ForeignKey("classes_contabeis.id"), nullable=True, index=True)
-    classe = relationship("ClasseContabil", backref="assets")
-    
-    vida_util_anos = Column(Integer, nullable=True)
-    taxa_depreciacao = Column(Numeric(5, 2), nullable=True)
-    
-    status = Column(String(20), nullable=False, default="Ativo")
-    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
-    atualizado_em = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
 # -----------------------------
 # Itens da Revisão (base importada)

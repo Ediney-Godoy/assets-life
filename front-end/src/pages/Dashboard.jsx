@@ -15,6 +15,8 @@ export default function DashboardPage({ registrationsOnly }) {
   const navigate = useNavigate();
   const [companies, setCompanies] = React.useState([]);
   const [companyId, setCompanyId] = React.useState('');
+  const [periods, setPeriods] = React.useState([]);
+  const [selectedPeriodId, setSelectedPeriodId] = React.useState('');
   const [metrics, setMetrics] = React.useState({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
   const [chartData, setChartData] = React.useState([]);
   const [incrementChartData, setIncrementChartData] = React.useState([]);
@@ -33,8 +35,27 @@ export default function DashboardPage({ registrationsOnly }) {
   }, [registrationsOnly, companyId]);
 
   React.useEffect(() => {
+    if (registrationsOnly || !companyId) {
+      setPeriods([]);
+      setSelectedPeriodId('');
+      return;
+    }
+    getReviewPeriods().then((allPeriods) => {
+      const list = Array.isArray(allPeriods) ? allPeriods.filter((p) => String(p.empresa_id) === String(companyId)) : [];
+      // Ordenar por ID decrescente (assumindo que IDs maiores são mais recentes)
+      list.sort((a, b) => b.id - a.id);
+      setPeriods(list);
+      if (list.length > 0) {
+        setSelectedPeriodId(String(list[0].id));
+      } else {
+        setSelectedPeriodId('');
+      }
+    }).catch(() => setPeriods([]));
+  }, [registrationsOnly, companyId]);
+
+  React.useEffect(() => {
     if (registrationsOnly) return;
-    if (!companyId) {
+    if (!companyId || !selectedPeriodId) {
       setChartData([]);
       setIncrementChartData([]);
       setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
@@ -42,15 +63,11 @@ export default function DashboardPage({ registrationsOnly }) {
     }
     const init = async () => {
       try {
-        const periods = await getReviewPeriods();
-        const list = Array.isArray(periods) ? periods.filter((p) => String(p.empresa_id) === String(companyId)) : [];
-        if (list.length > 0) {
-          // Usa o período mais recente (compatível com a tela de Revisão)
-          const pid = list[0].id;
-          const [items, delegs] = await Promise.all([
-            listarSupervisaoRVU({ periodo_id: pid }),
-            getReviewDelegations(pid),
-          ]);
+        const pid = selectedPeriodId;
+        const [items, delegs] = await Promise.all([
+          listarSupervisaoRVU({ periodo_id: pid }),
+          getReviewDelegations(pid),
+        ]);
           // Mantém lista completa para cálculos de depreciação consolidada
           const rawItems = Array.isArray(items) ? items : [];
 
@@ -156,12 +173,6 @@ export default function DashboardPage({ registrationsOnly }) {
           } else {
             setIncrementChartData([]);
           }
-
-        } else {
-          setChartData([]);
-          setIncrementChartData([]);
-          setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
-        }
       } catch (err) {
         console.error(err);
         setChartData([]);
@@ -170,7 +181,7 @@ export default function DashboardPage({ registrationsOnly }) {
       }
     };
     init();
-  }, [registrationsOnly, companyId]);
+  }, [registrationsOnly, companyId, selectedPeriodId]);
 
   React.useEffect(() => {
     const id = setInterval(() => {
@@ -183,9 +194,7 @@ export default function DashboardPage({ registrationsOnly }) {
     { title: t('companies_title'), subtitle: t('companies_subtitle'), icon: Building2, action: () => navigate('/companies') },
     { title: t('users_title'), subtitle: t('users_subtitle'), icon: Users2, action: () => navigate('/users') },
     { title: t('collab_title'), subtitle: t('collab_subtitle'), icon: UserCog, action: () => navigate('/employees') },
-    { title: t('nav_assets') || 'Ativos', subtitle: t('assets_management_subtitle') || 'Gerenciamento de Ativos', icon: Package, action: () => navigate('/assets') },
     { title: t('acc_classes_title'), subtitle: t('acc_classes_subtitle'), icon: Layers, action: () => navigate('/classes-contabeis') },
-    { title: t('acc_groups_title'), subtitle: t('acc_groups_subtitle'), icon: FolderKanban, action: () => alert('Em breve') },
     { title: t('acc_accounts_title'), subtitle: t('acc_accounts_subtitle'), icon: Wallet, action: () => navigate('/contas-contabeis') },
     { title: t('ug_title'), subtitle: t('ug_subtitle'), icon: Network, action: () => navigate('/ugs') },
     { title: t('cost_centers_title'), subtitle: t('cost_centers_subtitle'), icon: Crosshair, action: () => navigate('/cost-centers') },
@@ -359,6 +368,23 @@ export default function DashboardPage({ registrationsOnly }) {
                         ))}
                       </select>
                     </div>
+
+                    {periods.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                          {t('period_title') || 'Período'}
+                        </label>
+                        <select
+                          className="select"
+                          value={selectedPeriodId}
+                          onChange={(e) => setSelectedPeriodId(e.target.value)}
+                        >
+                          {periods.map((p) => (
+                            <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ) : (

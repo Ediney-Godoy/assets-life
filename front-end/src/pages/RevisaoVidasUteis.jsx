@@ -785,23 +785,6 @@ export default function RevisaoVidasUteis() {
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('edit_review_title')}</h3>
             {error && <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">{error}</div>}
             
-            {currentClassInfo && (
-              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded text-sm text-blue-800 dark:text-blue-200 border border-blue-100 dark:border-blue-800">
-                <div className="font-semibold mb-1 flex items-center gap-2">
-                  <span className="text-lg">ℹ️</span>
-                  <span>{t('class_reference_values') || 'Valores de Referência'} ({currentClassInfo.codigo})</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 ml-7">
-                  <div>
-                    <span className="font-medium">{t('std_lifespan') || 'Vida Útil Padrão'}:</span> {currentClassInfo.vida_util_anos} {t('years') || 'anos'}
-                  </div>
-                  <div>
-                    <span className="font-medium">{t('std_depreciation') || 'Taxa Depreciação'}:</span> {currentClassInfo.taxa_depreciacao}% a.a.
-                  </div>
-                </div>
-              </div>
-            )}
-
             {currentClassInfo && editForm.incremento !== 'Manter' && (() => {
               const stdYears = Number(currentClassInfo.vida_util_anos);
               if (!stdYears) return null;

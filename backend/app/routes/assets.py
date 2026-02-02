@@ -6,8 +6,8 @@ from datetime import date
 from decimal import Decimal
 
 from ..database import SessionLocal
-from ..models import Asset, Company, ManagementUnit, CentroCusto, ClasseContabil
-from ..main import get_db, get_current_user, UsuarioModel
+from ..models import Asset, Company, ManagementUnit, CentroCusto, ClasseContabil, Usuario as UsuarioModel
+from ..dependencies import get_db, get_current_user
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 

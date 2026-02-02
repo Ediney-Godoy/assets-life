@@ -1,4 +1,6 @@
+print("Main: Imports start", flush=True)
 from fastapi import FastAPI, HTTPException, Depends, Request
+print("Main: FastAPI imported", flush=True)
 from fastapi.responses import JSONResponse
 import re
 from starlette.responses import Response
@@ -11,7 +13,8 @@ from datetime import date
 import os
 
 from .database import SessionLocal, engine
-from .config import ALLOW_DDL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_USE_TLS, SMTP_USE_SSL, MAIL_FROM, MAIL_SENDER_NAME
+from .config import ALLOW_DDL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_USE_TLS, SMTP_USE_SSL, MAIL_FROM, MAIL_SENDER_NAME, SECRET_KEY, ALGORITHM, JWT_EXPIRE_MINUTES, RESET_TOKEN_EXPIRE_MINUTES
+from .dependencies import get_db, get_current_user, get_allowed_company_ids, check_permission
 from .models import Base as SA_Base, Company as CompanyModel
 from .models import Employee as EmployeeModel, Vinculo as VinculoEnum, Status as StatusEnum
 from .models import ManagementUnit as UGModel
@@ -38,17 +41,25 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
+print("Main: Importing routes...", flush=True)
 from .routes.relatorios_rvu import router as relatorios_rvu_router
 from .routes.supervisao_rvu import router as supervisao_rvu_router
 from .routes.assets import router as assets_router
-
+print("Main: Routes imported", flush=True)
 app = FastAPI(title="Asset Life API", version="0.2.0")
+print("Main: FastAPI app created", flush=True)
+print("Main: Including relatorios router...", flush=True)
 app.include_router(relatorios_rvu_router)
+print("Main: Including supervisao router...", flush=True)
 app.include_router(supervisao_rvu_router)
+print("Main: Including assets router...", flush=True)
 app.include_router(assets_router)
+print("Main: Routers included", flush=True)
 
+print("Main: Creating tables...", flush=True)
 # Create tables if they don't exist
-SA_Base.metadata.create_all(bind=engine)
+# SA_Base.metadata.create_all(bind=engine)
+print("Main: Tables created (SKIPPED)", flush=True)
 
 # CORS de desenvolvimento: amplia suporte para localhost, 127.0.0.1 e IPs de rede
 # Inclui origens comuns de Vite e permite configurar um origin adicional via env FRONTEND_ORIGIN
@@ -198,63 +209,7 @@ def create_access_token(data: dict, expires_minutes: int = 60):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
  
-# DB session dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = int(payload.get("sub"))
-    except (JWTError, ValueError):
-        raise HTTPException(status_code=401, detail="Token inválido")
-    user = db.query(UsuarioModel).filter(UsuarioModel.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuário não encontrado")
-    return user
-
-def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int]:
-    # grupos do usuário
-    links = db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.usuario_id == current_user.id).all()
-    grupo_ids = [l.grupo_id for l in links]
-    # empresas vinculadas aos grupos
-    emp_links = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id.in_(grupo_ids)).all()
-    empresas_ids = sorted({e.empresa_id for e in emp_links})
-    # Fallback: empresa do próprio usuário
-    if not empresas_ids and current_user.empresa_id is not None:
-        empresas_ids = [current_user.empresa_id]
-    return empresas_ids
-
-def check_permission(db: Session, user: UsuarioModel, route: str):
-    # Check if transaction exists
-    transacao = db.query(TransacaoModel).filter(TransacaoModel.rota == route).first()
-    if not transacao:
-        # If the transaction is not defined in the system, we might want to block by default
-        # or allow if it's not meant to be protected. 
-        # But for "edit" restriction, we expect it to exist.
-        raise HTTPException(status_code=403, detail="Permissão não configurada")
-    
-    # Get user groups
-    user_groups = db.query(GrupoUsuarioModel.grupo_id).filter(GrupoUsuarioModel.usuario_id == user.id).all()
-    group_ids = [ug.grupo_id for ug in user_groups]
-    
-    if not group_ids:
-        raise HTTPException(status_code=403, detail="Acesso negado (sem grupo)")
-        
-    # Check link
-    has_perm = db.query(GrupoTransacaoModel).filter(
-        GrupoTransacaoModel.grupo_id.in_(group_ids),
-        GrupoTransacaoModel.transacao_id == transacao.id
-    ).first()
-    
-    if not has_perm:
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    return True
+# Dependencies are now imported from .dependencies
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)):
@@ -460,7 +415,7 @@ def auth_me_permissions(current_user: UsuarioModel = Depends(get_current_user), 
 
  # (get_db moved above to avoid NameError during Depends evaluation)
 
-@app.on_event("startup")
+# @app.on_event("startup")
 def on_startup():
     # Ensure tables exist for development environments
     if ALLOW_DDL:
@@ -514,6 +469,7 @@ def on_startup():
                 """
             ))
             conn.execute(sa.text("CREATE UNIQUE INDEX IF NOT EXISTS ux_cronogramas_periodo ON cronogramas(periodo_id)"))
+        print("Main: Schema adjusted", flush=True)
     except Exception as e:
         import traceback
         print("Schema tweak error (tipo/evidencias fallback):", e)
@@ -521,6 +477,7 @@ def on_startup():
 
     # Seed default transactions if none exist or missing
     try:
+        print("Main: Seeding transactions...", flush=True)
         db = SessionLocal()
         defaults = [
             {"nome_tela": "Dashboard", "rota": "/dashboard", "descricao": "Página inicial"},
@@ -546,6 +503,7 @@ def on_startup():
             if not exists:
                 db.add(TransacaoModel(**item))
         db.commit()
+        print("Main: Transactions seeded", flush=True)
     except Exception as e:
         # Seed errors shouldn't break startup; just log
         import traceback
@@ -575,6 +533,7 @@ def on_startup():
         traceback.print_exc()
 
     try:
+        print("Main: Ensuring admin user...", flush=True)
         db = SessionLocal()
         exists = db.query(UsuarioModel.id).limit(1).first()
         if not exists:
@@ -603,6 +562,8 @@ def on_startup():
             db.close()
         except Exception:
             pass
+    print("Main: on_startup completed", flush=True)
+
 @app.get("/health")
 def health():
     # Checagem real de conectividade com o banco
@@ -2362,8 +2323,21 @@ def _generate_revisao_codigo(db: Session, ano: int) -> str:
     return f"{prefix}{count + 1:02d}"
 
 @app.get("/revisoes/periodos", response_model=List[RevisaoPeriodo])
-def list_revisoes(db: Session = Depends(get_db)):
-    return db.query(RevisaoPeriodoModel).order_by(RevisaoPeriodoModel.id.desc()).all()
+def list_revisoes(db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
+    allowed = get_allowed_company_ids(db, current_user)
+    if not allowed:
+        return []
+        
+    q = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.empresa_id.in_(allowed))
+    
+    # Filtra por UG se o usuário estiver restrito a uma unidade específica
+    if current_user.ug_id is not None:
+        q = q.filter(sa.or_(
+            RevisaoPeriodoModel.ug_id == current_user.ug_id,
+            RevisaoPeriodoModel.ug_id.is_(None)
+        ))
+        
+    return q.order_by(RevisaoPeriodoModel.id.desc()).all()
 
 @app.post("/revisoes/periodos", response_model=RevisaoPeriodo)
 def create_revisao(payload: RevisaoPeriodoCreate, db: Session = Depends(get_db)):
@@ -2763,6 +2737,14 @@ def fechar_revisao(rev_id: int, db: Session = Depends(get_db)):
         ), {"cid": c.id}).scalar()
         if pending > 0:
             raise HTTPException(status_code=400, detail="O cronograma deste período possui tarefas pendentes. Conclua o cronograma antes de fechar o período.")
+
+    # Validar se todos os ativos foram delegados
+    total_items = db.query(RevisaoItemModel).filter(RevisaoItemModel.periodo_id == rev_id).count()
+    delegated_items = db.query(RevisaoDelegacaoModel.ativo_id).filter(RevisaoDelegacaoModel.periodo_id == rev_id).distinct().count()
+
+    if total_items > delegated_items:
+        diff = total_items - delegated_items
+        raise HTTPException(status_code=400, detail=f"Existem {diff} ativos não delegados. De acordo com a norma, todos os ativos devem ser revisados (delegados) antes do encerramento.")
 
     r.status = "Fechado"
     r.data_fechamento = date.today()

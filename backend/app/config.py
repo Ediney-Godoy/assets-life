@@ -47,3 +47,9 @@ SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").strip().lower() in {"1", "true"
 SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "false").strip().lower() in {"1", "true", "yes", "on"}
 MAIL_FROM = os.getenv("MAIL_FROM", "no-reply@assetlife.local")
 MAIL_SENDER_NAME = os.getenv("MAIL_SENDER_NAME", "Asset Life")
+
+# Auth
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
+ALGORITHM = "HS256"
+JWT_EXPIRE_MINUTES = 60 * 8  # 8 horas
+RESET_TOKEN_EXPIRE_MINUTES = 30  # 30 minutos
