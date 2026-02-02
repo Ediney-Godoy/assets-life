@@ -775,12 +775,9 @@ export async function updateCostCenter(id, payload) {
 }
 
 // Classes Contábeis
-export async function getClassesContabeis(filters = {}) {
-  const qs = new URLSearchParams();
-  if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);
-  if (filters.status) qs.set('status', filters.status);
-  const path = qs.toString() ? `/classes_contabeis?${qs.toString()}` : '/classes_contabeis';
-  return request(path);
+export async function getClassesContabeis(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  return request(`/classes_contabeis${q ? `?${q}` : ''}`);
 }
 
 export async function getClasseContabil(id) {
@@ -800,12 +797,9 @@ export async function deleteClasseContabil(id) {
 }
 
 // Contas Contábeis
-export async function getContasContabeis(filters = {}) {
-  const qs = new URLSearchParams();
-  if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);
-  if (filters.status) qs.set('status', filters.status);
-  const path = qs.toString() ? `/contas_contabeis?${qs.toString()}` : '/contas_contabeis';
-  return request(path);
+export async function getContasContabeis(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  return request(`/contas_contabeis${q ? `?${q}` : ''}`);
 }
 
 export async function getContaContabil(id) {
@@ -1185,38 +1179,4 @@ export async function changePassword(senhaAtual, novaSenha, confirmarSenha) {
   return request('/auth/change-password', { method: 'POST', body: JSON.stringify({ senha_atual: senhaAtual, nova_senha: novaSenha, confirmar_senha: confirmarSenha }) });
 }
 
-// --- Classes Contábeis ---
-export async function getClassesContabeis(params = {}) {
-  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
-  return request(`/classes-contabeis${q ? `?${q}` : ''}`);
-}
 
-export async function createClasseContabil(payload) {
-  return request('/classes-contabeis', { method: 'POST', body: JSON.stringify(payload) });
-}
-
-export async function updateClasseContabil(id, payload) {
-  return request(`/classes-contabeis/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-}
-
-export async function deleteClasseContabil(id) {
-  return request(`/classes-contabeis/${id}`, { method: 'DELETE' });
-}
-
-// --- Contas Contábeis ---
-export async function getContasContabeis(params = {}) {
-  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
-  return request(`/contas-contabeis${q ? `?${q}` : ''}`);
-}
-
-export async function createContaContabil(payload) {
-  return request('/contas-contabeis', { method: 'POST', body: JSON.stringify(payload) });
-}
-
-export async function updateContaContabil(id, payload) {
-  return request(`/contas-contabeis/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-}
-
-export async function deleteContaContabil(id) {
-  return request(`/contas-contabeis/${id}`, { method: 'DELETE' });
-}
