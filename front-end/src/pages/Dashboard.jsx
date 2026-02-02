@@ -379,9 +379,11 @@ export default function DashboardPage({ registrationsOnly }) {
                           value={selectedPeriodId}
                           onChange={(e) => setSelectedPeriodId(e.target.value)}
                         >
-                          {periods.map((p) => (
-                            <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
-                          ))}
+                          {periods.map((p) => {
+                             const label = (p.descricao || '').replace(/\s*-\s*Unidade\s+\d+/i, '');
+                             const companyPrefix = p.empresa_nome ? `${p.empresa_nome} - ` : '';
+                             return <option key={p.id} value={p.id}>{companyPrefix}{p.codigo} - {label}</option>;
+                          })}
                         </select>
                       </div>
                     )}

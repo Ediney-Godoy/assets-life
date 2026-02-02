@@ -614,9 +614,13 @@ export default function MassRevisionView() {
             onChange={(e) => setPeriodoId(Number(e.target.value) || null)}
             className="min-w-[180px] w-[220px] rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5"
           >
-            {periodos.map((p) => (
-              <option key={p.id} value={p.id}>{p.codigo} - {p.descricao}</option>
-            ))}
+            {periodos.map((p) => {
+               const label = (p.descricao || '').replace(/\s*-\s*Unidade\s+\d+/i, '');
+               const companyPrefix = p.empresa_nome ? `${p.empresa_nome} - ` : '';
+               return (
+                 <option key={p.id} value={p.id}>{companyPrefix}{p.codigo} - {label}</option>
+               );
+            })}
           </select>
         </div>
       {/* Filtro rápido removido para liberar espaço */}
