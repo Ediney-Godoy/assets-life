@@ -183,6 +183,7 @@ export default function DashboardPage({ registrationsOnly }) {
     { title: t('companies_title'), subtitle: t('companies_subtitle'), icon: Building2, action: () => navigate('/companies') },
     { title: t('users_title'), subtitle: t('users_subtitle'), icon: Users2, action: () => navigate('/users') },
     { title: t('collab_title'), subtitle: t('collab_subtitle'), icon: UserCog, action: () => navigate('/employees') },
+    { title: t('nav_assets') || 'Ativos', subtitle: t('assets_management_subtitle') || 'Gerenciamento de Ativos', icon: Package, action: () => navigate('/assets') },
     { title: t('acc_classes_title'), subtitle: t('acc_classes_subtitle'), icon: Layers, action: () => navigate('/classes-contabeis') },
     { title: t('acc_groups_title'), subtitle: t('acc_groups_subtitle'), icon: FolderKanban, action: () => alert('Em breve') },
     { title: t('acc_accounts_title'), subtitle: t('acc_accounts_subtitle'), icon: Wallet, action: () => navigate('/contas-contabeis') },

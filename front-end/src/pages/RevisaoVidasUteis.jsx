@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Table from '../components/ui/Table';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { getReviewPeriods, getReviewItems, updateReviewItem, getManagementUnits, getCostCenters, listarComentariosRVU, responderComentarioRVU, getReviewDelegations } from '../apiClient';
+import { getReviewPeriods, getReviewItems, updateReviewItem, getManagementUnits, getCostCenters, listarComentariosRVU, responderComentarioRVU, getReviewDelegations, getClassesContabeis } from '../apiClient';
 
 export default function RevisaoVidasUteis() {
   const { t } = useTranslation();
@@ -20,6 +20,7 @@ export default function RevisaoVidasUteis() {
   // Dados auxiliares para mapear CC -> UG
   const [ugs, setUgs] = React.useState([]);
   const [costCenters, setCostCenters] = React.useState([]);
+  const [classesInfo, setClassesInfo] = React.useState([]); // New state for classes info
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [editingItem, setEditingItem] = React.useState(null);
@@ -48,15 +49,19 @@ export default function RevisaoVidasUteis() {
   React.useEffect(() => {
     const loadAux = async () => {
       try {
-        const [ugData, ccData] = await Promise.all([
+        const empresaId = localStorage.getItem('assetlife_empresa');
+        const [ugData, ccData, classesData] = await Promise.all([
           getManagementUnits(),
           getCostCenters(),
+          empresaId ? getClassesContabeis({ empresa_id: empresaId }) : Promise.resolve([]),
         ]);
         setUgs(Array.isArray(ugData) ? ugData : []);
         setCostCenters(Array.isArray(ccData) ? ccData : []);
+        setClassesInfo(Array.isArray(classesData) ? classesData : []);
       } catch (_) {
         setUgs([]);
         setCostCenters([]);
+        setClassesInfo([]);
       }
     };
     loadAux();
@@ -87,7 +92,7 @@ export default function RevisaoVidasUteis() {
   const getUserId = React.useCallback(() => { try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null')?.id || null; } catch { return null; } }, []);
 
   const periodoSelecionado = React.useMemo(() => periodos.find((p) => p.id === periodoId) || null, [periodoId, periodos]);
-  const periodoEncerrado = periodoSelecionado?.status === 'Encerrado';
+  const periodoEncerrado = periodoSelecionado?.status === 'Encerrado' || Boolean(periodoSelecionado?.data_fechamento);
 
   // Helpers para datas e ordenação por próximos 18 meses
   const parseDate = (str) => {
@@ -458,6 +463,11 @@ export default function RevisaoVidasUteis() {
     return arr;
   }, [filtered]);
 
+  const currentClassInfo = React.useMemo(() => {
+    if (!editingItem || !classesInfo.length) return null;
+    return classesInfo.find(c => String(c.codigo) === String(editingItem.classe));
+  }, [editingItem, classesInfo]);
+
   const handleStartEdit = (row) => {
     setEditingItem(row);
     setEditForm({
@@ -774,6 +784,60 @@ export default function RevisaoVidasUteis() {
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg w-full max-w-2xl p-4">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('edit_review_title')}</h3>
             {error && <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">{error}</div>}
+            
+            {currentClassInfo && (
+              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded text-sm text-blue-800 dark:text-blue-200 border border-blue-100 dark:border-blue-800">
+                <div className="font-semibold mb-1 flex items-center gap-2">
+                  <span className="text-lg">ℹ️</span>
+                  <span>{t('class_reference_values') || 'Valores de Referência'} ({currentClassInfo.codigo})</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 ml-7">
+                  <div>
+                    <span className="font-medium">{t('std_lifespan') || 'Vida Útil Padrão'}:</span> {currentClassInfo.vida_util_anos} {t('years') || 'anos'}
+                  </div>
+                  <div>
+                    <span className="font-medium">{t('std_depreciation') || 'Taxa Depreciação'}:</span> {currentClassInfo.taxa_depreciacao}% a.a.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentClassInfo && editForm.incremento !== 'Manter' && (() => {
+              const stdYears = Number(currentClassInfo.vida_util_anos);
+              if (!stdYears) return null;
+              
+              const inicioOriginal = parseDate(editingItem.data_inicio_depreciacao);
+              let novaFim = parseDate(editForm.nova_data_fim);
+              
+              if (!novaFim && (editForm.revisada_anos !== '' || editForm.revisada_meses !== '')) {
+                  const inicioNova = periodoSelecionado?.data_inicio_nova_vida_util ? parseDate(periodoSelecionado.data_inicio_nova_vida_util) : null;
+                  if (inicioNova) {
+                      const a = Number(editForm.revisada_anos || 0);
+                      const m = Number(editForm.revisada_meses || 0);
+                      novaFim = addMonths(inicioNova, a * 12 + m);
+                  }
+              }
+              
+              if (inicioOriginal && novaFim) {
+                  const totalMonths = monthsDiff(inicioOriginal, novaFim);
+                  const totalYears = totalMonths / 12;
+                  const diff = totalYears - stdYears;
+                  const pct = (diff / stdYears) * 100;
+                  
+                  if (Math.abs(pct) > 50) {
+                      return (
+                          <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-sm rounded border border-amber-200 dark:border-amber-800 flex items-center gap-2">
+                              <span className="text-lg">⚠️</span>
+                              <span>
+                                  {t('warning_deviation_from_standard') || 'Atenção: A vida útil total projetada desvia significativamente do padrão.'}
+                                  {' '}({totalYears.toFixed(1)} vs {stdYears} {t('years') || 'anos'})
+                              </span>
+                          </div>
+                      );
+                  }
+              }
+              return null;
+            })()}
 
             {/* Linha 1: Condição Física e Incremento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -806,7 +870,8 @@ export default function RevisaoVidasUteis() {
                       nova_data_fim: novoInc === 'Manter' ? '' : prev.nova_data_fim,
                     }));
                   }}
-                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
+                  disabled={periodoEncerrado}
+                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                 >
                   <option value="Acréscimo">{t('increment_increase')}</option>
                   <option value="Decréscimo">{t('increment_decrease')}</option>
@@ -963,12 +1028,14 @@ export default function RevisaoVidasUteis() {
                 type="button"
                 onClick={() => setEditingItem(null)}
                 className="px-3 py-2 rounded border border-slate-300 dark:border-slate-700"
-              >{t('cancel')}</button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-              >{t('save')}</button>
+              >{t('close') || t('cancel')}</button>
+              {!periodoEncerrado && (
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                >{t('save')}</button>
+              )}
             </div>
           </div>
         </div>

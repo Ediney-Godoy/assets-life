@@ -437,8 +437,30 @@ export async function getEmployees() {
 
 // Placeholder: lista de classes contábeis (integração futura)
 export async function getAccountingClasses() {
-  // Em falta de endpoint, retorna lista vazia para manter a tela funcional
-  return [];
+  return request('/classes-contabeis');
+}
+
+// --- Ativos (Assets) ---
+export async function getAssets(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  // Pode ser volumoso, aumentar timeout
+  return request(`/assets${q ? `?${q}` : ''}`, { timeout: 30000 });
+}
+
+export async function getAsset(id) {
+  return request(`/assets/${id}`);
+}
+
+export async function createAsset(payload) {
+  return request('/assets', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateAsset(id, payload) {
+  return request(`/assets/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteAsset(id) {
+  return request(`/assets/${id}`, { method: 'DELETE' });
 }
 
 // --- Relatórios RVU ---
@@ -1161,4 +1183,40 @@ export async function resetPassword(token, novaSenha, confirmarSenha) {
 
 export async function changePassword(senhaAtual, novaSenha, confirmarSenha) {
   return request('/auth/change-password', { method: 'POST', body: JSON.stringify({ senha_atual: senhaAtual, nova_senha: novaSenha, confirmar_senha: confirmarSenha }) });
+}
+
+// --- Classes Contábeis ---
+export async function getClassesContabeis(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  return request(`/classes-contabeis${q ? `?${q}` : ''}`);
+}
+
+export async function createClasseContabil(payload) {
+  return request('/classes-contabeis', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateClasseContabil(id, payload) {
+  return request(`/classes-contabeis/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteClasseContabil(id) {
+  return request(`/classes-contabeis/${id}`, { method: 'DELETE' });
+}
+
+// --- Contas Contábeis ---
+export async function getContasContabeis(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  return request(`/contas-contabeis${q ? `?${q}` : ''}`);
+}
+
+export async function createContaContabil(payload) {
+  return request('/contas-contabeis', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateContaContabil(id, payload) {
+  return request(`/contas-contabeis/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteContaContabil(id) {
+  return request(`/contas-contabeis/${id}`, { method: 'DELETE' });
 }

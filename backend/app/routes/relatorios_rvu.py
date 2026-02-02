@@ -80,7 +80,9 @@ def _filters_query(db: Session, params: dict, allowed_company_ids: list[int]):
         debug_count("Empresa ID")
         
     if params.get('ug_id'):
-        q = q.filter(RevisaoPeriodoModel.ug_id == int(params['ug_id']))
+        # Permite período específico da UG OU período global (ug_id IS NULL)
+        ug_val = int(params['ug_id'])
+        q = q.filter(sa.or_(RevisaoPeriodoModel.ug_id == ug_val, RevisaoPeriodoModel.ug_id == None))
         debug_count("UG ID")
         
     # Classe contábil (string na base importada)
@@ -434,7 +436,10 @@ def cronograma_excel(
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Cronograma Mensal')
     output.seek(0)
-    return Response(content=output.read(), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    headers = {
+        'Content-Disposition': 'attachment; filename="Cronograma_RVU.xlsx"'
+    }
+    return Response(content=output.read(), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
 
 @router.get('/pdf')
 def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int | None = None, revisor_id: int | None = None,

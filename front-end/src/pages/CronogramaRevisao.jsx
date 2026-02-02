@@ -104,9 +104,9 @@ export default function CronogramaRevisao() {
     Promise.all([getReviewPeriods(), getUsers()])
       .then(([ps, us]) => {
         const abertos = (ps || []).filter((p) => ['Aberto', 'Em Andamento', 'Em andamento'].includes(p.status));
-        const fechados = (ps || []).filter((p) => ['Fechado', 'Encerrado', 'Concluído'].includes(p.status));
+        // Allow all periods in 'Closed' tab so users can see Concluded cronogramas from Open periods
         setActivePeriods(abertos);
-        setClosedPeriods(fechados);
+        setClosedPeriods(ps || []);
         setUsers(us || []);
       })
       .catch((err) => toast.error(err.message || t('error_generic')))
@@ -125,8 +125,16 @@ export default function CronogramaRevisao() {
     setLoading(true);
     getCronogramas({ periodo_id: Number(periodoId) })
       .then((list) => {
-        setCronogramas(list || []);
-        const first = (list || [])[0];
+        let filtered = list || [];
+        // Filter cronogramas based on active tab
+        if (activeTab === 'active') {
+            filtered = filtered.filter(c => c.status !== 'Concluído');
+        } else if (activeTab === 'closed') {
+            filtered = filtered.filter(c => c.status === 'Concluído');
+        }
+
+        setCronogramas(filtered);
+        const first = filtered[0];
         if (first) {
           setCronogramaId(String(first.id));
         } else {
@@ -135,7 +143,7 @@ export default function CronogramaRevisao() {
       })
       .catch((err) => toast.error(err.message || t('error_loading_cronogramas')))
       .finally(() => setLoading(false));
-  }, [periodoId, t]);
+  }, [periodoId, t, activeTab]);
 
   React.useEffect(() => { loadCronogramas(); }, [loadCronogramas]);
 
@@ -689,12 +697,12 @@ export default function CronogramaRevisao() {
                 }
 
                 const isSelected = task.id === selectedTaskId;
-                const rowBg = isTitle ? 'bg-slate-200 dark:bg-slate-800' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950';
-                const stickyBg = isTitle ? 'bg-slate-200 dark:bg-slate-800' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/50';
+                const rowBg = isTitle ? 'bg-slate-300 dark:bg-slate-700' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950';
+                const stickyBg = isTitle ? 'bg-slate-300 dark:bg-slate-700' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/50';
 
                 return (
                     <div key={task.id} 
-                         className={`flex border-b text-sm group hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${rowBg} text-slate-900 dark:text-slate-100`}
+                         className={`flex border-b text-sm group hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${rowBg} ${isTitle ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-900 dark:text-slate-100'}`}
                          onClick={() => setSelectedTaskId(task.id)}>
                         
                         {/* Sticky Columns */}
@@ -703,7 +711,7 @@ export default function CronogramaRevisao() {
                                 <Eye className="w-6 h-6 text-blue-500" />
                             </Button>
                         </div>
-                        <div className={`sticky left-[40px] z-30 w-[300px] p-2 border-r flex items-center gap-2 truncate ${stickyBg} ${isTitle ? 'font-bold uppercase text-slate-700 dark:text-slate-200' : 'text-slate-900 dark:text-slate-100'}`}>
+                        <div className={`sticky left-[40px] z-30 w-[300px] p-2 border-r flex items-center gap-2 truncate ${stickyBg} ${isTitle ? 'font-bold uppercase text-slate-900 dark:text-white' : 'text-slate-900 dark:text-slate-100'}`}>
                              {!isTitle && <ClipboardList size={14} className="text-slate-400 flex-shrink-0" />}
                              <span title={task.nome}>{task.nome.replace(/^(\[TÍTULO\]|\(TÍTULO\))\s*/i, '')}</span>
                         </div>

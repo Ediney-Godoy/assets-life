@@ -212,6 +212,29 @@ def listar(
     # Ordenação e execução
     results = q.order_by(RevisaoItemModel.id.desc()).all()
     
+    # --- DEBUG LOG START ---
+    try:
+        debug_groups = {}
+        for row in results:
+            it = row[0]
+            key = str(it.numero_imobilizado or '')
+            if key not in debug_groups:
+                debug_groups[key] = []
+            debug_groups[key].append(it)
+        
+        debug_fully_depreciated = 0
+        for key, group in debug_groups.items():
+            # Check if main item exists (sub=0)
+            main_item = next((x for x in group if float(str(x.sub_numero or 0)) == 0), None)
+            if main_item:
+                total_val = sum(float(x.valor_contabil or 0) for x in group)
+                if abs(total_val) < 0.01:
+                    debug_fully_depreciated += 1
+        print(f"DEBUG /supervisao/rvu/listar: Returning {len(results)} items. Server-side calc fully depreciated: {debug_fully_depreciated}")
+    except Exception as e:
+        print(f"DEBUG /supervisao/rvu/listar error in debug calc: {e}")
+    # --- DEBUG LOG END ---
+    
     # Carregamento em lote dos comentários
     comments_map = {}
     item_ids = [row[0].id for row in results]

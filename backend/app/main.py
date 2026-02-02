@@ -40,10 +40,15 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
 from .routes.relatorios_rvu import router as relatorios_rvu_router
 from .routes.supervisao_rvu import router as supervisao_rvu_router
+from .routes.assets import router as assets_router
 
 app = FastAPI(title="Asset Life API", version="0.2.0")
 app.include_router(relatorios_rvu_router)
 app.include_router(supervisao_rvu_router)
+app.include_router(assets_router)
+
+# Create tables if they don't exist
+SA_Base.metadata.create_all(bind=engine)
 
 # CORS de desenvolvimento: amplia suporte para localhost, 127.0.0.1 e IPs de rede
 # Inclui origens comuns de Vite e permite configurar um origin adicional via env FRONTEND_ORIGIN

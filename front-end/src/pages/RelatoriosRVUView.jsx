@@ -32,7 +32,7 @@ function deltaVidaUtil(aAtual, mAtual, aNova, mNova) {
 
 export default function RelatoriosRVUView() {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', classe_id: '', revisor_id: '', periodo_inicio: '', periodo_fim: '', status: 'Todos' });
+  const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', classe_id: '', revisor_id: '', periodo_id: '', periodo_inicio: '', periodo_fim: '', status: 'Todos' });
   const [loading, setLoading] = useState(false);
   const [loadingGen, setLoadingGen] = useState(false);
   const [companies, setCompanies] = useState([]);

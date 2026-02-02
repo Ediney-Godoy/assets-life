@@ -53,6 +53,9 @@ export default function MassRevisionView() {
     justificativa: 'A vida útil está correta',
   });
 
+  const periodoSelecionado = React.useMemo(() => periodos.find((p) => p.id === periodoId) || null, [periodoId, periodos]);
+  const isPeriodClosed = Boolean(periodoSelecionado?.data_fechamento);
+
   React.useEffect(() => {
     const run = async () => {
       try {
@@ -733,7 +736,8 @@ export default function MassRevisionView() {
                     <select
                       value={form.condicao_fisica}
                       onChange={(e) => setForm({ ...form, condicao_fisica: e.target.value })}
-                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
+                      disabled={isPeriodClosed}
+                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                     >
                       <option value="">{t('select')}</option>
                       <option value="Bom">{t('physical_condition_good')}</option>
@@ -757,7 +761,8 @@ export default function MassRevisionView() {
                           nova_data_fim: novoInc === 'Manter' ? '' : prev.nova_data_fim,
                         }));
                       }}
-                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2"
+                      disabled={isPeriodClosed}
+                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                     >
                       <option value="Acréscimo">{t('increment_increase')}</option>
                       <option value="Decréscimo">{t('increment_decrease')}</option>
@@ -789,7 +794,7 @@ export default function MassRevisionView() {
                          }
                          setForm({ ...form, nova_vida_anos: anos, nova_data_fim: novaFimCalc });
                        }}
-                       disabled={form.incremento === 'Manter'}
+                       disabled={isPeriodClosed || form.incremento === 'Manter'}
                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                      />
                   </div>
@@ -876,16 +881,21 @@ export default function MassRevisionView() {
                     onChange={(e) => setForm({ ...form, justificativa: e.target.value })}
                     rows={3}
                     placeholder={t('justification_placeholder')}
-                    disabled
+                    disabled={isPeriodClosed}
                     className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                   />
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end items-center gap-2">
+                  {isPeriodClosed && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                      Período Fechado - Somente Leitura
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={handleApply}
-                    disabled={selected.size === 0}
-                    className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
+                    disabled={isPeriodClosed || selected.size === 0}
+                    className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {t('apply_mass_revision')}
                   </button>

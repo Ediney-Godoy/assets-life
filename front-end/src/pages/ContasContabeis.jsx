@@ -2,8 +2,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Pencil, Plus, Save, Trash2, Search } from 'lucide-react';
-import { getContasContabeis, createContaContabil, updateContaContabil, deleteContaContabil } from '../apiClient';
+import { Pencil, Plus, Save, Trash2, Search, X } from 'lucide-react';
+import { getContasContabeis, createContaContabil, updateContaContabil, deleteContaContabil, getCompanies } from '../apiClient';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -12,42 +12,55 @@ import ActionToolbar from '../components/ActionToolbar';
 export default function ContasContabeisPage() {
   const { t } = useTranslation();
   const [items, setItems] = React.useState([]);
+  const [companies, setCompanies] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [query, setQuery] = React.useState('');
   const [editingId, setEditingId] = React.useState(null);
   const [errors, setErrors] = React.useState({});
+  
+  // Empresa com modal de busca
+  const [companyModalOpen, setCompanyModalOpen] = React.useState(false);
+  const [companySearch, setCompanySearch] = React.useState('');
 
   const [form, setForm] = React.useState({
     codigo: '',
     descricao: '',
     status: 'Ativo',
+    empresa_id: '',
   });
 
   const load = React.useCallback(() => {
     setLoading(true);
     setError(null);
     const empresaId = localStorage.getItem('assetlife_empresa');
-    if (!empresaId) {
-      setError(t('select_company_first') || 'Selecione uma empresa primeiro.');
-      setLoading(false);
-      return;
-    }
-
-    getContasContabeis({ empresa_id: empresaId })
-      .then((data) => setItems(data))
+    
+    Promise.all([
+      getContasContabeis(empresaId ? { empresa_id: empresaId } : {}),
+      getCompanies()
+    ])
+      .then(([data, companiesData]) => {
+        setItems(data || []);
+        setCompanies(companiesData || []);
+        // Se houver empresa selecionada no contexto, preenche o form se for novo
+        if (empresaId && !editingId) {
+             setForm(prev => ({ ...prev, empresa_id: empresaId }));
+        }
+      })
       .catch((err) => setError(err.message || 'Error'))
       .finally(() => setLoading(false));
-  }, [t]);
+  }, [editingId]);
 
   React.useEffect(() => { load(); }, [load]);
 
   const resetForm = () => {
+    const empresaId = localStorage.getItem('assetlife_empresa');
     setEditingId(null);
     setForm({
       codigo: '',
       descricao: '',
       status: 'Ativo',
+      empresa_id: empresaId || '',
     });
     setErrors({});
   };
@@ -74,8 +87,13 @@ export default function ContasContabeisPage() {
       const empresaId = localStorage.getItem('assetlife_empresa');
       const payload = {
         ...form,
-        empresa_id: parseInt(empresaId),
+        empresa_id: form.empresa_id ? parseInt(form.empresa_id) : parseInt(empresaId),
       };
+      
+      if (!payload.empresa_id) {
+          toast.error(t('select_company_required') || 'Selecione uma empresa');
+          return;
+      }
 
       if (editingId) {
         await updateContaContabil(editingId, payload);
@@ -99,9 +117,29 @@ export default function ContasContabeisPage() {
       codigo: item.codigo || '',
       descricao: item.descricao || '',
       status: item.status || 'Ativo',
+      empresa_id: item.empresa_id ? String(item.empresa_id) : '',
     });
     setErrors({});
   };
+  
+  // Busca de Empresa (modal)
+  const modalFilteredCompanies = React.useMemo(() => {
+    const q = (companySearch || '').trim().toLowerCase();
+    let list = companies || [];
+    if (!q) return list.slice(0, 100);
+    return list
+      .filter((c) => String(c.name || '').toLowerCase().includes(q) || String(c.cnpj || '').toLowerCase().includes(q))
+      .slice(0, 100);
+  }, [companySearch, companies]);
+  const openCompanySearch = () => { setCompanyModalOpen(true); setCompanySearch(''); };
+  const closeCompanySearch = () => { setCompanyModalOpen(false); setCompanySearch(''); };
+  const selectCompany = (c) => {
+    setForm((f) => ({ ...f, empresa_id: String(c.id) }));
+    setErrors((prev) => ({ ...prev, empresa_id: null }));
+    setCompanyModalOpen(false);
+  };
+  
+  const selectedCompany = React.useMemo(() => companies.find((c) => String(c.id) === String(form.empresa_id)), [companies, form.empresa_id]);
 
   const onDelete = async (id) => {
     if (!window.confirm(t('confirm_delete') || 'Tem certeza que deseja excluir?')) return;
@@ -133,6 +171,49 @@ export default function ContasContabeisPage() {
         />
       </div>
 
+      {companyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100">{t('select_company') || 'Selecionar Empresa'}</h3>
+              <button onClick={closeCompanySearch} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  autoFocus
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={t('search_company_placeholder') || 'Buscar empresa...'}
+                  value={companySearch}
+                  onChange={(e) => setCompanySearch(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 p-2">
+              {modalFilteredCompanies.length === 0 ? (
+                <p className="text-center text-slate-500 py-4">{t('no_results') || 'Nenhum resultado'}</p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {modalFilteredCompanies.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => selectCompany(c)}
+                      className="text-left px-3 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex flex-col"
+                    >
+                      <span className="font-medium text-slate-900 dark:text-slate-100">{c.name}</span>
+                      {c.cnpj && <span className="text-xs text-slate-500">{c.cnpj}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Form */}
         <div className="lg:col-span-1 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 h-fit">
@@ -143,17 +224,23 @@ export default function ContasContabeisPage() {
             <Input label={t('code') || 'Código'} name="codigo" value={form.codigo} onChange={onChange} error={errors.codigo} />
             <Input label={t('description') || 'Descrição'} name="descricao" value={form.descricao} onChange={onChange} error={errors.descricao} />
             
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
+              <div className="min-w-0">
+                <Input label={t('company') || "Empresa"} name="empresa_nome" value={selectedCompany ? selectedCompany.name : ''} onChange={() => {}} disabled error={errors.empresa_id} />
+              </div>
+              <Button variant="secondary" onClick={openCompanySearch} title={t('search_company') || "Pesquisar Empresa"} className="p-0 h-9 w-9 sm:h-10 sm:w-10 justify-center"><Search size={18} /></Button>
+            </div>
+
             <Select label={t('status') || 'Status'} name="status" value={form.status} onChange={onChange}>
               <option value="Ativo">{t('status_active') || 'Ativo'}</option>
               <option value="Inativo">{t('status_inactive') || 'Inativo'}</option>
             </Select>
             
-            <div className="mt-2 flex gap-2">
-              <Button onClick={onSave} className="flex-1"><Save size={16} /> {t('save') || 'Salvar'}</Button>
-              {editingId && (
-                <Button variant="secondary" onClick={resetForm}>{t('cancel') || 'Cancelar'}</Button>
-              )}
-            </div>
+            {editingId && (
+              <div className="mt-2 flex gap-2">
+                <Button variant="secondary" onClick={resetForm} className="w-full">{t('cancel') || 'Cancelar'}</Button>
+              </div>
+            )}
           </div>
         </div>
 

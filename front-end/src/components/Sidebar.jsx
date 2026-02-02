@@ -55,7 +55,7 @@ export default function Sidebar({ collapsed = false }) {
     '/reports': ['/relatorios-rvu','/reports/vida-util'],
     '/supervisao-rvu': ['/supervisao/rvu','/supervisao-rvu'],
     '/permissions': ['/permissions','/permissions/groups'],
-    '/cadastros': ['/companies','/ugs','/cost-centers','/users','/asset-species','/employees','/cadastros','/classes-contabeis','/contas-contabeis'],
+    '/cadastros': ['/companies','/ugs','/cost-centers','/users','/asset-species','/employees','/cadastros','/classes-contabeis','/contas-contabeis','/assets'],
     '/notifications': ['/notifications','/notifications/new'],
   };
 
