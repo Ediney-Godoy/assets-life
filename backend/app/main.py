@@ -1092,44 +1092,33 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         except Exception as e_stats:
             log(f"Error calculating stats or syncing revisors: {e_stats}")
 
-        # Explicitly define columns that are known to exist in the migration
-        # We try to include 'tipo'
-        db_cols = [
-            "id", "cronograma_id", "tipo", "nome", "descricao",
-            "data_inicio", "data_fim", "responsavel_id", 
-            "status", "progresso_percentual", "dependente_tarefa_id",
-            "criado_em"
-        ]
-        
-        cols_str = ", ".join(db_cols)
-        sql = sa.text(f"SELECT {cols_str} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id")
+        # Use SELECT * to get all available columns, ensuring 'tipo' is retrieved if it exists
+        sql = sa.text(f"SELECT * FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id")
 
         rows = []
         try:
-            # Try full fetch first
+            # Try full fetch
             rows = db.execute(sql, {"cid": cronograma_id}).mappings().all()
             log(f"Full fetch success, rows: {len(rows)}")
         except Exception as e:
             log(f"Full fetch failed: {e}")
             print(f"Full fetch failed: {e}")
-            # Fallback: Minimal fetch (id, nome, status, data_fim) which are critical
+            # Fallback: Explicit column fetch including 'tipo'
             try:
-                sql_min = sa.text("SELECT id, cronograma_id, nome, status, data_fim FROM cronogramas_tarefas WHERE cronograma_id = :cid")
+                # Try to include tipo explicitly in fallback
+                sql_min = sa.text("SELECT id, cronograma_id, tipo, nome, status, data_fim, responsavel_id, progresso_percentual FROM cronogramas_tarefas WHERE cronograma_id = :cid")
                 rows = db.execute(sql_min, {"cid": cronograma_id}).mappings().all()
-                log(f"Minimal fetch success, rows: {len(rows)}")
+                log(f"Fallback fetch with tipo success, rows: {len(rows)}")
             except Exception as e2:
-                log(f"Minimal fetch failed: {e2}")
-                print(f"Minimal fetch failed: {e2}")
-                # Try absolute minimal fetch to verify connectivity/existence
+                log(f"Fallback fetch with tipo failed: {e2}")
+                # Ultimate fallback
                 try:
-                    count = db.execute(sa.text("SELECT count(*) FROM cronogramas_tarefas WHERE cronograma_id = :cid"), {"cid": cronograma_id}).scalar()
-                    log(f"Count check: {count}")
-                    if count > 0:
-                        raise HTTPException(status_code=500, detail=f"Erro crítico: Existem {count} tarefas, mas falha ao listar colunas. Erro: {str(e2)}")
+                    sql_min_bare = sa.text("SELECT id, cronograma_id, nome, status, data_fim FROM cronogramas_tarefas WHERE cronograma_id = :cid")
+                    rows = db.execute(sql_min_bare, {"cid": cronograma_id}).mappings().all()
+                    log(f"Bare minimal fetch success, rows: {len(rows)}")
                 except Exception as e3:
-                    log(f"Count check failed: {e3}")
-                
-                raise HTTPException(status_code=500, detail=f"Erro ao buscar tarefas (min): {str(e2)}")
+                    log(f"Bare minimal fetch failed: {e3}")
+                    raise HTTPException(status_code=500, detail=f"Erro ao buscar tarefas: {str(e3)}")
 
         now = date.today()
         result = []
