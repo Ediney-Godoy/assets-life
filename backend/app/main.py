@@ -1093,9 +1093,9 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
             log(f"Error calculating stats or syncing revisors: {e_stats}")
 
         # Explicitly define columns that are known to exist in the migration
-        # We exclude 'tipo' because it is not in the migration.
+        # We try to include 'tipo'
         db_cols = [
-            "id", "cronograma_id", "nome", "descricao",
+            "id", "cronograma_id", "tipo", "nome", "descricao",
             "data_inicio", "data_fim", "responsavel_id", 
             "status", "progresso_percentual", "dependente_tarefa_id",
             "criado_em"
@@ -1185,7 +1185,7 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 task = CronogramaTarefa(
                     id=r["id"], 
                     cronograma_id=r["cronograma_id"], 
-                    tipo="Tarefa", # Hardcoded as it's missing in DB
+                    tipo=r.get("tipo") or "Tarefa", 
                     nome=r["nome"],
                     descricao=r.get("descricao"), 
                     data_inicio=r.get("data_inicio"), 
