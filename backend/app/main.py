@@ -1294,14 +1294,14 @@ def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: Cronog
         db.commit()
         db.refresh(t)
         return t
-    except (sa.exc.ProgrammingError, sa.exc.DBAPIError):
+    except (sa.exc.ProgrammingError, sa.exc.DBAPIError) as e:
+        log(f"Error updating task {tarefa_id}: {e}")
         db.rollback()
         # Fallback raw SQL update due to missing columns (e.g. tipo)
         data = payload.dict(exclude_unset=True)
         params = {"id": tarefa_id, "cid": cronograma_id}
         clauses = []
         for k, v in data.items():
-            if k == 'tipo': continue
             clauses.append(f"{k} = :{k}")
             params[k] = v
         
@@ -1313,11 +1313,11 @@ def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: Cronog
                 raise HTTPException(status_code=404, detail="Tarefa não encontrada")
         
         # Fetch updated
-        cols = "id, cronograma_id, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
+        cols = "id, cronograma_id, tipo, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
         row = db.execute(sa.text(f"SELECT {cols} FROM cronogramas_tarefas WHERE id=:id"), {"id": tarefa_id}).mappings().first()
         if not row:
              raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-        return CronogramaTarefa(tipo="Tarefa", **row)
+        return CronogramaTarefa(tipo=row.get("tipo") or "Tarefa", **row)
 
 # Evidências de tarefas
 class CronogramaTarefaEvidencia(BaseModel):

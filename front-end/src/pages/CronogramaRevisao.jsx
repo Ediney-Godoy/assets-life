@@ -295,14 +295,16 @@ export default function CronogramaRevisao() {
     setShowNewModal(true);
   };
 
-  const onEditSelected = async () => {
-    if (!selectedTaskId) { toast.error(t('error_generic')); return; }
-    const task = tarefas.find((x) => x.id === selectedTaskId);
+  const onEditSelected = async (idToEdit) => {
+    const targetId = idToEdit || selectedTaskId;
+    if (!targetId) { toast.error(t('error_generic')); return; }
+    const task = tarefas.find((x) => x.id === targetId);
     if (!task) { toast.error(t('task_not_found')); return; }
     
     setViewEvidencias([]);
     
     setEditingTaskId(task.id);
+    setSelectedTaskId(task.id);
     setForm({
       nome: task.nome || '',
       tipo: task.tipo || 'Tarefa',
@@ -734,7 +736,7 @@ export default function CronogramaRevisao() {
                            {/* Actions */}
                            {isEditable && (
                             <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" className="h-6 w-6" title={t('edit_task_title')} onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); onEditSelected(); }}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" title={t('edit_task_title')} onClick={(e) => { e.stopPropagation(); onEditSelected(task.id); }}>
                                     <FileText size={14} />
                                 </Button>
                             </div>

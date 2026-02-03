@@ -437,7 +437,7 @@ export async function getEmployees() {
 
 // Placeholder: lista de classes contábeis (integração futura)
 export async function getAccountingClasses() {
-  return request('/classes-contabeis');
+  return request('/classes_contabeis');
 }
 
 // --- Ativos (Assets) ---
