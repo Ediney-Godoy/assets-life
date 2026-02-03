@@ -2134,7 +2134,7 @@ def list_usuarios(request: Request, db: Session = Depends(get_db)):
     if empresa_hdr:
         try:
             empresa_id = int(empresa_hdr)
-            q = q.filter(UsuarioModel.empresa_id == empresa_id)
+            q = q.filter(sa.or_(UsuarioModel.empresa_id == empresa_id, UsuarioModel.empresa_id == None))
         except ValueError:
             pass
     return q.order_by(UsuarioModel.id).all()

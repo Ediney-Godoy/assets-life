@@ -146,17 +146,17 @@ export default function ReviewsPage() {
         toast.success(t('created_successfully') || 'Período criado com sucesso');
         setEditingId(created.id);
       } else {
-        const payload = {
-          descricao: form.descricao,
-          data_abertura: form.data_abertura || undefined,
-          data_inicio_nova_vida_util: form.data_inicio_nova_vida_util || undefined,
-          data_fechamento_prevista: form.data_fechamento_prevista || undefined,
-          data_fechamento: form.data_fechamento || undefined,
-          empresa_id: form.empresa_id ? Number(form.empresa_id) : undefined,
-          responsavel_id: form.responsavel_id ? Number(form.responsavel_id) : undefined,
-          status: form.status,
-          observacoes: form.observacoes || undefined,
-        };
+              const payload = {
+                descricao: form.descricao,
+                data_abertura: form.data_abertura || undefined,
+                data_inicio_nova_vida_util: form.data_inicio_nova_vida_util || null,
+                data_fechamento_prevista: form.data_fechamento_prevista || undefined,
+                data_fechamento: form.data_fechamento || null,
+                empresa_id: form.empresa_id ? Number(form.empresa_id) : undefined,
+                responsavel_id: form.responsavel_id ? Number(form.responsavel_id) : undefined,
+                status: form.status,
+                observacoes: form.observacoes || null,
+              };
         await updateReviewPeriod(editingId, payload);
         toast.success(t('updated_successfully') || 'Período atualizado com sucesso');
       }
