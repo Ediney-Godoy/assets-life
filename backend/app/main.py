@@ -2333,13 +2333,6 @@ def list_revisoes(db: Session = Depends(get_db), current_user: UsuarioModel = De
         
     q = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.empresa_id.in_(allowed))
     
-    # Filtra por UG se o usuário estiver restrito a uma unidade específica
-    if current_user.ug_id is not None:
-        q = q.filter(sa.or_(
-            RevisaoPeriodoModel.ug_id == current_user.ug_id,
-            RevisaoPeriodoModel.ug_id.is_(None)
-        ))
-        
     return q.order_by(RevisaoPeriodoModel.id.desc()).all()
 
 @app.post("/revisoes/periodos", response_model=RevisaoPeriodo)
@@ -2349,18 +2342,33 @@ def create_revisao(payload: RevisaoPeriodoCreate, db: Session = Depends(get_db))
     # valida responsável
     if not db.query(UsuarioModel).filter(UsuarioModel.id == payload.responsavel_id).first():
         raise HTTPException(status_code=400, detail="Responsável inválido")
-    # valida empresa
-    if not db.query(CompanyModel).filter(CompanyModel.id == payload.empresa_id).first():
+    # valida empresa e obtém dados para descrição
+    company = db.query(CompanyModel).filter(CompanyModel.id == payload.empresa_id).first()
+    if not company:
         raise HTTPException(status_code=400, detail="Empresa inválida")
-    # valida UG se fornecida
-    if payload.ug_id is not None:
-        if not db.query(UGModel).filter(UGModel.id == payload.ug_id).first():
-            raise HTTPException(status_code=400, detail="UG inválida")
+            
     ano = payload.data_abertura.year
+    
+    # Verificar se já existe período para esta empresa neste ano
+    existing = db.query(RevisaoPeriodoModel).filter(
+        RevisaoPeriodoModel.empresa_id == payload.empresa_id,
+        sa.extract('year', RevisaoPeriodoModel.data_abertura) == ano
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail=f"O sistema só permite um período por ano para cada empresa. Já existe o período {existing.codigo} para o ano {ano}.")
+
     codigo = _generate_revisao_codigo(db, ano)
+    
+    # Gerar descrição padrão se não fornecida ou se for vazia
+    descricao_final = payload.descricao
+    if not descricao_final:
+        cidade = f" - {company.city}" if company.city else ""
+        descricao_final = f"{company.name}{cidade}"
+    
     r = RevisaoPeriodoModel(
         codigo=codigo,
-        descricao=payload.descricao,
+        descricao=descricao_final,
         data_abertura=payload.data_abertura,
         data_fechamento_prevista=payload.data_fechamento_prevista,
         data_inicio_nova_vida_util=payload.data_inicio_nova_vida_util,
@@ -2389,9 +2397,6 @@ def update_revisao(rev_id: int, payload: RevisaoPeriodoUpdate, db: Session = Dep
     if "empresa_id" in data and data["empresa_id"] is not None:
         if not db.query(CompanyModel).filter(CompanyModel.id == data["empresa_id"]).first():
             raise HTTPException(status_code=400, detail="Empresa inválida")
-    if "ug_id" in data and data["ug_id"] is not None:
-        if not db.query(UGModel).filter(UGModel.id == data["ug_id"]).first():
-            raise HTTPException(status_code=400, detail="UG inválida")
     for k, v in data.items():
         setattr(r, k, v)
     db.commit()

@@ -40,9 +40,6 @@ export default function ReviewsPage() {
   const [statusFilter, setStatusFilter] = React.useState('');
   const [editingId, setEditingId] = React.useState(null);
   const [errors, setErrors] = React.useState({});
-  const [ugs, setUgs] = React.useState([]);
-  const [ugModalOpen, setUgModalOpen] = React.useState(false);
-  const [ugQuery, setUgQuery] = React.useState('');
 
   const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
   const [uploadDragActive, setUploadDragActive] = React.useState(false);
@@ -61,7 +58,6 @@ export default function ReviewsPage() {
     data_fechamento: '',
     empresa_id: '',
     responsavel_id: '',
-    ug_id: '',
     status: 'Aberto',
     observacoes: '',
     codigo: '',
@@ -70,13 +66,12 @@ export default function ReviewsPage() {
   const load = React.useCallback(() => {
     setLoading(true);
     setError(null);
-  Promise.all([getReviewPeriods(), getEmployees(), getCompanies(), getUsers(), getManagementUnits()])
-      .then(([pData, eData, cData, uData, ugData]) => {
+  Promise.all([getReviewPeriods(), getEmployees(), getCompanies(), getUsers()])
+      .then(([pData, eData, cData, uData]) => {
         setPeriods(pData || []);
         setEmployees(eData || []);
         setCompanies(cData || []);
         setUsers(uData || []);
-        setUgs(ugData || []);
       })
       .catch((err) => setError(err.message || t('error_generic') || 'Erro'))
       .finally(() => setLoading(false));
@@ -95,20 +90,31 @@ export default function ReviewsPage() {
       data_fechamento: '',
       empresa_id: '',
       responsavel_id: '',
-      ug_id: '',
       status: 'Aberto',
       observacoes: '',
       codigo: '',
     });
     setCompanySearch('');
     setRespQuery('');
-    setUgQuery('');
   };
 
   const onChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
   };
+
+  // Auto-generate description based on company and year
+  React.useEffect(() => {
+    if (form.empresa_id && form.data_abertura) {
+      const company = companies.find(c => String(c.id) === String(form.empresa_id));
+      if (company) {
+        const year = form.data_abertura.substring(0, 4);
+        const city = company.city ? ` - ${company.city}` : '';
+        const newDesc = `Revisão ${year} - ${company.name}${city}`;
+        setForm(f => f.descricao === newDesc ? f : { ...f, descricao: newDesc });
+      }
+    }
+  }, [form.empresa_id, form.data_abertura, companies]);
 
   const validate = () => {
     const errs = {};
@@ -117,7 +123,6 @@ export default function ReviewsPage() {
     if (!form.data_inicio_nova_vida_util) errs.data_inicio_nova_vida_util = t('field_required') || 'Início da nova vida útil é obrigatório';
     if (!form.data_fechamento_prevista) errs.data_fechamento_prevista = 'Data de fechamento prevista é obrigatória';
     if (!form.empresa_id) errs.empresa_id = 'Empresa é obrigatória';
-    if (!form.ug_id) errs.ug_id = 'UG é obrigatória';
     if (!form.responsavel_id) errs.responsavel_id = t('field_required') || 'Responsável é obrigatório';
     if (!['Aberto', 'Em Andamento', 'Fechado'].includes(form.status)) errs.status = t('invalid_status') || 'Status inválido';
     setErrors(errs);
@@ -135,7 +140,6 @@ export default function ReviewsPage() {
           data_fechamento_prevista: form.data_fechamento_prevista,
           empresa_id: Number(form.empresa_id),
           responsavel_id: Number(form.responsavel_id),
-          ug_id: Number(form.ug_id),
           status: form.status,
           observacoes: form.observacoes || null,
         };
@@ -151,7 +155,6 @@ export default function ReviewsPage() {
           data_fechamento: form.data_fechamento || undefined,
           empresa_id: form.empresa_id ? Number(form.empresa_id) : undefined,
           responsavel_id: form.responsavel_id ? Number(form.responsavel_id) : undefined,
-          ug_id: form.ug_id ? Number(form.ug_id) : undefined,
           status: form.status,
           observacoes: form.observacoes || undefined,
         };
@@ -174,7 +177,6 @@ export default function ReviewsPage() {
       data_fechamento: p.data_fechamento || '',
       empresa_id: String(p.empresa_id || ''),
       responsavel_id: String(p.responsavel_id || ''),
-      ug_id: String(p.ug_id || ''),
       status: p.status || 'Aberto',
       observacoes: p.observacoes || '',
       codigo: p.codigo || '',
@@ -298,7 +300,6 @@ export default function ReviewsPage() {
                   data_fechamento: currentPeriod.data_fechamento || undefined,
                   empresa_id: currentPeriod.empresa_id ? Number(currentPeriod.empresa_id) : undefined,
                   responsavel_id: currentPeriod.responsavel_id ? Number(currentPeriod.responsavel_id) : undefined,
-                  ug_id: currentPeriod.ug_id ? Number(currentPeriod.ug_id) : undefined,
                   status: 'Em Andamento',
                   observacoes: currentPeriod.observacoes || undefined,
                 };
@@ -368,10 +369,6 @@ export default function ReviewsPage() {
       const c = companies.find((x) => x.id === value);
       return c ? c.name : '—';
     } },
-    { key: 'ug_id', header: t('ug_label') || 'UG', width: 220, render: (value) => {
-      const g = ugs.find((x) => x.id === value);
-      return g ? `${g.codigo} - ${g.nome}` : '—';
-    } },
     { key: 'responsavel_id', header: t('review_responsible') || 'Responsável', width: 220, render: (value) => {
       const u = users.find((x) => x.id === value);
       return u ? u.nome_completo : '—';
@@ -389,7 +386,6 @@ export default function ReviewsPage() {
       t('period_code') || 'Código da Revisão',
       t('period_description') || 'Descrição do Período',
       t('company_label') || 'Empresa',
-      t('ug_label') || 'UG',
       t('review_responsible') || 'Responsável pela Revisão',
       t('open_date') || 'Data de Abertura',
       t('start_new_useful_life') || 'Início Nova Depreciação',
@@ -397,17 +393,15 @@ export default function ReviewsPage() {
     ];
     const data = filtered.map((p) => {
       const empresa = companies.find((c) => c.id === p.empresa_id)?.name || '';
-      const ug = (() => { const g = ugs.find((x) => x.id === p.ug_id); return g ? `${g.codigo} - ${g.nome}` : ''; })();
       const resp = users.find((u) => u.id === p.responsavel_id)?.nome_completo || '';
       return {
         [header[0]]: p.codigo || '',
         [header[1]]: p.descricao || '',
         [header[2]]: empresa,
-        [header[3]]: ug,
-        [header[4]]: resp,
-        [header[5]]: formatDateBR(p.data_abertura),
-        [header[6]]: formatDateBR(p.data_inicio_nova_vida_util),
-        [header[7]]: formatDateBR(p.data_fechamento),
+        [header[3]]: resp,
+        [header[4]]: formatDateBR(p.data_abertura),
+        [header[5]]: formatDateBR(p.data_inicio_nova_vida_util),
+        [header[6]]: formatDateBR(p.data_fechamento),
       };
     });
     const XLSXLib = await import('xlsx');
@@ -431,7 +425,6 @@ export default function ReviewsPage() {
       t('period_code') || 'Código da Revisão',
       t('period_description') || 'Descrição do Período',
       t('company_label') || 'Empresa',
-      t('ug_label') || 'UG',
       t('review_responsible') || 'Responsável pela Revisão',
       t('open_date') || 'Data de Abertura',
       t('start_new_useful_life') || 'Início Nova Depreciação',
@@ -441,7 +434,6 @@ export default function ReviewsPage() {
       p.codigo || '',
       p.descricao || '',
       companies.find((c) => c.id === p.empresa_id)?.name || '',
-      (() => { const g = ugs.find((x) => x.id === p.ug_id); return g ? `${g.codigo} - ${g.nome}` : ''; })(),
       users.find((u) => u.id === p.responsavel_id)?.nome_completo || '',
       formatDateBR(p.data_abertura),
       formatDateBR(p.data_inicio_nova_vida_util),
@@ -467,7 +459,6 @@ export default function ReviewsPage() {
         <th style="padding:8px;border:1px solid #e5e7eb">${t('period_code') || 'Código da Revisão'}</th>
         <th style="padding:8px;border:1px solid #e5e7eb">${t('period_description') || 'Descrição do Período'}</th>
         <th style="padding:8px;border:1px solid #e5e7eb">${t('company_label') || 'Empresa'}</th>
-        <th style="padding:8px;border:1px solid #e5e7eb">${t('ug_label') || 'UG'}</th>
         <th style="padding:8px;border:1px solid #e5e7eb">${t('review_responsible') || 'Responsável pela Revisão'}</th>
         <th style="padding:8px;border:1px solid #e5e7eb">${t('open_date') || 'Data de Abertura'}</th>
         <th style="padding:8px;border:1px solid #e5e7eb">${t('start_new_useful_life') || 'Início Nova Depreciação'}</th>
@@ -475,14 +466,12 @@ export default function ReviewsPage() {
       </tr>`;
     const tableRows = filtered.map((p) => {
       const empresa = companies.find((c) => c.id === p.empresa_id)?.name || '';
-      const ug = (() => { const g = ugs.find((x) => x.id === p.ug_id); return g ? `${g.codigo} - ${g.nome}` : ''; })();
       const resp = users.find((u) => u.id === p.responsavel_id)?.nome_completo || '';
       return `
         <tr>
           <td style="padding:8px;border:1px solid #e5e7eb">${p.codigo || ''}</td>
           <td style="padding:8px;border:1px solid #e5e7eb">${p.descricao || ''}</td>
           <td style="padding:8px;border:1px solid #e5e7eb">${empresa}</td>
-          <td style="padding:8px;border:1px solid #e5e7eb">${ug}</td>
           <td style="padding:8px;border:1px solid #e5e7eb">${resp}</td>
           <td style="padding:8px;border:1px solid #e5e7eb">${formatDateBR(p.data_abertura)}</td>
           <td style="padding:8px;border:1px solid #e5e7eb">${formatDateBR(p.data_inicio_nova_vida_util)}</td>
@@ -534,21 +523,11 @@ export default function ReviewsPage() {
 
   const disabled = form.status === 'Fechado';
   const selectedCompany = companies.find((c) => c.id === Number(form.empresa_id));
+  const selectedResponsavel = users.find((u) => u.id === Number(form.responsavel_id));
   const modalFilteredCompanies = companies.filter((c) =>
     !companySearch || (c.name || '').toLowerCase().includes(companySearch.toLowerCase())
   );
-  const selectedResponsavel = users.find((u) => u.id === Number(form.responsavel_id));
-  const selectedUG = ugs.find((u) => u.id === Number(form.ug_id));
-  const modalFilteredUgs = React.useMemo(() => {
-    const q = (ugQuery || '').trim().toLowerCase();
-    let list = ugs || [];
-    if (form.empresa_id) list = list.filter((u) => String(u.empresa_id) === String(form.empresa_id));
-    if (!q) return list.slice(0, 50);
-    return list
-      .filter((u) => (String(u.codigo || '').toLowerCase().includes(q) || String(u.nome || '').toLowerCase().includes(q)))
-      .slice(0, 100);
-  }, [ugQuery, ugs, form.empresa_id]);
-
+  
   const modalFilteredEmployees = React.useMemo(() => {
     const q = (respQuery || '').trim().toLowerCase();
     let list = employees || [];
@@ -598,7 +577,7 @@ export default function ReviewsPage() {
               <option value="Em Andamento">{t('in_progress_status') || 'Em Andamento'}</option>
               <option value="Fechado">{t('closed_status') || 'Fechado'}</option>
             </Select>
-            <Input label={t('period_description') || 'Descrição do Período'} name="descricao" value={form.descricao} onChange={onChange} error={errors.descricao} disabled={disabled} />
+            <Input label={t('period_description') || 'Descrição do Período'} name="descricao" value={form.descricao} onChange={onChange} error={errors.descricao} disabled />
 
             <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
               <div className="min-w-0">
@@ -609,17 +588,11 @@ export default function ReviewsPage() {
 
             <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
               <div className="min-w-0">
-                <Input className="w-full" label={t('ug_label') || 'UG - Unidade Gerencial'} name="ug_nome" value={selectedUG ? `${selectedUG.codigo} - ${selectedUG.nome}` : ''} onChange={() => {}} error={errors.ug_id} disabled />
-              </div>
-              <Button variant="secondary" onClick={() => setUgModalOpen(true)} disabled={disabled || !form.empresa_id} title={t('search_ug') || 'Buscar UG'} aria-label={t('search_ug') || 'Buscar UG'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
-            </div>
-
-            <div className="grid grid-cols-[1fr_auto] items-end gap-2 min-w-0">
-              <div className="min-w-0">
                 <Input className="w-full" label={t('review_responsible') || 'Responsável pela Revisão'} name="responsavel_nome" value={selectedResponsavel ? selectedResponsavel.nome_completo : ''} onChange={() => {}} error={errors.responsavel_id} disabled />
               </div>
               <Button variant="secondary" onClick={() => setRespModalOpen(true)} disabled={disabled || !form.empresa_id} title={t('search_employee') || 'Buscar Colaborador'} aria-label={t('search_employee') || 'Buscar Colaborador'} className="p-0 h-10 w-10 justify-center"><Search size={18} /></Button>
             </div>
+
             <Input type="date" label={t('open_date') || 'Data de Abertura'} name="data_abertura" value={form.data_abertura} onChange={onChange} error={errors.data_abertura} disabled={disabled} />
             <Input type="date" label={t('start_new_useful_life') || 'Início Nova Vida Útil'} name="data_inicio_nova_vida_util" value={form.data_inicio_nova_vida_util} onChange={onChange} error={errors.data_inicio_nova_vida_util} disabled={disabled} />
             <Input type="date" label={t('expected_close_date') || 'Data de Fechamento Prevista'} name="data_fechamento_prevista" value={form.data_fechamento_prevista} onChange={onChange} error={errors.data_fechamento_prevista} disabled={disabled} />
@@ -749,35 +722,6 @@ export default function ReviewsPage() {
                         );
                       })}
                     </>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      )}
-
-      {ugModalOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setUgModalOpen(false)} />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-xl bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('search_ug_title') || 'Buscar UG'}</div>
-                <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setUgModalOpen(false)}><X size={18} /></button>
-              </div>
-              <div className="p-4">
-                <Input label={t('search') || 'Pesquisar'} name="ugQuery" value={ugQuery} onChange={(e) => setUgQuery(e.target.value)} />
-                <div className="mt-3 max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
-                  {modalFilteredUgs.length === 0 ? (
-                    <div className="text-slate-500">{t('no_ugs_found') || 'Nenhuma UG encontrada.'}</div>
-                  ) : (
-                    modalFilteredUgs.map((u) => (
-                      <button key={u.id} className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => { setForm((f) => ({ ...f, ug_id: String(u.id) })); setUgModalOpen(false); setUgQuery(''); setErrors((prev) => ({ ...prev, ug_id: null })); }}>
-                        <div className="font-medium">{u.codigo} - {u.nome}</div>
-                        <div className="text-xs text-slate-500">{t('company_colon') || 'Empresa:'} {companies.find((c) => c.id === u.empresa_id)?.name || '—'}</div>
-                      </button>
-                    ))
                   )}
                 </div>
               </div>

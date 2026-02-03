@@ -39,11 +39,13 @@ def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int
     grupo_ids = [l.grupo_id for l in links]
     # empresas vinculadas aos grupos
     emp_links = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id.in_(grupo_ids)).all()
-    empresas_ids = sorted({e.empresa_id for e in emp_links})
-    # Fallback: empresa do próprio usuário
-    if not empresas_ids and current_user.empresa_id is not None:
-        empresas_ids = [current_user.empresa_id]
-    return empresas_ids
+    empresas_ids = {e.empresa_id for e in emp_links}
+    
+    # Merge com a empresa direta do usuário, se houver
+    if current_user.empresa_id is not None:
+        empresas_ids.add(current_user.empresa_id)
+        
+    return sorted(empresas_ids)
 
 def check_permission(db: Session, user: UsuarioModel, route: str):
     # Check if transaction exists

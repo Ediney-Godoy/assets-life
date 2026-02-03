@@ -53,10 +53,10 @@ def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int
     links = db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.usuario_id == current_user.id).all()
     grupo_ids = [l.grupo_id for l in links]
     emp_links = db.query(GrupoEmpresaModel).filter(GrupoEmpresaModel.grupo_id.in_(grupo_ids)).all()
-    empresas_ids = sorted({e.empresa_id for e in emp_links})
-    if not empresas_ids and getattr(current_user, 'empresa_id', None) is not None:
-        empresas_ids = [current_user.empresa_id]
-    return empresas_ids
+    empresas_ids = {e.empresa_id for e in emp_links}
+    if getattr(current_user, 'empresa_id', None) is not None:
+        empresas_ids.add(current_user.empresa_id)
+    return sorted(empresas_ids)
 
 
 def ensure_tables():
