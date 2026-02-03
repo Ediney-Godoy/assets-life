@@ -20,7 +20,6 @@ import {
   getCompanies,
   getUsers,
   getReviewItems,
-  getManagementUnits,
 } from '../apiClient';
 
 export default function ReviewsPage() {

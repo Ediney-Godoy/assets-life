@@ -46,7 +46,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       '/asset-species': t('asset_species_title') || 'Espécies de ativos',
       '/classes-contabeis': t('acc_classes_title') || 'Classes Contábeis',
       '/contas-contabeis': t('acc_accounts_title') || 'Contas Contábeis',
-      '/reviews': 'Delegações',
+      '/reviews': 'Cadastro de Períodos',
       '/reviews/delegacao': 'Delegações',
       '/reviews/vidas-uteis': 'Revisão de Vidas Úteis',
       '/reviews/cronogramas': 'Cronogramas de Revisão',

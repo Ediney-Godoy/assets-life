@@ -2349,6 +2349,15 @@ def create_revisao(payload: RevisaoPeriodoCreate, db: Session = Depends(get_db))
             
     ano = payload.data_abertura.year
     
+    # Verificar se existe algum período em aberto para esta empresa (não fechado)
+    previous_open = db.query(RevisaoPeriodoModel).filter(
+        RevisaoPeriodoModel.empresa_id == payload.empresa_id,
+        RevisaoPeriodoModel.status != 'Fechado'
+    ).first()
+    
+    if previous_open:
+        raise HTTPException(status_code=400, detail=f"Existe um período anterior ({previous_open.codigo}) que não está fechado. Encerre-o antes de abrir um novo.")
+
     # Verificar se já existe período para esta empresa neste ano
     existing = db.query(RevisaoPeriodoModel).filter(
         RevisaoPeriodoModel.empresa_id == payload.empresa_id,
