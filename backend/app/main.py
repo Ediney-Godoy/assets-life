@@ -1092,112 +1092,59 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         except Exception as e_stats:
             log(f"Error calculating stats or syncing revisors: {e_stats}")
 
-        # Use SELECT * to get all available columns, ensuring 'tipo' is retrieved if it exists
-        sql = sa.text(f"SELECT * FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id")
-
-        rows = []
+        # ORM Fetch to ensure all fields (including 'tipo') are retrieved correctly
         try:
-            # Try full fetch
-            rows = db.execute(sql, {"cid": cronograma_id}).mappings().all()
-            log(f"Full fetch success, rows: {len(rows)}")
+            tasks = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).order_by(CronogramaTarefaModel.id).all()
+            log(f"ORM fetch success, count: {len(tasks)}")
         except Exception as e:
-            log(f"Full fetch failed: {e}")
-            print(f"Full fetch failed: {e}")
-            # Fallback: Explicit column fetch including 'tipo'
-            try:
-                # Try to include tipo explicitly in fallback
-                sql_min = sa.text("SELECT id, cronograma_id, tipo, nome, status, data_fim, responsavel_id, progresso_percentual FROM cronogramas_tarefas WHERE cronograma_id = :cid")
-                rows = db.execute(sql_min, {"cid": cronograma_id}).mappings().all()
-                log(f"Fallback fetch with tipo success, rows: {len(rows)}")
-            except Exception as e2:
-                log(f"Fallback fetch with tipo failed: {e2}")
-                # Ultimate fallback
-                try:
-                    sql_min_bare = sa.text("SELECT id, cronograma_id, nome, status, data_fim FROM cronogramas_tarefas WHERE cronograma_id = :cid")
-                    rows = db.execute(sql_min_bare, {"cid": cronograma_id}).mappings().all()
-                    log(f"Bare minimal fetch success, rows: {len(rows)}")
-                except Exception as e3:
-                    log(f"Bare minimal fetch failed: {e3}")
-                    raise HTTPException(status_code=500, detail=f"Erro ao buscar tarefas: {str(e3)}")
+            log(f"ORM fetch failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Erro ao buscar tarefas: {str(e)}")
 
         now = date.today()
-        result = []
-        last_error = None
-        for r in rows:
-            try:
-                # Safe extraction of values
-                status = r.get("status") or "Pendente"
-                df = r.get("data_fim")
-                rid = r.get("responsavel_id")
-
-                # Dynamic progress calculation (Only for revision tasks)
-                progresso = r.get("progresso_percentual") or 0
-                # Only auto-calculate if it's a revision task
-                is_revision_task = r.get("nome", "").startswith("Revisão de Vidas úteis")
-                
-                if is_revision_task and rid and rid in stats_map:
-                    s = stats_map[rid]
-                    if s['total'] > 0:
-                        progresso = int(round((s['revisados'] / s['total']) * 100))
-                        # Update DB if different
-                        if progresso != (r.get("progresso_percentual") or 0):
-                            try:
-                                db.execute(sa.text("UPDATE cronogramas_tarefas SET progresso_percentual = :p WHERE id = :id"), {"p": progresso, "id": r["id"]})
-                                db.commit()
-                            except Exception as e_upd:
-                                log(f"Failed to update progress for task {r['id']}: {e_upd}")
-                
-                # Auto-complete status if 100% (prioritize over delay)
-                # Only for revision tasks to avoid overriding manual status of other tasks
-                if is_revision_task:
+        
+        # 1. Apply DB updates (Progress & Completion)
+        updates_made = False
+        for t in tasks:
+            is_revision_task = t.nome.startswith("Revisão de Vidas úteis")
+            rid = t.responsavel_id
+            
+            if is_revision_task and rid and rid in stats_map:
+                s = stats_map[rid]
+                if s['total'] > 0:
+                    progresso = int(round((s['revisados'] / s['total']) * 100))
+                    
+                    # Update progress if changed
+                    if progresso != t.progresso_percentual:
+                        t.progresso_percentual = progresso
+                        updates_made = True
+                    
+                    # Auto-complete logic
                     if progresso == 100:
-                        status = "Concluída"
-                        # Persist completed status if not already
-                        if r.get("status") != "Concluída":
-                            try:
-                                db.execute(sa.text("UPDATE cronogramas_tarefas SET status = 'Concluída' WHERE id = :id"), {"id": r["id"]})
-                                db.commit()
-                            except Exception as e_st:
-                                log(f"Failed to update status to Concluída for task {r['id']}: {e_st}")
-                    elif progresso < 100 and status == "Concluída":
-                        status = "Em Andamento"
-                        try:
-                            db.execute(sa.text("UPDATE cronogramas_tarefas SET status = 'Em Andamento' WHERE id = :id"), {"id": r["id"]})
-                            db.commit()
-                        except Exception: pass
+                        if t.status != "Concluída":
+                            t.status = "Concluída"
+                            updates_made = True
+                    elif progresso < 100 and t.status == "Concluída":
+                        t.status = "Em Andamento"
+                        updates_made = True
+        
+        if updates_made:
+            try:
+                db.commit()
+            except Exception as e_upd:
+                log(f"Failed to commit updates: {e_upd}")
+                db.rollback()
 
-                # Check for delay (only if not completed)
-                if df and isinstance(df, date) and df < now and status != "Concluída":
-                    status = "Atrasada"
+        # 2. Apply Transient updates (Atrasada) & Ensure 'tipo'
+        for t in tasks:
+            # Ensure 'tipo' is present (ORM should have it, but just in case)
+            if not t.tipo:
+                t.tipo = "Tarefa"
 
-                # Construct Pydantic model safely
-                task = CronogramaTarefa(
-                    id=r["id"], 
-                    cronograma_id=r["cronograma_id"], 
-                    tipo=r.get("tipo") or "Tarefa", 
-                    nome=r["nome"],
-                    descricao=r.get("descricao"), 
-                    data_inicio=r.get("data_inicio"), 
-                    data_fim=df,
-                    responsavel_id=rid, 
-                    status=status,
-                    progresso_percentual=progresso,
-                    dependente_tarefa_id=r.get("dependente_tarefa_id"),
-                    criado_em=r.get("criado_em")
-                )
-                result.append(task)
-            except Exception as loop_e:
-                last_error = loop_e
-                log(f"Error creating task object: {loop_e}")
-                continue
+            # Check for delay
+            if t.data_fim and t.data_fim < now and t.status != "Concluída":
+                t.status = "Atrasada"
 
-        if not result and len(rows) > 0:
-            # If we have rows but no result, it means all failed.
-            keys = list(rows[0].keys()) if rows else "No rows"
-            log(f"All rows failed conversion. Keys: {keys}. Last error: {last_error}")
-            raise HTTPException(status_code=500, detail=f"Erro de validação dos dados (chaves: {keys}): {str(last_error)}")
-
-        return result
+        return tasks
     except HTTPException:
         raise
     except Exception as e:
