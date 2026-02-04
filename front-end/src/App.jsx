@@ -45,7 +45,7 @@ import ResetPasswordPage from './pages/ResetPassword';
 import FirstAccessPage from './pages/FirstAccess';
 import { clearToken, getHealth } from './apiClient';
 import SelectCompanyPage from './pages/SelectCompany';
-import { useSidebar } from './contexts/SidebarContext';
+import { SidebarProvider } from './contexts/SidebarContext';
 
 // Helper components defined outside App to avoid re-creation on re-render
 function RequireAuth({ children }) {
@@ -175,7 +175,7 @@ export default function App() {
     navigate('/login', { replace: true });
   };
 
-  const routesElement = (
+  const routesElement = useMemo(() => (
     <Routes>
       {/* Auth routes */}
       <Route path="/login" element={<LoginPage />} />
@@ -221,34 +221,36 @@ export default function App() {
       <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
       <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
     </Routes>
-  );
+  ), [t]);
 
   return (
-    <ThemeProvider>
-      <div className="h-screen flex" style={{ background: 'var(--bg-secondary)' }}>
-        {!isAuthRoute && <Sidebar />}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {!isAuthRoute && (
-            <Header
-              backendStatus={backendStatus}
-              language={i18n.language}
-              onLanguageChange={changeLanguage}
-              onLogout={handleLogout}
-              onChangeCompany={() => navigate('/select-company')}
-            />
-          )}
-          <main className="container-page scrollbar-stable">
-            <ErrorBoundary>
-            {!isAuthRoute && <DynamicTabs initialTabs={initialTabs} hideBody />}
-            {routesElement}
-            </ErrorBoundary>
-            <Toaster position="top-right" toastOptions={{
-              style: { background: '#111827', color: '#F9FAFB' },
-            }} />
-          </main>
+    <SidebarProvider>
+      <ThemeProvider>
+        <div className="h-screen flex" style={{ background: 'var(--bg-secondary)' }}>
+          {!isAuthRoute && <Sidebar />}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {!isAuthRoute && (
+              <Header
+                backendStatus={backendStatus}
+                language={i18n.language}
+                onLanguageChange={changeLanguage}
+                onLogout={handleLogout}
+                onChangeCompany={() => navigate('/select-company')}
+              />
+            )}
+            <main className="container-page scrollbar-stable">
+              <ErrorBoundary>
+              {!isAuthRoute && <DynamicTabs initialTabs={initialTabs} hideBody />}
+              {routesElement}
+              </ErrorBoundary>
+              <Toaster position="top-right" toastOptions={{
+                style: { background: '#111827', color: '#F9FAFB' },
+              }} />
+            </main>
+          </div>
         </div>
-      </div>
-    </ThemeProvider>
+      </ThemeProvider>
+    </SidebarProvider>
   );
 }
 

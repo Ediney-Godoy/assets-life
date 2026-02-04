@@ -12,9 +12,7 @@ if (rootEl) {
     ReactDOM.createRoot(rootEl).render(
       <React.StrictMode>
         <BrowserRouter>
-          <SidebarProvider>
-            <App />
-          </SidebarProvider>
+          <App />
         </BrowserRouter>
       </React.StrictMode>
     );
