@@ -668,6 +668,20 @@ class CompanyUpdate(BaseModel):
 # Companies CRUD (DB)
 @app.get("/companies", response_model=List[Company])
 def list_companies(current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Check if user has administrative permissions (to see all companies for assignment)
+    # We check for access to critical management routes
+    is_admin = False
+    for route in ["/permissions", "/companies", "/revisoes/periodos"]:
+        try:
+            check_permission(db, current_user, route)
+            is_admin = True
+            break
+        except HTTPException:
+            continue
+            
+    if is_admin:
+        return db.query(CompanyModel).all()
+
     allowed = get_allowed_company_ids(db, current_user)
     if not allowed:
         return []
