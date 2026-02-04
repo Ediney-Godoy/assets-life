@@ -1096,6 +1096,12 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         try:
             tasks = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).order_by(CronogramaTarefaModel.id).all()
             log(f"ORM fetch success, count: {len(tasks)}")
+            # Debug log types
+            for t in tasks:
+                if t.tipo == 'Título':
+                     log(f"Task {t.id} is Título")
+                elif not t.tipo:
+                     log(f"Task {t.id} has empty/null tipo: '{t.tipo}'")
         except Exception as e:
             log(f"ORM fetch failed: {e}")
             raise HTTPException(status_code=500, detail=f"Erro ao buscar tarefas: {str(e)}")
@@ -1138,6 +1144,7 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         for t in tasks:
             # Ensure 'tipo' is present (ORM should have it, but just in case)
             if not t.tipo:
+                log(f"Overriding empty tipo for task {t.id} to 'Tarefa'")
                 t.tipo = "Tarefa"
 
             # Check for delay
@@ -1221,20 +1228,31 @@ def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate
 def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: CronogramaTarefaUpdate, db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
     check_permission(db, current_user, "/reviews/cronogramas/edit")
     try:
+        # Debug log
+        print(f"Updating task {tarefa_id} in cronograma {cronograma_id} with payload: {payload.dict(exclude_unset=True)}")
+        
         t = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.id == tarefa_id, CronogramaTarefaModel.cronograma_id == cronograma_id).first()
         if not t:
             raise HTTPException(status_code=404, detail="Tarefa não encontrada")
         data = payload.dict(exclude_unset=True)
         for k, v in data.items():
             setattr(t, k, v)
+            # Explicit debug for tipo
+            if k == 'tipo':
+                print(f"Setting tipo to: {v}")
+        
         db.commit()
         db.refresh(t)
+        print(f"Task updated. Current tipo in DB object: {t.tipo}")
         return t
     except (sa.exc.ProgrammingError, sa.exc.DBAPIError) as e:
         log(f"Error updating task {tarefa_id}: {e}")
+        print(f"Error updating task {tarefa_id} (ORM failed): {e}")
         db.rollback()
         # Fallback raw SQL update due to missing columns (e.g. tipo)
         data = payload.dict(exclude_unset=True)
+        print(f"Attempting fallback update with data: {data}")
+        
         params = {"id": tarefa_id, "cid": cronograma_id}
         clauses = []
         for k, v in data.items():
@@ -1243,17 +1261,28 @@ def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: Cronog
         
         if clauses:
             sql = sa.text(f"UPDATE cronogramas_tarefas SET {', '.join(clauses)} WHERE id = :id AND cronograma_id = :cid")
-            res = db.execute(sql, params)
-            db.commit()
-            if res.rowcount == 0:
-                raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+            try:
+                res = db.execute(sql, params)
+                db.commit()
+                if res.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+                print("Fallback update successful")
+            except Exception as ex:
+                print(f"Fallback update failed: {ex}")
+                raise HTTPException(status_code=500, detail=f"Erro ao atualizar tarefa: {ex}")
         
         # Fetch updated
-        cols = "id, cronograma_id, tipo, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
-        row = db.execute(sa.text(f"SELECT {cols} FROM cronogramas_tarefas WHERE id=:id"), {"id": tarefa_id}).mappings().first()
-        if not row:
-             raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-        return CronogramaTarefa(tipo=row.get("tipo") or "Tarefa", **row)
+        try:
+            # Explicitly select tipo to verify
+            cols = "id, cronograma_id, tipo, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
+            row = db.execute(sa.text(f"SELECT {cols} FROM cronogramas_tarefas WHERE id=:id"), {"id": tarefa_id}).mappings().first()
+            if not row:
+                 raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+            print(f"Fetched updated row (raw): tipo={row.get('tipo')}")
+            return CronogramaTarefa(tipo=row.get("tipo") or "Tarefa", **row)
+        except Exception as ex:
+            print(f"Error fetching updated row: {ex}")
+            raise HTTPException(status_code=500, detail="Erro ao recuperar tarefa atualizada")
 
 # Evidências de tarefas
 class CronogramaTarefaEvidencia(BaseModel):
