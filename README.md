@@ -1,80 +1,95 @@
-# Asset Life
+# Assets Life - Sistema de Gestão de Ativos e Revisão de Vidas Úteis
 
-Projeto inicial com frontend React (Vite) e backend FastAPI.
+Assets Life é uma solução completa para gerenciamento de ativos fixos, controle de patrimônio e processos de revisão de vidas úteis (RVU), projetada para atender normas contábeis e necessidades gerenciais.
 
-## Requisitos
+## 🚀 Atualizações Recentes (v2.1 - Fevereiro 2026)
+
+### Melhorias de Interface e Estabilidade
+- **Sidebar Estável**: Implementação do `SidebarProvider` para gerenciar o estado do menu lateral, eliminando reinicializações indesejadas da tela ao colapsar/expandir o menu.
+- **Cronograma Visual**: Linhas do tipo "Título" agora possuem destaque visual com alto contraste (fundo cinza, bordas reforçadas) para melhor organização das fases do projeto.
+
+### Regras de Negócio e Validações
+- **Encerramento de Cronograma**:
+  - Bloqueio de encerramento se houver tarefas pendentes (diferentes de "Concluída").
+  - Bloqueio de encerramento caso não exista nenhuma evidência anexada ao cronograma.
+- **Encerramento de Período de Revisão**:
+  - Bloqueio se existirem ativos pendentes de delegação.
+  - Bloqueio se existirem ativos que ainda não foram revisados ou aprovados.
+
+### Gestão Administrativa
+- **Visibilidade de Empresas**: Administradores com acesso ao menu de Permissões agora visualizam todas as empresas cadastradas no sistema para configuração de acessos, independentemente de estarem vinculadas ao seu próprio grupo.
+
+---
+
+## 🛠️ Instalação e Configuração
+
+### Pré-requisitos
 - Node.js 18+
-- Python 3.11+
-- PostgreSQL 14+
+- Python 3.10+
+- PostgreSQL
 
-## Frontend
-```
-cd frontend
-npm install
-npm run dev
-```
-Acesse `http://localhost:5175/`.
+### Backend (FastAPI)
+1. Navegue até a pasta `backend`:
+   ```bash
+   cd backend
+   ```
+2. Crie um ambiente virtual e instale as dependências:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+3. Configure as variáveis de ambiente no arquivo `.env`.
+4. Execute as migrações do banco de dados:
+   ```bash
+   alembic upgrade head
+   ```
+5. Inicie o servidor:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
 
-## Backend
-Crie o `.env` baseado em `.env.example`.
-```
-cd backend
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn backend.app.main:app --host 0.0.0.0 --reload --port 8001
-```
-API disponível em `http://localhost:8001/`.
+### Frontend (React + Vite)
+1. Navegue até a pasta `front-end`:
+   ```bash
+   cd front-end
+   ```
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
+3. Inicie o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
 
-## Banco de Dados
-O projeto utiliza exclusivamente PostgreSQL. Configure o arquivo `.env` (na raiz do projeto ou `backend/.env`) com a URL do banco:
+---
 
-```
-DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/assetlife
-```
+## 📦 Funcionalidades Principais
 
-Após configurar e garantir o PostgreSQL rodando, execute as migrações:
+### Gestão de Ativos
+- Cadastro completo de ativos com especificações técnicas e contábeis.
+- Classificação por Espécies, Centros de Custo e Unidades Gerenciais.
 
-```
-cd backend
-alembic upgrade head
-```
+### Processo de Revisão (RVU)
+- **Cronogramas**: Planejamento detalhado das etapas de revisão (Kick-off, Vistorias, Laudos).
+- **Delegação**: Atribuição de ativos a revisores específicos.
+- **Revisão em Massa**: Interface otimizada para atualização rápida de múltiplos ativos.
+- **Vidas Úteis**: Ajuste de vida útil remanescente e novas taxas de depreciação.
 
-Observação: não há compartilhamento de dados com outros sistemas; este projeto está completamente isolado.
+### Relatórios e Dashboards
+- Relatórios detalhados de depreciação e projeções.
+- Dashboards gerenciais para acompanhamento do progresso das revisões.
 
-## i18n
-Idiomas suportados: inglês (en), português (pt), espanhol (es). Troca via seletor na UI.
+### Segurança e Acesso
+- Controle de acesso baseado em grupos e permissões (RBAC).
+- Auditoria de ações críticas.
 
-## Deploy (Vercel + Supabase + Backend host)
+---
 
-- Frontend (Vercel)
-  - Conecte o repositório GitHub e selecione a pasta `frontend/` como root do projeto.
-  - Configure variáveis:
-    - `VITE_API_URL` = URL pública do backend (ex.: `https://assets-life-backend.onrender.com`).
-  - Build e deploy automáticos a cada push.
+## 🔧 Stack Tecnológica
 
-- Banco de dados (Supabase)
-  - Crie um projeto e obtenha a connection string Postgres (`postgresql://user:pass@host:port/db`).
-  - Defina `DATABASE_URL` no backend com essa string.
-  - Execute migrações Alembic: `alembic upgrade head`.
-
-- Backend (Render/Railway/Fly.io)
-  - Use o `backend/Dockerfile` para rodar FastAPI com Uvicorn.
-  - Variáveis de ambiente recomendadas:
-    - `DATABASE_URL` = string do Supabase
-    - `SECRET_KEY` = chave JWT forte
-    - `FRONTEND_ORIGIN` = domínio do app Vercel (ex.: `https://<app>.vercel.app`)
-    - `FRONTEND_BASE_URL` = mesmo domínio, para links gerados (reset de senha)
-    - `ALLOW_DDL` = `false` em produção; use Alembic
-  - Valide `GET /health` e `GET /docs` após deploy.
-
-- GitHub Actions (migrações Alembic)
-  - Workflow manual disponível em `.github/workflows/alembic_migrate.yml`.
-  - Configure o segredo `DATABASE_URL` no repositório GitHub.
-  - Dispare a execução pelo Actions > Alembic Migrate > Run workflow.
-
-- Testes pós-deploy
-  - Frontend: acessar `https://<app>.vercel.app` e verificar `/health` do backend.
-  - Relatórios RVU: gerar cronograma mensal:
-    - JSON: `GET /relatorios/rvu/cronograma?item_id=...` (token necessário)
-    - Excel: `GET /relatorios/rvu/cronograma/excel?item_id=...` (token necessário)
+- **Frontend**: React, Tailwind CSS, Lucide Icons, Vite.
+- **Backend**: FastAPI, SQLAlchemy, Pydantic.
+- **Banco de Dados**: PostgreSQL.
+- **Deploy**: Suporte a containers Docker (Dockerfile incluso).
