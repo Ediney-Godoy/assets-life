@@ -163,23 +163,18 @@ export default function CronogramaRevisao() {
     return list;
   }, [orderKey]);
 
-  const loadTarefas = React.useCallback(async () => {
+  const loadTarefas = React.useCallback(() => {
     if (!cronogramaId) { setTarefas([]); setResumo(null); return; }
     setLoading(true);
-    try {
-      const [ts, rs] = await Promise.all([
-        getCronogramaTarefas(Number(cronogramaId)),
-        getCronogramaResumo(Number(cronogramaId))
-      ]);
-      const tasks = applyOrder(ts || []);
-      console.log('Tarefas carregadas:', tasks.map(t => ({ id: t.id, nome: t.nome, tipo: t.tipo })));
-      setTarefas(tasks);
-      setResumo(rs || null);
-    } catch (err) {
-      toast.error(err.message || t('error_loading_tasks'));
-    } finally {
-      setLoading(false);
-    }
+    Promise.all([getCronogramaTarefas(Number(cronogramaId)), getCronogramaResumo(Number(cronogramaId))])
+      .then(([ts, rs]) => { 
+        setTarefas(applyOrder(ts || [])); 
+        setResumo(rs || null); 
+      })
+      .catch((err) => {
+        toast.error(err.message || t('error_loading_tasks'));
+      })
+      .finally(() => setLoading(false));
   }, [cronogramaId, applyOrder, t]);
 
   React.useEffect(() => { loadTarefas(); }, [loadTarefas]);

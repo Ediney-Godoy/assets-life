@@ -23,6 +23,7 @@ class RevisaoPeriodoResponse(BaseModel):
     empresa_id: int
     empresa_nome: Optional[str] = None
     ug_id: Optional[int] = None
+    responsavel_id: int
     status: str
     data_abertura: date
     data_fechamento_prevista: date
@@ -66,6 +67,7 @@ def listar_periodos(
             "empresa_id": periodo.empresa_id,
             "empresa_nome": emp_nome,
             "ug_id": periodo.ug_id,
+            "responsavel_id": periodo.responsavel_id,
             "status": periodo.status,
             "data_abertura": periodo.data_abertura,
             "data_fechamento_prevista": periodo.data_fechamento_prevista
