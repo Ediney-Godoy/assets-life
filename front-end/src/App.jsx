@@ -46,6 +46,56 @@ import FirstAccessPage from './pages/FirstAccess';
 import { clearToken, getHealth } from './apiClient';
 import SelectCompanyPage from './pages/SelectCompany';
 
+// Helper components defined outside App to avoid re-creation on re-render
+function RequireAuth({ children }) {
+  const location = useLocation();
+  const token = (() => { try { return localStorage.getItem('assetlife_token'); } catch { return null; } })();
+  if (!token) return <Navigate to="/login" replace state={{ from: location }} />;
+  return children;
+}
+
+function RequireCompany({ children }) {
+  try {
+    const raw = localStorage.getItem('assetlife_permissoes');
+    const perms = raw ? JSON.parse(raw) : null;
+    const empresaIds = Array.isArray(perms?.empresas_ids) ? perms.empresas_ids : [];
+    const selected = localStorage.getItem('assetlife_empresa');
+    // Se há mais de uma empresa e nenhuma selecionada, redireciona para seleção
+    if (empresaIds.length > 1 && !selected) {
+      return <Navigate to="/select-company" replace />;
+    }
+    // Se há exatamente uma, garante seleção
+    if (empresaIds.length === 1 && !selected) {
+      try { localStorage.setItem('assetlife_empresa', String(empresaIds[0])); } catch {}
+    }
+  } catch {}
+  return children;
+}
+
+function RequirePermission({ route, children }) {
+  try {
+    const raw = localStorage.getItem('assetlife_permissoes');
+    const rotas = raw ? JSON.parse(raw)?.rotas : [];
+    const allowed = new Set(Array.isArray(rotas) ? rotas : []);
+    const altList = {
+      '/reviews/massa': ['/revisoes-massa'],
+      // RVU: aceitar rotas alternativas antigas e o menu de relatórios
+      '/relatorios-rvu': ['/relatorios/rvu', '/reports', '/reports/vida-util'],
+      '/reviews/vidas-uteis': ['/revisoes/vidas-uteis', '/revisao/vidas-uteis', '/reviews/rvu'],
+      // Notificações: permitir variação em PT
+      '/notifications/new': ['/notificacoes/nova'],
+    };
+    const alts = altList[route] || [];
+    const ok = (
+      allowed.size === 0
+        ? route === '/dashboard'
+        : (allowed.has(route) || alts.some((a) => allowed.has(a)))
+    );
+    if (!ok) return <Navigate to="/dashboard" replace state={{ denied: route }} />;
+  } catch {}
+  return children;
+}
+
 export default function App() {
   const { t, i18n } = useTranslation();
   const [backendStatus, setBackendStatus] = useState('checking');
@@ -129,59 +179,59 @@ export default function App() {
   const authRoutes = ['/login', '/forgot-password', '/reset-password', '/first-access'];
   const isAuthRoute = authRoutes.some((p) => location.pathname.startsWith(p));
 
-  function RequireCompany({ children }) {
-    try {
-      const raw = localStorage.getItem('assetlife_permissoes');
-      const perms = raw ? JSON.parse(raw) : null;
-      const empresaIds = Array.isArray(perms?.empresas_ids) ? perms.empresas_ids : [];
-      const selected = localStorage.getItem('assetlife_empresa');
-      // Se há mais de uma empresa e nenhuma selecionada, redireciona para seleção
-      if (empresaIds.length > 1 && !selected) {
-        return <Navigate to="/select-company" replace />;
-      }
-      // Se há exatamente uma, garante seleção
-      if (empresaIds.length === 1 && !selected) {
-        try { localStorage.setItem('assetlife_empresa', String(empresaIds[0])); } catch {}
-      }
-    } catch {}
-    return children;
-  }
-
   const handleLogout = () => {
     try { localStorage.removeItem('assetlife_user'); } catch {}
     clearToken();
     navigate('/login', { replace: true });
   };
 
-  function RequireAuth({ children }) {
-    const token = (() => { try { return localStorage.getItem('assetlife_token'); } catch { return null; } })();
-    if (!token) return <Navigate to="/login" replace state={{ from: location }} />;
-    return children;
-  }
+  const routesElement = useMemo(() => (
+    <Routes>
+      {/* Auth routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/first-access" element={<RequireAuth><FirstAccessPage /></RequireAuth>} />
 
-  function RequirePermission({ route, children }) {
-    try {
-      const raw = localStorage.getItem('assetlife_permissoes');
-      const rotas = raw ? JSON.parse(raw)?.rotas : [];
-      const allowed = new Set(Array.isArray(rotas) ? rotas : []);
-      const altList = {
-        '/reviews/massa': ['/revisoes-massa'],
-        // RVU: aceitar rotas alternativas antigas e o menu de relatórios
-        '/relatorios-rvu': ['/relatorios/rvu', '/reports', '/reports/vida-util'],
-        '/reviews/vidas-uteis': ['/revisoes/vidas-uteis', '/revisao/vidas-uteis', '/reviews/rvu'],
-        // Notificações: permitir variação em PT
-        '/notifications/new': ['/notificacoes/nova'],
-      };
-      const alts = altList[route] || [];
-      const ok = (
-        allowed.size === 0
-          ? route === '/dashboard'
-          : (allowed.has(route) || alts.some((a) => allowed.has(a)))
-      );
-      if (!ok) return <Navigate to="/dashboard" replace state={{ denied: route }} />;
-    } catch {}
-    return children;
-  }
+      {/* Company selection */}
+      <Route path="/select-company" element={<RequireAuth><SelectCompanyPage /></RequireAuth>} />
+
+      {/* Protected routes */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard" element={<RequireAuth><RequireCompany><DashboardPage t={t} /></RequireCompany></RequireAuth>} />
+      <Route path="/cadastros" element={<RequireAuth><RequireCompany><DashboardPage t={t} registrationsOnly /></RequireCompany></RequireAuth>} />
+      <Route path="/companies" element={<RequireAuth><RequireCompany><CompaniesPage /></RequireCompany></RequireAuth>} />
+      <Route path="/relatorios-rvu" element={<RequireAuth><RequirePermission route="/relatorios-rvu"><RequireCompany><RelatoriosRVUView /></RequireCompany></RequirePermission></RequireAuth>} />
+      <Route path="/relatorios/rvu" element={<RequireAuth><RequirePermission route="/relatorios-rvu"><RequireCompany><RelatoriosRVUView /></RequireCompany></RequirePermission></RequireAuth>} />
+      <Route path="/supervisao-rvu" element={<RequireAuth><RequirePermission route="/supervisao/rvu"><SupervisaoRVUView /></RequirePermission></RequireAuth>} />
+      <Route path="/employees" element={<RequireAuth><EmployeesPage /></RequireAuth>} />
+      <Route path="/ugs" element={<RequireAuth><ManagementUnitsPage /></RequireAuth>} />
+      <Route path="/tabs-demo" element={<RequireAuth><TabsDemo /></RequireAuth>} />
+      <Route path="/assets" element={<RequireAuth><RequireCompany><AssetsPage /></RequireCompany></RequireAuth>} />
+      <Route path="/asset-species" element={<RequireAuth><AssetSpeciesPage /></RequireAuth>} />
+      <Route path="/classes-contabeis" element={<RequireAuth><RequireCompany><ClassesContabeisPage /></RequireCompany></RequireAuth>} />
+      <Route path="/contas-contabeis" element={<RequireAuth><RequireCompany><ContasContabeisPage /></RequireCompany></RequireAuth>} />
+      <Route path="/reviews" element={<RequireAuth><ReviewsMenu /></RequireAuth>} />
+      <Route path="/reviews/periodos" element={<RequireAuth><RequirePermission route="/reviews/periodos"><ErrorBoundary><React.Suspense fallback={<div className="p-4">Carregando…</div>}><ReviewsPageLazy /></React.Suspense></ErrorBoundary></RequirePermission></RequireAuth>} />
+      <Route path="/reviews/cronogramas" element={<RequireAuth><RequirePermission route="/reviews/cronogramas"><CronogramasMenu /></RequirePermission></RequireAuth>} />
+      <Route path="/reviews/cronogramas/view" element={<RequireAuth><RequirePermission route="/reviews/cronogramas"><CronogramaRevisao /></RequirePermission></RequireAuth>} />
+      <Route path="/reviews/delegacao" element={<RequireAuth><RequirePermission route="/reviews/delegacao"><DelegacaoPage /></RequirePermission></RequireAuth>} />
+      <Route path="/reviews/vidas-uteis" element={<RequireAuth><RequirePermission route="/reviews/vidas-uteis"><RevisaoVidasUteis /></RequirePermission></RequireAuth>} />
+      <Route path="/reviews/massa" element={<RequireAuth><RequirePermission route="/reviews/massa"><MassRevisionView /></RequirePermission></RequireAuth>} />
+      <Route path="/revisoes-massa" element={<RequireAuth><RequireCompany><RequirePermission route="/revisoes-massa"><MassRevisionView /></RequirePermission></RequireCompany></RequireAuth>} />
+      <Route path="/cost-centers" element={<RequireAuth><RequireCompany><CostCentersPage /></RequireCompany></RequireAuth>} />
+      <Route path="/reports" element={<RequireAuth><RequireCompany><ReportsMenu /></RequireCompany></RequireAuth>} />
+      <Route path="/reports/vida-util" element={<RequireAuth><RequireCompany><ReportUsefulLifePage /></RequireCompany></RequireAuth>} />
+      <Route path="/permissions" element={<RequireAuth><RequireCompany><PermissionsMenu /></RequireCompany></RequireAuth>} />
+      <Route path="/permissions/groups" element={<RequireAuth><RequireCompany><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireCompany></RequireAuth>} />
+      <Route path="/notifications" element={<RequireAuth><RequireCompany><NotificationsPage /></RequireCompany></RequireAuth>} />
+      <Route path="/notifications/new" element={<RequireAuth><RequireCompany><RequirePermission route="/notifications/new"><NotificationSendPage /></RequirePermission></RequireCompany></RequireAuth>} />
+      <Route path="/notifications/:id" element={<RequireAuth><RequireCompany><NotificationDetailPage /></RequireCompany></RequireAuth>} />
+      <Route path="/users" element={<RequireAuth><RequireCompany><UsersPage /></RequireCompany></RequireAuth>} />
+      <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
+      <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
+    </Routes>
+  ), [t]); // Dependência 't' para recriar rotas se idioma mudar, mas ignorar sidebarCollapsed
 
   return (
     <ThemeProvider>
@@ -208,51 +258,7 @@ export default function App() {
           <main className="container-page scrollbar-stable">
             <ErrorBoundary>
             {!isAuthRoute && <DynamicTabs initialTabs={initialTabs} hideBody />}
-            <Routes>
-              {/* Auth routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/first-access" element={<RequireAuth><FirstAccessPage /></RequireAuth>} />
-
-              {/* Company selection */}
-              <Route path="/select-company" element={<RequireAuth><SelectCompanyPage /></RequireAuth>} />
-
-              {/* Protected routes */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<RequireAuth><RequireCompany><DashboardPage t={t} /></RequireCompany></RequireAuth>} />
-              <Route path="/cadastros" element={<RequireAuth><RequireCompany><DashboardPage t={t} registrationsOnly /></RequireCompany></RequireAuth>} />
-              <Route path="/companies" element={<RequireAuth><RequireCompany><CompaniesPage /></RequireCompany></RequireAuth>} />
-              <Route path="/relatorios-rvu" element={<RequireAuth><RequirePermission route="/relatorios-rvu"><RequireCompany><RelatoriosRVUView /></RequireCompany></RequirePermission></RequireAuth>} />
-              <Route path="/relatorios/rvu" element={<RequireAuth><RequirePermission route="/relatorios-rvu"><RequireCompany><RelatoriosRVUView /></RequireCompany></RequirePermission></RequireAuth>} />
-              <Route path="/supervisao-rvu" element={<RequireAuth><RequirePermission route="/supervisao/rvu"><SupervisaoRVUView /></RequirePermission></RequireAuth>} />
-              <Route path="/employees" element={<RequireAuth><EmployeesPage /></RequireAuth>} />
-              <Route path="/ugs" element={<RequireAuth><ManagementUnitsPage /></RequireAuth>} />
-              <Route path="/tabs-demo" element={<RequireAuth><TabsDemo /></RequireAuth>} />
-              <Route path="/assets" element={<RequireAuth><RequireCompany><AssetsPage /></RequireCompany></RequireAuth>} />
-              <Route path="/asset-species" element={<RequireAuth><AssetSpeciesPage /></RequireAuth>} />
-              <Route path="/classes-contabeis" element={<RequireAuth><RequireCompany><ClassesContabeisPage /></RequireCompany></RequireAuth>} />
-              <Route path="/contas-contabeis" element={<RequireAuth><RequireCompany><ContasContabeisPage /></RequireCompany></RequireAuth>} />
-              <Route path="/reviews" element={<RequireAuth><ReviewsMenu /></RequireAuth>} />
-              <Route path="/reviews/periodos" element={<RequireAuth><RequirePermission route="/reviews/periodos"><ErrorBoundary><React.Suspense fallback={<div className="p-4">Carregando…</div>}><ReviewsPageLazy /></React.Suspense></ErrorBoundary></RequirePermission></RequireAuth>} />
-              <Route path="/reviews/cronogramas" element={<RequireAuth><RequirePermission route="/reviews/cronogramas"><CronogramasMenu /></RequirePermission></RequireAuth>} />
-              <Route path="/reviews/cronogramas/view" element={<RequireAuth><RequirePermission route="/reviews/cronogramas"><CronogramaRevisao /></RequirePermission></RequireAuth>} />
-              <Route path="/reviews/delegacao" element={<RequireAuth><RequirePermission route="/reviews/delegacao"><DelegacaoPage /></RequirePermission></RequireAuth>} />
-              <Route path="/reviews/vidas-uteis" element={<RequireAuth><RequirePermission route="/reviews/vidas-uteis"><RevisaoVidasUteis /></RequirePermission></RequireAuth>} />
-              <Route path="/reviews/massa" element={<RequireAuth><RequirePermission route="/reviews/massa"><MassRevisionView /></RequirePermission></RequireAuth>} />
-              <Route path="/revisoes-massa" element={<RequireAuth><RequireCompany><RequirePermission route="/revisoes-massa"><MassRevisionView /></RequirePermission></RequireCompany></RequireAuth>} />
-              <Route path="/cost-centers" element={<RequireAuth><RequireCompany><CostCentersPage /></RequireCompany></RequireAuth>} />
-              <Route path="/reports" element={<RequireAuth><RequireCompany><ReportsMenu /></RequireCompany></RequireAuth>} />
-              <Route path="/reports/vida-util" element={<RequireAuth><RequireCompany><ReportUsefulLifePage /></RequireCompany></RequireAuth>} />
-              <Route path="/permissions" element={<RequireAuth><RequireCompany><PermissionsMenu /></RequireCompany></RequireAuth>} />
-              <Route path="/permissions/groups" element={<RequireAuth><RequireCompany><ErrorBoundary><PermissionsPage /></ErrorBoundary></RequireCompany></RequireAuth>} />
-              <Route path="/notifications" element={<RequireAuth><RequireCompany><NotificationsPage /></RequireCompany></RequireAuth>} />
-              <Route path="/notifications/new" element={<RequireAuth><RequireCompany><RequirePermission route="/notifications/new"><NotificationSendPage /></RequirePermission></RequireCompany></RequireAuth>} />
-              <Route path="/notifications/:id" element={<RequireAuth><RequireCompany><NotificationDetailPage /></RequireCompany></RequireAuth>} />
-              <Route path="/users" element={<RequireAuth><RequireCompany><UsersPage /></RequireCompany></RequireAuth>} />
-              <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
-              <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
-            </Routes>
+            {routesElement}
             </ErrorBoundary>
             <Toaster position="top-right" toastOptions={{
               style: { background: '#111827', color: '#F9FAFB' },
