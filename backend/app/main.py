@@ -1142,9 +1142,15 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
 
         # 2. Apply Transient updates (Atrasada) & Ensure 'tipo'
         for t in tasks:
-            # Ensure 'tipo' is present (ORM should have it, but just in case)
-            if not t.tipo:
-                log(f"Overriding empty tipo for task {t.id} to 'Tarefa'")
+            # Ensure 'tipo' is present and has a valid value
+            if not t.tipo or str(t.tipo).strip() == "":
+                log(f"Overriding empty/null tipo for task {t.id} to 'Tarefa'")
+                t.tipo = "Tarefa"
+            
+            # Normalize 'Título' casing just in case
+            if str(t.tipo).lower() == 'título':
+                t.tipo = "Título"
+            elif str(t.tipo).lower() == 'tarefa':
                 t.tipo = "Tarefa"
 
             # Check for delay

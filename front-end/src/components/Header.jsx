@@ -4,8 +4,10 @@ import ThemeToggle from './ThemeToggle';
 import { Bell, LogOut, PanelLeftClose, PanelLeft, Wifi, WifiOff, Loader2, Globe, Check, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getNotifications } from '../apiClient';
+import { useSidebar } from '../contexts/SidebarContext';
 
-export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany, onToggleSidebar, collapsed }) {
+export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany }) {
+  const { sidebarCollapsed: collapsed, toggleSidebar: onToggleSidebar } = useSidebar();
   const { t } = useTranslation();
   const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const navigate = useNavigate();

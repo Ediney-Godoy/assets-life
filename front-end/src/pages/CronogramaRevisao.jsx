@@ -681,7 +681,9 @@ export default function CronogramaRevisao() {
         {/* Body */}
         <div className="min-w-max">
             {tarefas.map((task, idx) => {
-                const isTitle = task.tipo === 'Título' || /^(\[TÍTULO\]|\(TÍTULO\))/i.test(task.nome);
+                const isTitle = String(task.tipo || '').toLowerCase() === 'título' || 
+                               /^(\[TÍTULO\]|\(TÍTULO\))/i.test(task.nome) ||
+                               task.tipo === 'Título';
                 const startDate = toDate(task.data_inicio);
                 const endDate = toDate(task.data_fim);
                 let startDiff = 0;
@@ -699,8 +701,19 @@ export default function CronogramaRevisao() {
                 }
 
                 const isSelected = task.id === selectedTaskId;
-                const rowBg = isTitle ? 'bg-slate-300 dark:bg-slate-700' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950';
-                const stickyBg = isTitle ? 'bg-slate-300 dark:bg-slate-700' : isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-slate-950 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/50';
+                
+                // Enhanced contrast for titles
+                const rowBg = isTitle 
+                    ? 'bg-slate-200 dark:bg-slate-800 border-y-2 border-slate-300 dark:border-slate-600 shadow-sm' 
+                    : isSelected 
+                        ? 'bg-blue-50 dark:bg-blue-900/30' 
+                        : 'bg-white dark:bg-slate-950';
+                
+                const stickyBg = isTitle 
+                    ? 'bg-slate-200 dark:bg-slate-800' 
+                    : isSelected 
+                        ? 'bg-blue-50 dark:bg-blue-900/30' 
+                        : 'bg-white dark:bg-slate-950 group-hover:bg-slate-50 dark:group-hover:bg-slate-900/50';
 
                 return (
                     <div key={task.id} 

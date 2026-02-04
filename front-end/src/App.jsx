@@ -45,6 +45,7 @@ import ResetPasswordPage from './pages/ResetPassword';
 import FirstAccessPage from './pages/FirstAccess';
 import { clearToken, getHealth } from './apiClient';
 import SelectCompanyPage from './pages/SelectCompany';
+import { useSidebar } from './contexts/SidebarContext';
 
 // Helper components defined outside App to avoid re-creation on re-render
 function RequireAuth({ children }) {
@@ -99,9 +100,6 @@ function RequirePermission({ route, children }) {
 export default function App() {
   const { t, i18n } = useTranslation();
   const [backendStatus, setBackendStatus] = useState('checking');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try { return localStorage.getItem('assetlife_sidebar_collapsed') === '1'; } catch { return false; }
-  });
 
   // Detectar erros de chunk/module loading e recarregar automaticamente
   useEffect(() => {
@@ -134,15 +132,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('assetlife_sidebar_collapsed');
-      if (stored === null) {
-        const w = window.innerWidth || 0;
-        const shouldCollapse = w < 1024; // md e abaixo por padrão
-        setSidebarCollapsed(shouldCollapse);
-        localStorage.setItem('assetlife_sidebar_collapsed', shouldCollapse ? '1' : '0');
-      }
-    } catch {}
+    // This effect is now handled inside SidebarProvider, so we can remove it from here
   }, []);
   const location = useLocation();
   const navigate = useNavigate();
@@ -185,7 +175,7 @@ export default function App() {
     navigate('/login', { replace: true });
   };
 
-  const routesElement = useMemo(() => (
+  const routesElement = (
     <Routes>
       {/* Auth routes */}
       <Route path="/login" element={<LoginPage />} />
@@ -231,12 +221,12 @@ export default function App() {
       <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
       <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
     </Routes>
-  ), [t]); // Dependência 't' para recriar rotas se idioma mudar, mas ignorar sidebarCollapsed
+  );
 
   return (
     <ThemeProvider>
       <div className="h-screen flex" style={{ background: 'var(--bg-secondary)' }}>
-        {!isAuthRoute && <Sidebar collapsed={sidebarCollapsed} />}
+        {!isAuthRoute && <Sidebar />}
         <div className="flex-1 flex flex-col overflow-hidden">
           {!isAuthRoute && (
             <Header
@@ -245,14 +235,6 @@ export default function App() {
               onLanguageChange={changeLanguage}
               onLogout={handleLogout}
               onChangeCompany={() => navigate('/select-company')}
-              collapsed={sidebarCollapsed}
-              onToggleSidebar={() => {
-                setSidebarCollapsed((prev) => {
-                  const next = !prev;
-                  try { localStorage.setItem('assetlife_sidebar_collapsed', next ? '1' : '0'); } catch {}
-                  return next;
-                });
-              }}
             />
           )}
           <main className="container-page scrollbar-stable">

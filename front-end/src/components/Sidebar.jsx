@@ -3,8 +3,10 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info, HelpCircle, Bell, Clock } from 'lucide-react';
 import { getRole, getVisibleMenuForRole } from '../permissions';
+import { useSidebar } from '../contexts/SidebarContext';
 
-export default function Sidebar({ collapsed = false }) {
+export default function Sidebar() {
+  const { sidebarCollapsed: collapsed } = useSidebar();
   const { t } = useTranslation();
   const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const location = useLocation();
