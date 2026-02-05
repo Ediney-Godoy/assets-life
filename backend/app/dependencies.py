@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 from .database import SessionLocal
 from .models import (
     Usuario as UsuarioModel, 
+    Company as CompanyModel,
     GrupoUsuario as GrupoUsuarioModel, 
     GrupoEmpresa as GrupoEmpresaModel, 
+    GrupoPermissao as GrupoPermissaoModel,
     Transacao as TransacaoModel, 
     GrupoTransacao as GrupoTransacaoModel
 )
@@ -33,7 +35,21 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
     return user
 
+def is_admin_user(db: Session, current_user: UsuarioModel) -> bool:
+    q = (
+        db.query(GrupoPermissaoModel.nome)
+        .join(GrupoUsuarioModel, GrupoUsuarioModel.grupo_id == GrupoPermissaoModel.id)
+        .filter(GrupoUsuarioModel.usuario_id == current_user.id)
+    )
+    for (nome,) in q.all():
+        if nome and "admin" in str(nome).lower():
+            return True
+    return False
+
 def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int]:
+    if is_admin_user(db, current_user):
+        return [row[0] for row in db.query(CompanyModel.id).order_by(CompanyModel.id).all()]
+
     # grupos do usuário
     links = db.query(GrupoUsuarioModel).filter(GrupoUsuarioModel.usuario_id == current_user.id).all()
     grupo_ids = [l.grupo_id for l in links]

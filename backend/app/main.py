@@ -14,7 +14,7 @@ import os
 
 from .database import SessionLocal, engine
 from .config import ALLOW_DDL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_USE_TLS, SMTP_USE_SSL, MAIL_FROM, MAIL_SENDER_NAME, SECRET_KEY, ALGORITHM, JWT_EXPIRE_MINUTES, RESET_TOKEN_EXPIRE_MINUTES
-from .dependencies import get_db, get_current_user, get_allowed_company_ids, check_permission
+from .dependencies import get_db, get_current_user, get_allowed_company_ids, check_permission, is_admin_user
 from .models import Base as SA_Base, Company as CompanyModel
 from .models import Employee as EmployeeModel, Vinculo as VinculoEnum, Status as StatusEnum
 from .models import ManagementUnit as UGModel
@@ -1539,16 +1539,27 @@ class ColaboradorUpdate(BaseModel):
 
 # CRUD de Colaboradores
 @app.get("/colaboradores", response_model=List[Colaborador])
-def list_colaboradores(request: Request, db: Session = Depends(get_db)):
-    empresa_hdr = request.headers.get("X-Company-Id")
+def list_colaboradores(
+    empresa_id: Optional[int] = Header(None, alias="X-Company-Id"),
+    current_user: UsuarioModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     q = db.query(EmployeeModel)
-    if empresa_hdr:
-        try:
-            empresa_id = int(empresa_hdr)
-            q = q.filter(EmployeeModel.empresa_id == empresa_id)
-        except ValueError:
-            pass
-    return q.all()
+
+    if is_admin_user(db, current_user):
+        return q.order_by(EmployeeModel.id).all()
+
+    allowed = get_allowed_company_ids(db, current_user)
+    if empresa_id is not None:
+        if empresa_id not in allowed:
+            raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
+        q = q.filter(EmployeeModel.empresa_id == empresa_id)
+    else:
+        if not allowed:
+            return []
+        q = q.filter(EmployeeModel.empresa_id.in_(allowed))
+
+    return q.order_by(EmployeeModel.id).all()
 
 @app.get("/colaboradores/{colab_id}", response_model=Colaborador)
 def get_colaborador(colab_id: int, db: Session = Depends(get_db)):
@@ -1648,15 +1659,26 @@ VALID_LEVELS = {"CEO", "Diretoria", "Gerência Geral", "Gerência", "Coordenaç�
 VALID_TYPES = {"Administrativa", "Produtiva", "Apoio", "Auxiliares"}
 
 @app.get("/unidades_gerenciais", response_model=List[UG])
-def list_ugs(request: Request, db: Session = Depends(get_db)):
-    empresa_hdr = request.headers.get("X-Company-Id")
+def list_ugs(
+    empresa_id: Optional[int] = Header(None, alias="X-Company-Id"),
+    current_user: UsuarioModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     q = db.query(UGModel)
-    if empresa_hdr:
-        try:
-            empresa_id = int(empresa_hdr)
-            q = q.filter(UGModel.empresa_id == empresa_id)
-        except ValueError:
-            pass
+
+    if is_admin_user(db, current_user):
+        return q.order_by(UGModel.codigo).all()
+
+    allowed = get_allowed_company_ids(db, current_user)
+    if empresa_id is not None:
+        if empresa_id not in allowed:
+            raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
+        q = q.filter(UGModel.empresa_id == empresa_id)
+    else:
+        if not allowed:
+            return []
+        q = q.filter(UGModel.empresa_id.in_(allowed))
+
     return q.order_by(UGModel.codigo).all()
 
 @app.get("/unidades_gerenciais/{ug_id}", response_model=UG)
@@ -1779,11 +1801,12 @@ def list_centros_custos(
     q = db.query(CentroCustoModel)
     # limitar às empresas permitidas do usuário
     allowed = get_allowed_company_ids(db, current_user)
-    if allowed:
-        q = q.filter(CentroCustoModel.empresa_id.in_(allowed))
+    if not allowed:
+        return []
+    q = q.filter(CentroCustoModel.empresa_id.in_(allowed))
     if empresa_id:
         # bloquear acesso explícito a empresa não permitida
-        if allowed and empresa_id not in allowed:
+        if empresa_id not in allowed:
             raise HTTPException(status_code=403, detail="Acesso negado aos Centros de Custos da empresa informada")
         q = q.filter(CentroCustoModel.empresa_id == empresa_id)
     if ug_id:
@@ -1906,10 +1929,11 @@ def list_classes_contabeis(
 ):
     q = db.query(ClasseContabilModel)
     allowed = get_allowed_company_ids(db, current_user)
-    if allowed:
-        q = q.filter(ClasseContabilModel.empresa_id.in_(allowed))
+    if not allowed:
+        return []
+    q = q.filter(ClasseContabilModel.empresa_id.in_(allowed))
     if empresa_id:
-        if allowed and empresa_id not in allowed:
+        if empresa_id not in allowed:
             raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
         q = q.filter(ClasseContabilModel.empresa_id == empresa_id)
     if status:
@@ -2017,10 +2041,11 @@ def list_contas_contabeis(
 ):
     q = db.query(ContaContabilModel)
     allowed = get_allowed_company_ids(db, current_user)
-    if allowed:
-        q = q.filter(ContaContabilModel.empresa_id.in_(allowed))
+    if not allowed:
+        return []
+    q = q.filter(ContaContabilModel.empresa_id.in_(allowed))
     if empresa_id:
-         if allowed and empresa_id not in allowed:
+         if empresa_id not in allowed:
             raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
          q = q.filter(ContaContabilModel.empresa_id == empresa_id)
     if status:
