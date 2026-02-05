@@ -1928,6 +1928,10 @@ def list_classes_contabeis(
     db: Session = Depends(get_db)
 ):
     q = db.query(ClasseContabilModel)
+    if is_admin_user(db, current_user):
+        if status:
+            q = q.filter(ClasseContabilModel.status == status)
+        return q.order_by(ClasseContabilModel.codigo).all()
     allowed = get_allowed_company_ids(db, current_user)
     if not allowed:
         return []
@@ -2040,6 +2044,10 @@ def list_contas_contabeis(
     db: Session = Depends(get_db)
 ):
     q = db.query(ContaContabilModel)
+    if is_admin_user(db, current_user):
+        if status:
+            q = q.filter(ContaContabilModel.status == status)
+        return q.order_by(ContaContabilModel.codigo).all()
     allowed = get_allowed_company_ids(db, current_user)
     if not allowed:
         return []
