@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { LayoutDashboard, SquareStack, ClipboardList, BarChart3, Shield, UserCheck, Info, HelpCircle, Bell, Clock } from 'lucide-react';
 import { getRole, getVisibleMenuForRole } from '../permissions';
 import { useSidebar } from '../contexts/SidebarContext';
+import { getDisplayVersion } from '../version';
 
 export default function Sidebar() {
   const { sidebarCollapsed: collapsed } = useSidebar();
@@ -112,7 +113,7 @@ export default function Sidebar() {
       <div className="px-3 py-4">
         <div className="divider mb-3" />
         <div className={`text-xs text-center ${collapsed ? 'hidden' : 'hidden md:block'}`} style={{ color: 'var(--text-muted)' }}>
-          Assets Life v2.0
+          Assets Life v{getDisplayVersion()}
         </div>
       </div>
     </aside>
