@@ -2137,16 +2137,39 @@ def _generate_user_codigo(db: Session) -> str:
 
 
 @app.get("/usuarios", response_model=List[Usuario])
-def list_usuarios(request: Request, db: Session = Depends(get_db)):
-    empresa_hdr = request.headers.get("X-Company-Id")
-    q = db.query(UsuarioModel)
-    if empresa_hdr:
+def list_usuarios(
+    empresa_id: Optional[int] = Header(None, alias="X-Company-Id"),
+    current_user: UsuarioModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Admin check for permissions management
+    is_admin = False
+    for route in ["/permissions", "/users", "/companies"]:
         try:
-            empresa_id = int(empresa_hdr)
-            q = q.filter(sa.or_(UsuarioModel.empresa_id == empresa_id, UsuarioModel.empresa_id == None))
-        except ValueError:
-            pass
-    return q.order_by(UsuarioModel.id).all()
+            check_permission(db, current_user, route)
+            is_admin = True
+            break
+        except HTTPException:
+            continue
+
+    q = db.query(UsuarioModel)
+    
+    # If admin, return all users regardless of company context
+    if is_admin:
+        return q.all()
+    
+    # Non-admins: filter by context or allowed companies
+    if empresa_id:
+        q = q.filter(UsuarioModel.empresa_id == empresa_id)
+    else:
+        # Default behavior: filter by user's allowed companies
+        allowed = get_allowed_company_ids(db, current_user)
+        if allowed:
+            q = q.filter(UsuarioModel.empresa_id.in_(allowed))
+        else:
+            return []
+            
+    return q.all()
 
 
 @app.get("/usuarios/{user_id}", response_model=Usuario)
