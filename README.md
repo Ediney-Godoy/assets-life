@@ -17,7 +17,7 @@ Assets Life é uma solução completa para gerenciamento de ativos fixos, contro
   - Bloqueio se existirem ativos que ainda não foram revisados ou aprovados.
 
 ### Gestão Administrativa
-- **Visibilidade de Empresas**: Administradores com acesso ao menu de Permissões agora visualizam todas as empresas cadastradas no sistema para configuração de acessos, independentemente de estarem vinculadas ao seu próprio grupo.
+- **Visibilidade de Empresas e Usuários**: Administradores com acesso ao menu de Permissões agora visualizam todas as empresas e todos os usuários cadastrados no sistema para configuração de acessos, independentemente de estarem vinculadas ao seu próprio grupo ou contexto.
 
 ---
 
