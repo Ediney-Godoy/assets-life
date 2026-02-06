@@ -57,7 +57,17 @@ export default function RelatoriosRVUView() {
           getUsers(filters.empresa_id || undefined),
           getReviewPeriods ? getReviewPeriods() : Promise.resolve([]),
         ]);
-        setCompanies(emp || []);
+
+        const currentCompanyId = localStorage.getItem('assetlife_empresa');
+        let finalCompanies = emp || [];
+        
+        if (currentCompanyId) {
+          // Filtra para exibir apenas a empresa logada/selecionada
+          finalCompanies = finalCompanies.filter(c => String(c.id) === String(currentCompanyId));
+          setFilters(f => ({ ...f, empresa_id: currentCompanyId }));
+        }
+
+        setCompanies(finalCompanies);
         setUgs(ug || []);
         setClasses(cls || []);
         setRevisores(rev || []);
@@ -210,8 +220,13 @@ export default function RelatoriosRVUView() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('company_label')}</label>
-            <select className="min-w-[280px] w-[340px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.empresa_id} onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}>
-              <option value="">{t('all')}</option>
+            <select 
+              className="min-w-[280px] w-[340px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-70 disabled:cursor-not-allowed" 
+              value={filters.empresa_id} 
+              onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}
+              disabled={!!localStorage.getItem('assetlife_empresa')}
+            >
+              {!localStorage.getItem('assetlife_empresa') && <option value="">{t('all')}</option>}
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
