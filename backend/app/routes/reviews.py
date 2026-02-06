@@ -1,14 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import date, datetime, timedelta
+import shutil
+import os
+import pandas as pd
+import numpy as np
 from pydantic import BaseModel
-from datetime import date
+import traceback
+import json
 
-from ..dependencies import get_db, get_current_user, get_allowed_company_ids
+from ..database import SessionLocal
 from ..models import (
+    Usuario as UsuarioModel,
     RevisaoPeriodo as RevisaoPeriodoModel,
-    Usuario as UsuarioModel
+    RevisaoItem as RevisaoItemModel,
+    RevisaoDelegacao as RevisaoDelegacaoModel,
+    Cronograma as CronogramaModel,
+    CronogramaTarefa as CronogramaTarefaModel
 )
+from ..dependencies import get_db, get_current_user, get_allowed_company_ids
 
 router = APIRouter(
     prefix="/revisoes",
@@ -29,33 +40,51 @@ class RevisaoPeriodoResponse(BaseModel):
     data_fechamento_prevista: date
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 @router.get("/periodos", response_model=List[RevisaoPeriodoResponse])
 def listar_periodos(
+    x_company_id: Optional[str] = Header(None, alias="X-Company-Id"),
     db: Session = Depends(get_db),
     current_user: UsuarioModel = Depends(get_current_user)
 ):
     """
     Lista todos os períodos de revisão das empresas que o usuário tem acesso.
+    Se X-Company-Id for informado, filtra apenas por esta empresa.
     """
     # 1. Obter IDs das empresas permitidas para o usuário
     allowed_companies = get_allowed_company_ids(db, current_user)
     
     if not allowed_companies:
         return []
+
+    # Validar header de empresa se presente
+    header_company_id = None
+    if x_company_id:
+        try:
+            header_company_id = int(x_company_id)
+            if header_company_id not in allowed_companies:
+                 # Se tentar acessar empresa não permitida, retorna 403 ou lista vazia?
+                 # Melhor 403 para indicar erro de permissão/contexto
+                 raise HTTPException(status_code=403, detail="Acesso negado à empresa selecionada")
+        except ValueError:
+            pass # Ignorar header inválido
     
     # 2. Buscar períodos vinculados a essas empresas
     # Ordenado por ID decrescente (mais recentes primeiro)
     from ..models import Company as CompanyModel
     
-    results = (
+    query = (
         db.query(RevisaoPeriodoModel, CompanyModel.name.label("empresa_nome"))
         .join(CompanyModel, RevisaoPeriodoModel.empresa_id == CompanyModel.id)
-        .filter(RevisaoPeriodoModel.empresa_id.in_(allowed_companies))
-        .order_by(RevisaoPeriodoModel.id.desc())
-        .all()
     )
+
+    if header_company_id:
+        query = query.filter(RevisaoPeriodoModel.empresa_id == header_company_id)
+    else:
+        query = query.filter(RevisaoPeriodoModel.empresa_id.in_(allowed_companies))
+        
+    results = query.order_by(RevisaoPeriodoModel.id.desc()).all()
     
     # Mapear para o schema de resposta
     response = []
@@ -116,8 +145,6 @@ def update_periodo(
             # Porém, a estrutura atual não parece ter um status explícito de "não delegado" no item, mas sim a ausência de registro na tabela de delegações.
             
             # Count items in period
-            from ..models import RevisaoItem as RevisaoItemModel
-            from ..models import RevisaoDelegacao as RevisaoDelegacaoModel
             import sqlalchemy as sa
             
             total_items = db.query(sa.func.count(RevisaoItemModel.id)).filter(RevisaoItemModel.periodo_id == periodo_id).scalar()
