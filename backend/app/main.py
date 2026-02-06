@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from sqlalchemy.orm import Session
 import sqlalchemy as sa
+from sqlalchemy.exc import IntegrityError
 from datetime import date
 import os
 
@@ -2067,17 +2068,15 @@ def list_classes_contabeis(
             error_id = str(uuid.uuid4())
             try:
                 logging.getLogger("uvicorn.error").error(
-                    "Validation errors in list_classes_contabeis error_id=%s errors=%s",
+                    "Skipping %d invalid items in list_classes_contabeis error_id=%s errors=%s",
+                    len(errors),
                     error_id,
                     errors,
                 )
             except Exception:
                 pass
-            return JSONResponse(
-                status_code=500,
-                content={"detail": "Erro de validação nos dados", "error_id": error_id, "errors": errors},
-                headers={"X-Error-Id": error_id},
-            )
+            # Return valid items instead of 500 error to ensure screen loads
+            # Bad items are logged for investigation
             
         return serialized
 
@@ -2116,6 +2115,8 @@ def get_classe_contabil(id: int, db: Session = Depends(get_db)):
 @app.post("/classes_contabeis", response_model=ClasseContabil)
 def create_classe_contabil(payload: ClasseContabilCreate, db: Session = Depends(get_db)):
     data = payload.dict()
+    codigo_norm = str(data.get("codigo") or "").strip()
+    data["codigo"] = codigo_norm
     
     # Valida empresa
     if not db.query(CompanyModel).filter(CompanyModel.id == data["empresa_id"]).first():
@@ -2129,13 +2130,33 @@ def create_classe_contabil(payload: ClasseContabilCreate, db: Session = Depends(
         if cc.empresa_id != data["empresa_id"]:
             raise HTTPException(status_code=400, detail="Conta Contábil pertence a outra empresa")
         
-    # Check duplicate code in company
-    if db.query(ClasseContabilModel).filter(ClasseContabilModel.codigo == data["codigo"], ClasseContabilModel.empresa_id == data["empresa_id"]).first():
-        raise HTTPException(status_code=400, detail="Já existe uma Classe Contábil com este código nesta empresa")
+    # Check duplicidade de código por empresa
+    if db.query(ClasseContabilModel).filter(
+        ClasseContabilModel.codigo == codigo_norm,
+        ClasseContabilModel.empresa_id == data["empresa_id"],
+    ).first():
+        raise HTTPException(status_code=409, detail="Já existe uma Classe Contábil com este código nesta empresa")
 
     c = ClasseContabilModel(**data)
     db.add(c)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        msg = str(getattr(e, "orig", e))
+        if (
+            "duplicate key value violates unique constraint" in msg
+            and (
+                "uq_classe_empresa" in msg
+                or "uq_classes_contabeis_empresa_codigo" in msg
+                or "ix_classes_contabeis_codigo" in msg
+            )
+        ):
+            raise HTTPException(status_code=409, detail="Já existe uma Classe Contábil com este código nesta empresa")
+        raise HTTPException(status_code=400, detail="Erro de integridade ao salvar Classe Contábil")
     db.refresh(c)
     return c
 
@@ -2151,13 +2172,15 @@ def update_classe_contabil(id: int, payload: ClasseContabilUpdate, db: Session =
     target_empresa_id = data.get("empresa_id") or c.empresa_id
     
     if "codigo" in data:
+        codigo_norm = str(data.get("codigo") or "").strip()
+        data["codigo"] = codigo_norm
         existing = db.query(ClasseContabilModel).filter(
-            ClasseContabilModel.codigo == data["codigo"], 
+            ClasseContabilModel.codigo == codigo_norm,
             ClasseContabilModel.empresa_id == target_empresa_id,
             ClasseContabilModel.id != id
         ).first()
         if existing:
-             raise HTTPException(status_code=400, detail="Já existe uma Classe Contábil com este código nesta empresa")
+             raise HTTPException(status_code=409, detail="Já existe uma Classe Contábil com este código nesta empresa")
 
     # Validação cruzada de Conta Contábil
     if "conta_contabil_id" in data:
@@ -2171,7 +2194,24 @@ def update_classe_contabil(id: int, payload: ClasseContabilUpdate, db: Session =
     for key, value in data.items():
         setattr(c, key, value)
         
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        msg = str(getattr(e, "orig", e))
+        if (
+            "duplicate key value violates unique constraint" in msg
+            and (
+                "uq_classe_empresa" in msg
+                or "uq_classes_contabeis_empresa_codigo" in msg
+                or "ix_classes_contabeis_codigo" in msg
+            )
+        ):
+            raise HTTPException(status_code=409, detail="Já existe uma Classe Contábil com este código nesta empresa")
+        raise HTTPException(status_code=400, detail="Erro de integridade ao salvar Classe Contábil")
     db.refresh(c)
     return c
 
@@ -2249,18 +2289,40 @@ def get_conta_contabil(id: int, db: Session = Depends(get_db)):
 @app.post("/contas_contabeis", response_model=ContaContabil)
 def create_conta_contabil(payload: ContaContabilCreate, db: Session = Depends(get_db)):
     data = payload.dict()
+    codigo_norm = str(data.get("codigo") or "").strip()
+    data["codigo"] = codigo_norm
     
     # Valida empresa
     if not db.query(CompanyModel).filter(CompanyModel.id == data["empresa_id"]).first():
         raise HTTPException(status_code=400, detail="Empresa inválida")
 
     # Check duplicate code in company
-    if db.query(ContaContabilModel).filter(ContaContabilModel.codigo == data["codigo"], ContaContabilModel.empresa_id == data["empresa_id"]).first():
-        raise HTTPException(status_code=400, detail="Já existe uma Conta Contábil com este código nesta empresa")
+    if db.query(ContaContabilModel).filter(
+        ContaContabilModel.codigo == codigo_norm,
+        ContaContabilModel.empresa_id == data["empresa_id"],
+    ).first():
+        raise HTTPException(status_code=409, detail="Já existe uma Conta Contábil com este código nesta empresa")
 
     c = ContaContabilModel(**data)
     db.add(c)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        msg = str(getattr(e, "orig", e))
+        if (
+            "duplicate key value violates unique constraint" in msg
+            and (
+                "uq_conta_empresa" in msg
+                or "uq_contas_contabeis_empresa_codigo" in msg
+                or "ix_contas_contabeis_codigo" in msg
+            )
+        ):
+            raise HTTPException(status_code=409, detail="Já existe uma Conta Contábil com este código nesta empresa")
+        raise HTTPException(status_code=400, detail="Erro de integridade ao salvar Conta Contábil")
     db.refresh(c)
     return c
 
@@ -2273,18 +2335,37 @@ def update_conta_contabil(id: int, payload: ContaContabilUpdate, db: Session = D
     data = payload.dict(exclude_unset=True)
     
     if "codigo" in data:
+        codigo_norm = str(data.get("codigo") or "").strip()
+        data["codigo"] = codigo_norm
         existing = db.query(ContaContabilModel).filter(
-            ContaContabilModel.codigo == data["codigo"], 
+            ContaContabilModel.codigo == codigo_norm, 
             ContaContabilModel.empresa_id == (data.get("empresa_id") or c.empresa_id),
             ContaContabilModel.id != id
         ).first()
         if existing:
-             raise HTTPException(status_code=400, detail="Já existe uma Conta Contábil com este código nesta empresa")
+             raise HTTPException(status_code=409, detail="Já existe uma Conta Contábil com este código nesta empresa")
 
     for key, value in data.items():
         setattr(c, key, value)
         
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        msg = str(getattr(e, "orig", e))
+        if (
+            "duplicate key value violates unique constraint" in msg
+            and (
+                "uq_conta_empresa" in msg
+                or "uq_contas_contabeis_empresa_codigo" in msg
+                or "ix_contas_contabeis_codigo" in msg
+            )
+        ):
+            raise HTTPException(status_code=409, detail="Já existe uma Conta Contábil com este código nesta empresa")
+        raise HTTPException(status_code=400, detail="Erro de integridade ao salvar Conta Contábil")
     db.refresh(c)
     return c
 

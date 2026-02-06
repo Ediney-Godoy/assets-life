@@ -291,9 +291,10 @@ class CentroCusto(Base):
 # -----------------------------
 class ClasseContabil(Base):
     __tablename__ = "classes_contabeis"
+    __table_args__ = (UniqueConstraint("empresa_id", "codigo", name="uq_classe_empresa"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    codigo = Column(String(50), nullable=False, unique=True, index=True)
+    codigo = Column(String(50), nullable=False, index=True)
     descricao = Column(String(255), nullable=False)
     vida_util_anos = Column(Integer, nullable=False)
     taxa_depreciacao = Column(Numeric(5, 2), nullable=False)
@@ -313,9 +314,10 @@ class ClasseContabil(Base):
 # -----------------------------
 class ContaContabil(Base):
     __tablename__ = "contas_contabeis"
+    __table_args__ = (UniqueConstraint("empresa_id", "codigo", name="uq_conta_empresa"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    codigo = Column(String(50), nullable=False, unique=True, index=True)
+    codigo = Column(String(50), nullable=False, index=True)
     descricao = Column(String(255), nullable=False)
     
     empresa_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)

@@ -2,8 +2,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ThemeToggle from './ThemeToggle';
 import { Bell, LogOut, PanelLeftClose, PanelLeft, Wifi, WifiOff, Loader2, Globe, Check, ChevronDown } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { getNotifications } from '../apiClient';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getNotifications, getCompanies } from '../apiClient';
 import { useSidebar } from '../contexts/SidebarContext';
 
 export default function Header({ backendStatus, language, onLanguageChange, onLogout, onChangeCompany }) {
@@ -11,9 +11,12 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
   const { t } = useTranslation();
   const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch { return null; }
   });
+  const [companyName, setCompanyName] = React.useState('');
+  const lastCompanyId = React.useRef(null);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [langOpen, setLangOpen] = React.useState(false);
   const [bellOpen, setBellOpen] = React.useState(false);
@@ -55,6 +58,31 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
     return () => { active = false; };
   }, [bellOpen]);
 
+  React.useEffect(() => {
+    const checkCompany = async () => {
+      try {
+        const id = localStorage.getItem('assetlife_empresa');
+        if (id !== lastCompanyId.current) {
+          lastCompanyId.current = id;
+          if (!id) {
+            setCompanyName('');
+          } else {
+            const list = await getCompanies();
+            if (Array.isArray(list)) {
+              const found = list.find((c) => String(c.id) === String(id));
+              if (found) {
+                setCompanyName(found.name || found.razao_social || found.nome);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch company name:', err);
+      }
+    };
+    checkCompany();
+  }, [location]);
+
   return (
     <header className="header flex items-center justify-between px-4 md:px-6 h-14">
       {/* Left side */}
@@ -75,7 +103,7 @@ export default function Header({ backendStatus, language, onLanguageChange, onLo
           </button>
         )}
         <h1 className="text-lg font-semibold hidden sm:block" style={{ color: 'var(--text-primary)' }}>
-          {tt('app_title', 'Assets Life')}
+          {companyName || tt('app_title', 'Assets Life')}
         </h1>
       </div>
 
