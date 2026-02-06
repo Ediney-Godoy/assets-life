@@ -2,7 +2,9 @@ from fastapi import Depends, HTTPException, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 from typing import Optional, List
+import logging
 from .database import SessionLocal
 from .models import (
     Usuario as UsuarioModel, 
@@ -18,7 +20,11 @@ from .config import SECRET_KEY, ALGORITHM
 security = HTTPBearer()
 
 def get_db():
-    db = SessionLocal()
+    try:
+        db = SessionLocal()
+    except SQLAlchemyError:
+        logging.getLogger("uvicorn.error").exception("DB session creation failed")
+        raise HTTPException(status_code=503, detail="Banco de dados indisponível")
     try:
         yield db
     finally:
@@ -31,7 +37,14 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         user_id = int(payload.get("sub"))
     except (JWTError, ValueError):
         raise HTTPException(status_code=401, detail="Token inválido")
-    user = db.query(UsuarioModel).filter(UsuarioModel.id == user_id).first()
+    try:
+        user = db.query(UsuarioModel).filter(UsuarioModel.id == user_id).first()
+    except OperationalError:
+        logging.getLogger("uvicorn.error").exception("DB operational error while loading current user")
+        raise HTTPException(status_code=503, detail="Banco de dados indisponível")
+    except SQLAlchemyError:
+        logging.getLogger("uvicorn.error").exception("DB error while loading current user")
+        raise HTTPException(status_code=500, detail="Erro interno ao validar usuário")
     if not user:
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
     return user

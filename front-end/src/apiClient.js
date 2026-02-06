@@ -342,7 +342,17 @@ async function request(path, options = {}) {
           }
           throw new Error(message);
         }
-        lastErr = new Error(`HTTP ${res.status}: ${text}`);
+        let errorId = res.headers.get('x-error-id') || '';
+        let detail = text;
+        try {
+          const j = JSON.parse(text);
+          if (!errorId && typeof j?.error_id === 'string') errorId = j.error_id;
+          const d = j && (j.detail || j.message || j.error);
+          if (typeof d === 'string' && d.trim()) detail = d;
+        } catch {}
+        const msg = errorId ? `HTTP ${res.status} (error_id=${errorId}): ${detail}` : `HTTP ${res.status}: ${detail}`;
+        lastErr = new Error(msg);
+        if (errorId) lastErr.errorId = errorId;
         continue;
       }
       // Marca base ativa caso ainda não esteja definida
@@ -350,6 +360,7 @@ async function request(path, options = {}) {
         ACTIVE_BASE = base;
         try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
       }
+      if (res.status === 204) return null;
       const contentType = res.headers.get('content-type') || '';
       console.log('[apiClient] Content-Type:', contentType);
       if (contentType.includes('application/json')) {
@@ -437,7 +448,8 @@ export async function getEmployees() {
 
 // Placeholder: lista de classes contábeis (integração futura)
 export async function getAccountingClasses() {
-  return request('/classes_contabeis');
+  const data = await request('/classes_contabeis');
+  return Array.isArray(data) ? data : [];
 }
 
 // --- Ativos (Assets) ---

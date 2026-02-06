@@ -3,6 +3,8 @@ from fastapi import FastAPI, HTTPException, Depends, Request, Header
 print("Main: FastAPI imported", flush=True)
 from fastapi.responses import JSONResponse
 import re
+import logging
+import uuid
 from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -152,6 +154,16 @@ async def _http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def _generic_exception_handler(request: Request, exc: Exception):
+    error_id = str(uuid.uuid4())
+    try:
+        logging.getLogger("uvicorn.error").exception(
+            "Unhandled exception error_id=%s method=%s path=%s",
+            error_id,
+            getattr(request, "method", None),
+            getattr(getattr(request, "url", None), "path", None),
+        )
+    except Exception:
+        pass
     origin = request.headers.get("origin")
     headers = {}
     try:
@@ -164,7 +176,8 @@ async def _generic_exception_handler(request: Request, exc: Exception):
             headers["Access-Control-Allow-Headers"] = request.headers.get("access-control-request-headers", "*")
     except Exception:
         pass
-    return JSONResponse(status_code=500, content={"detail": "Erro interno"}, headers=headers)
+    headers["X-Error-Id"] = error_id
+    return JSONResponse(status_code=500, content={"detail": "Erro interno", "error_id": error_id}, headers=headers)
 
 @app.options("/{path:path}")
 async def cors_preflight(request: Request, path: str):
@@ -581,7 +594,45 @@ def health():
         return {"status": "ok", "db": "unknown", "detail": "encoding_issue"}
     except Exception as e:
         # Não expor credenciais, apenas o tipo do erro
-        return JSONResponse(status_code=503, content={"status": "error", "db": "error", "detail": e.__class__.__name__})
+        error_id = str(uuid.uuid4())
+        try:
+            logging.getLogger("uvicorn.error").exception("Health check failed error_id=%s", error_id)
+        except Exception:
+            pass
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "db": "error", "detail": e.__class__.__name__, "error_id": error_id},
+            headers={"X-Error-Id": error_id},
+        )
+
+@app.get("/health/db")
+def health_db():
+    try:
+        with engine.connect() as conn:
+            conn.execute(sa.text("SELECT 1"))
+        return {"status": "ok", "db": "ok"}
+    except Exception as e:
+        error_id = str(uuid.uuid4())
+        try:
+            logging.getLogger("uvicorn.error").exception("DB health check failed error_id=%s", error_id)
+        except Exception:
+            pass
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "db": "error", "detail": e.__class__.__name__, "error_id": error_id},
+            headers={"X-Error-Id": error_id},
+        )
+
+@app.get("/version")
+def version():
+    version_id = (
+        os.getenv("KOYEB_GIT_SHA")
+        or os.getenv("GIT_SHA")
+        or os.getenv("GIT_COMMIT")
+        or os.getenv("COMMIT_SHA")
+        or "unknown"
+    )
+    return {"version": version_id}
 
 @app.get("/debug/schema/{table_name}")
 def debug_schema(table_name: str, db: Session = Depends(get_db)):
@@ -1969,13 +2020,16 @@ def list_classes_contabeis(
             if not is_admin_user(db, current_user):
                 allowed = get_allowed_company_ids(db, current_user)
                 if not allowed:
-                    return []
+                    return Response(status_code=204)
                 q = q.filter(ClasseContabilModel.empresa_id.in_(allowed))
     
         if status:
             q = q.filter(ClasseContabilModel.status == status)
             
         items = q.order_by(ClasseContabilModel.codigo).all()
+        
+        if not items:
+            return Response(status_code=204)
         
         # Manual validation to debug 500 errors and fix potential NULLs
         serialized = []
@@ -2000,14 +2054,30 @@ def list_classes_contabeis(
                 model = ClasseContabil.model_validate(item_dict)
                 serialized.append(model.model_dump())
             except Exception as e:
-                import traceback
-                traceback.print_exc()
+                try:
+                    logging.getLogger("uvicorn.error").exception(
+                        "Erro ao serializar ClasseContabil id=%s",
+                        getattr(item, "id", None),
+                    )
+                except Exception:
+                    pass
                 errors.append({"id": getattr(item, "id", "unknown"), "error": str(e)})
         
         if errors:
-            print(f"Validation Errors in list_classes_contabeis: {errors}")
-            # Return 500 with details so the user can see it in the response
-            return JSONResponse(status_code=500, content={"detail": "Erro de validação nos dados", "errors": errors})
+            error_id = str(uuid.uuid4())
+            try:
+                logging.getLogger("uvicorn.error").error(
+                    "Validation errors in list_classes_contabeis error_id=%s errors=%s",
+                    error_id,
+                    errors,
+                )
+            except Exception:
+                pass
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Erro de validação nos dados", "error_id": error_id, "errors": errors},
+                headers={"X-Error-Id": error_id},
+            )
             
         return serialized
 
