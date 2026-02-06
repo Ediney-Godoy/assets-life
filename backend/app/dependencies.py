@@ -1,7 +1,8 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
+from typing import Optional, List
 from .database import SessionLocal
 from .models import (
     Usuario as UsuarioModel, 
@@ -46,7 +47,7 @@ def is_admin_user(db: Session, current_user: UsuarioModel) -> bool:
             return True
     return False
 
-def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int]:
+def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> List[int]:
     if is_admin_user(db, current_user):
         return [row[0] for row in db.query(CompanyModel.id).order_by(CompanyModel.id).all()]
 
@@ -88,3 +89,22 @@ def check_permission(db: Session, user: UsuarioModel, route: str):
     if not has_perm:
         raise HTTPException(status_code=403, detail="Acesso negado")
     return True
+
+def get_header_company_id(
+    x_company_id: Optional[str] = Header(None, alias="X-Company-Id"),
+    current_user: UsuarioModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Optional[int]:
+    if not x_company_id:
+        return None
+    
+    try:
+        cid = int(x_company_id)
+    except ValueError:
+        return None
+        
+    allowed = get_allowed_company_ids(db, current_user)
+    if cid not in allowed:
+        raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
+        
+    return cid
