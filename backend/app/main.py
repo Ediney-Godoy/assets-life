@@ -1799,22 +1799,32 @@ def list_centros_custos(
     db: Session = Depends(get_db)
 ):
     q = db.query(CentroCustoModel)
-    # limitar às empresas permitidas do usuário
-    allowed = get_allowed_company_ids(db, current_user)
-    if not allowed:
-        return []
-    q = q.filter(CentroCustoModel.empresa_id.in_(allowed))
-    if empresa_id:
-        # bloquear acesso explícito a empresa não permitida
-        if empresa_id not in allowed:
-            raise HTTPException(status_code=403, detail="Acesso negado aos Centros de Custos da empresa informada")
-        q = q.filter(CentroCustoModel.empresa_id == empresa_id)
+
+    # 1. Se Admin, permite tudo, mas RESPEITA FILTRO se passado
+    if is_admin_user(db, current_user):
+        if empresa_id:
+            q = q.filter(CentroCustoModel.empresa_id == empresa_id)
+    else:
+        # 2. Se User, filtra por allowed e bloqueia tentativa de acesso indevido
+        allowed = get_allowed_company_ids(db, current_user)
+        if not allowed:
+            return []
+            
+        if empresa_id:
+            if empresa_id not in allowed:
+                raise HTTPException(status_code=403, detail="Acesso negado aos Centros de Custos da empresa informada")
+            q = q.filter(CentroCustoModel.empresa_id == empresa_id)
+        else:
+            q = q.filter(CentroCustoModel.empresa_id.in_(allowed))
+
+    # Filtros comuns
     if ug_id:
         q = q.filter(CentroCustoModel.ug_id == ug_id)
     if status:
         q = q.filter(CentroCustoModel.status == status)
     if nome:
         q = q.filter(sa.func.lower(CentroCustoModel.nome).like(f"%{nome.lower()}%"))
+        
     return q.order_by(CentroCustoModel.codigo).all()
 
 @app.get("/centros_custos/{cc_id}", response_model=CentroCusto)
@@ -1928,18 +1938,22 @@ def list_classes_contabeis(
     db: Session = Depends(get_db)
 ):
     q = db.query(ClasseContabilModel)
+    
     if is_admin_user(db, current_user):
-        if status:
-            q = q.filter(ClasseContabilModel.status == status)
-        return q.order_by(ClasseContabilModel.codigo).all()
-    allowed = get_allowed_company_ids(db, current_user)
-    if not allowed:
-        return []
-    q = q.filter(ClasseContabilModel.empresa_id.in_(allowed))
-    if empresa_id:
-        if empresa_id not in allowed:
-            raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
-        q = q.filter(ClasseContabilModel.empresa_id == empresa_id)
+        if empresa_id:
+            q = q.filter(ClasseContabilModel.empresa_id == empresa_id)
+    else:
+        allowed = get_allowed_company_ids(db, current_user)
+        if not allowed:
+            return []
+            
+        if empresa_id:
+            if empresa_id not in allowed:
+                raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
+            q = q.filter(ClasseContabilModel.empresa_id == empresa_id)
+        else:
+            q = q.filter(ClasseContabilModel.empresa_id.in_(allowed))
+
     if status:
         q = q.filter(ClasseContabilModel.status == status)
     return q.order_by(ClasseContabilModel.codigo).all()
@@ -1985,15 +1999,27 @@ def update_classe_contabil(id: int, payload: ClasseContabilUpdate, db: Session =
     
     data = payload.dict(exclude_unset=True)
     
+    # Determina a empresa final para validações
+    target_empresa_id = data.get("empresa_id") or c.empresa_id
+    
     if "codigo" in data:
         existing = db.query(ClasseContabilModel).filter(
             ClasseContabilModel.codigo == data["codigo"], 
-            ClasseContabilModel.empresa_id == (data.get("empresa_id") or c.empresa_id),
+            ClasseContabilModel.empresa_id == target_empresa_id,
             ClasseContabilModel.id != id
         ).first()
         if existing:
              raise HTTPException(status_code=400, detail="Já existe uma Classe Contábil com este código nesta empresa")
 
+    # Validação cruzada de Conta Contábil
+    if "conta_contabil_id" in data:
+        if data["conta_contabil_id"]:
+            cc = db.query(ContaContabilModel).filter(ContaContabilModel.id == data["conta_contabil_id"]).first()
+            if not cc:
+                raise HTTPException(status_code=400, detail="Conta Contábil não encontrada")
+            if cc.empresa_id != target_empresa_id:
+                raise HTTPException(status_code=400, detail="A Conta Contábil informada pertence a outra empresa")
+        
     for key, value in data.items():
         setattr(c, key, value)
         
@@ -2044,18 +2070,22 @@ def list_contas_contabeis(
     db: Session = Depends(get_db)
 ):
     q = db.query(ContaContabilModel)
+    
     if is_admin_user(db, current_user):
-        if status:
-            q = q.filter(ContaContabilModel.status == status)
-        return q.order_by(ContaContabilModel.codigo).all()
-    allowed = get_allowed_company_ids(db, current_user)
-    if not allowed:
-        return []
-    q = q.filter(ContaContabilModel.empresa_id.in_(allowed))
-    if empresa_id:
-         if empresa_id not in allowed:
-            raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
-         q = q.filter(ContaContabilModel.empresa_id == empresa_id)
+        if empresa_id:
+            q = q.filter(ContaContabilModel.empresa_id == empresa_id)
+    else:
+        allowed = get_allowed_company_ids(db, current_user)
+        if not allowed:
+            return []
+            
+        if empresa_id:
+             if empresa_id not in allowed:
+                raise HTTPException(status_code=403, detail="Acesso negado à empresa informada")
+             q = q.filter(ContaContabilModel.empresa_id == empresa_id)
+        else:
+            q = q.filter(ContaContabilModel.empresa_id.in_(allowed))
+
     if status:
         q = q.filter(ContaContabilModel.status == status)
     return q.order_by(ContaContabilModel.codigo).all()
