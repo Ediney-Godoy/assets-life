@@ -536,13 +536,17 @@ export async function deleteManagementUnit(id) {
   return request(`/unidades_gerenciais/${id}`, { method: 'DELETE' });
 }
 
-export async function getUsers(empresaId) {
+export async function getUsers(empresaId, delegatedPeriodId) {
   // Lista de usuários pode ter volume considerável; dar mais margem
   const opts = { timeout: 30000 };
   if (empresaId) {
     opts.headers = { 'X-Company-Id': String(empresaId) };
   }
-  return request('/usuarios', opts);
+  let url = '/usuarios';
+  if (delegatedPeriodId) {
+    url += `?delegated_period_id=${delegatedPeriodId}`;
+  }
+  return request(url, opts);
 }
 
 export async function createUser(payload) {

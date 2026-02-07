@@ -2432,6 +2432,7 @@ def _generate_user_codigo(db: Session) -> str:
 @app.get("/usuarios", response_model=List[Usuario])
 def list_usuarios(
     empresa_id: Optional[int] = Header(None, alias="X-Company-Id"),
+    delegated_period_id: Optional[int] = None,
     current_user: UsuarioModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -2446,6 +2447,14 @@ def list_usuarios(
             continue
 
     q = db.query(UsuarioModel)
+
+    # If filtered by delegation in a specific period
+    if delegated_period_id:
+        q = q.join(RevisaoDelegacaoModel, UsuarioModel.id == RevisaoDelegacaoModel.revisor_id)\
+             .join(RevisaoItemModel, RevisaoDelegacaoModel.ativo_id == RevisaoItemModel.id)\
+             .filter(RevisaoItemModel.periodo_id == delegated_period_id)\
+             .filter(RevisaoDelegacaoModel.status == 'Ativo')\
+             .distinct()
     
     # If admin, return all users regardless of company context
     if is_admin:

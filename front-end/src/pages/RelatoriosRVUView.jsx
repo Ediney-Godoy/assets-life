@@ -54,7 +54,7 @@ export default function RelatoriosRVUView() {
           getCompanies(),
           getManagementUnits(),
           getAccountingClasses ? getAccountingClasses() : Promise.resolve([]),
-          getUsers(filters.empresa_id || undefined),
+          getUsers(filters.empresa_id || undefined, filters.periodo_id || undefined),
           getReviewPeriods ? getReviewPeriods() : Promise.resolve([]),
         ]);
 
@@ -93,7 +93,8 @@ export default function RelatoriosRVUView() {
     let active = true;
     (async () => {
       try {
-        const list = await getUsers(filters.empresa_id || undefined);
+        // Passa o periodo_id para filtrar revisores com delegação ativa (se houver período)
+        const list = await getUsers(filters.empresa_id || undefined, filters.periodo_id || undefined);
         if (!active) return;
         setRevisores(list || []);
         setFilters((f) => {
@@ -108,7 +109,7 @@ export default function RelatoriosRVUView() {
       }
     })();
     return () => { active = false; };
-  }, [filters.empresa_id]);
+  }, [filters.empresa_id, filters.periodo_id]);
 
   const applyFilters = async () => {
     setLoading(true);
