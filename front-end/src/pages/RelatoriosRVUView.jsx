@@ -72,6 +72,12 @@ export default function RelatoriosRVUView() {
         setClasses(cls || []);
         setRevisores(rev || []);
         setPeriodos(per || []);
+
+        // Auto-selecionar primeiro período aberto
+        const activePeriod = (per || []).find(p => p.status === 'Aberto');
+        if (activePeriod) {
+          setFilters(f => ({ ...f, periodo_id: activePeriod.id }));
+        }
       } catch (err) {
         setError(err.message || 'Erro ao carregar base');
       } finally {
@@ -243,6 +249,17 @@ export default function RelatoriosRVUView() {
             <select className="min-w-[180px] w-[220px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.classe_id} onChange={(e) => setFilters((f) => ({ ...f, classe_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {classes.map((cl) => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('review_period_label') || 'Período de Revisão'}</label>
+            <select 
+              className="min-w-[280px] w-[340px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" 
+              value={filters.periodo_id} 
+              onChange={(e) => setFilters((f) => ({ ...f, periodo_id: e.target.value }))}
+            >
+              <option value="">{t('all')}</option>
+              {periodos.map((p) => <option key={p.id} value={p.id}>{p.descricao}</option>)}
             </select>
           </div>
           <div>
