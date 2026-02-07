@@ -26,11 +26,17 @@ export default function DashboardPage({ registrationsOnly }) {
   React.useEffect(() => {
     if (registrationsOnly) return;
     getCompanies().then((list) => {
-      const arr = Array.isArray(list) ? list : [];
-      setCompanies(arr);
-      if (!companyId && arr.length > 0) {
+      let arr = Array.isArray(list) ? list : [];
+
+      const currentCompanyId = localStorage.getItem('assetlife_empresa');
+      if (currentCompanyId) {
+        arr = arr.filter(c => String(c.id) === String(currentCompanyId));
+        setCompanyId(currentCompanyId);
+      } else if (!companyId && arr.length > 0) {
         setCompanyId(String(arr[0].id));
       }
+
+      setCompanies(arr);
     }).catch(() => {});
   }, [registrationsOnly, companyId]);
 
@@ -362,6 +368,7 @@ export default function DashboardPage({ registrationsOnly }) {
                         className="select"
                         value={companyId}
                         onChange={(e) => setCompanyId(e.target.value)}
+                        disabled={!!localStorage.getItem('assetlife_empresa')}
                       >
                         {companies.map((c) => (
                           <option key={c.id} value={c.id}>{c.name}</option>
