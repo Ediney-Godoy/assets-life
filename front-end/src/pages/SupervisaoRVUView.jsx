@@ -49,7 +49,19 @@ export default function SupervisaoRVUView() {
           getUsers(empresaId),
           getReviewPeriods(),
         ]);
-        setCompanies(emp || []);
+        
+        // Restringe lista de empresas se houver contexto
+        let finalEmpresas = emp || [];
+        if (empresaCtx) {
+          finalEmpresas = finalEmpresas.filter(c => String(c.id) === String(empresaCtx));
+        }
+        setCompanies(finalEmpresas);
+        
+        // Se houver empresa de contexto, força seleção
+        if (empresaCtx && (!filters.empresa_id || String(filters.empresa_id) !== String(empresaCtx))) {
+          setFilters(f => ({ ...f, empresa_id: empresaCtx }));
+        }
+
         setUgs(ug || []);
         setRevisores(rev || []);
         setPeriodos(per || []);
@@ -252,6 +264,12 @@ export default function SupervisaoRVUView() {
     return periodos.find((p) => String(p.id) === id) || null;
   }, [filters.periodo_id, periodos]);
 
+  const responsavelPeriodo = useMemo(() => {
+    if (!periodoSelecionado) return '';
+    const r = revisores.find(u => String(u.id) === String(periodoSelecionado.responsavel_id));
+    return r ? (r.nome_completo || r.name) : 'Não identificado';
+  }, [periodoSelecionado, revisores]);
+
   const periodosVisiveis = useMemo(() => {
     let list = Array.isArray(periodos) ? periodos : [];
     if (filters.empresa_id) {
@@ -305,7 +323,12 @@ export default function SupervisaoRVUView() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-sm mb-1">Empresa</label>
-            <select className="input" value={filters.empresa_id} onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}>
+            <select 
+              className="input disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-800" 
+              value={filters.empresa_id} 
+              onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}
+              disabled={companies.length === 1}
+            >
               <option value="">Todas</option>
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -319,7 +342,24 @@ export default function SupervisaoRVUView() {
           </div>
           <div>
             <label className="block text-sm mb-1">Período</label>
-            <select className="input" value={filters.periodo_id} onChange={(e) => setFilters((f) => ({ ...f, periodo_id: e.target.value }))}>
+            <select 
+              className="input" 
+              value={filters.periodo_id} 
+              onChange={(e) => {
+                const pid = e.target.value;
+                setFilters((f) => {
+                  const newF = { ...f, periodo_id: pid };
+                  if (pid) {
+                    const p = periodos.find(x => String(x.id) === String(pid));
+                    if (p) {
+                      if (p.data_abertura) newF.periodo_inicio = String(p.data_abertura).split('T')[0];
+                      if (p.data_fechamento_prevista) newF.periodo_fim = String(p.data_fechamento_prevista).split('T')[0];
+                    }
+                  }
+                  return newF;
+                });
+              }}
+            >
               <option value="">Todos</option>
               {periodosVisiveis.map((p) => (
                 <option key={p.id} value={p.id}>{formatPeriodoLabel(p)}</option>
@@ -327,7 +367,17 @@ export default function SupervisaoRVUView() {
             </select>
           </div>
           <div>
-            <label className="block text-sm mb-1">Revisor</label>
+            <label className="block text-sm mb-1">Responsável (Período)</label>
+            <input 
+              type="text" 
+              className="input bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" 
+              value={responsavelPeriodo} 
+              readOnly 
+              placeholder="Selecione um período"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Filtrar Revisor (Delegado)</label>
             <select className="input" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
               <option value="">Todos</option>
               {revisores.map((r) => <option key={r.id} value={r.id}>{r.nome_completo || r.name}</option>)}
