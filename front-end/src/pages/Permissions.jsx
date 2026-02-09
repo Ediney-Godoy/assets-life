@@ -13,6 +13,7 @@ import {
   createPermissionGroup,
   updatePermissionGroup,
   deletePermissionGroup,
+  updateTransaction,
   getCompanies,
   getUsers,
   getTransactions,
@@ -61,28 +62,53 @@ export default function PermissionsPage() {
     try {
       setLoading(true);
       let tx = transactions.length ? transactions : (await getTransactions()) || [];
-      const requiredRoutes = new Set([
+      const requiredRoutes = [
         '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
-        '/notifications','/notifications/new'
-      ]);
-      const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));
-      const missing = Array.from(requiredRoutes).filter((r) => !existingRoutes.has(r));
-      for (const r of missing) {
-        try {
-          const nome = r === '/notifications' ? 'Notificações' : r === '/notifications/new' ? 'Enviar Notificação' : r;
-          await createTransaction({ nome_tela: nome, rota: r });
-        } catch {}
+        '/notifications','/notifications/new',
+        '/supervisao/rvu'
+      ];
+      const routeNames = {
+        '/notifications': 'Notificações',
+        '/notifications/new': 'Enviar Notificação',
+        '/supervisao/rvu': 'Supervisão RVU',
+        '/reviews/vidas-uteis': 'Revisões - Vidas Úteis',
+        '/reviews': 'Revisões',
+        '/reviews/periodos': 'Revisões - Períodos',
+        '/reviews/delegacao': 'Revisões - Delegação',
+        '/reviews/massa': 'Revisões - Massa',
+        '/revisoes-massa': 'Revisões - Massa (Legado)',
+        '/reviews/cronogramas': 'Revisões - Cronogramas',
+        '/reviews/cronogramas/edit': 'Revisões - Cronogramas (Edição)'
+      };
+
+      let anyChange = false;
+      for (const r of requiredRoutes) {
+        const existing = tx.find((t) => String(t.rota) === r);
+        const desiredName = routeNames[r] || r;
+        
+        if (!existing) {
+          try {
+            await createTransaction({ nome_tela: desiredName, rota: r });
+            anyChange = true;
+          } catch {}
+        } else if (existing.nome_tela !== desiredName) {
+          try {
+            await updateTransaction(existing.id, { nome_tela: desiredName, rota: r });
+            anyChange = true;
+          } catch {}
+        }
       }
-      if (missing.length > 0) {
+
+      if (anyChange) {
         tx = (await getTransactions()) || tx;
         setTransactions(Array.isArray(tx) ? tx : transactions);
-        toast.success('Rotas padrão criadas');
+        toast.success('Rotas padrão atualizadas');
       } else {
-        toast('Rotas padrão já existem');
+        toast('Rotas já estão atualizadas');
       }
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao criar rotas padrão');
+      toast.error('Erro ao gerenciar rotas padrão');
     } finally {
       setLoading(false);
     }
@@ -101,19 +127,43 @@ export default function PermissionsPage() {
       setCompanies(Array.isArray(cs) ? cs : []);
       setUsers(Array.isArray(us) ? us : []);
       let baseTx = Array.isArray(ts) ? ts : [];
-      const requiredRoutes = new Set([
+      const requiredRoutes = [
         '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
-        '/notifications','/notifications/new'
-      ]);
-      const existingRoutes = new Set(baseTx.map((tr) => String(tr.rota || '')));
-      const missing = Array.from(requiredRoutes).filter((r) => !existingRoutes.has(r));
-      for (const r of missing) {
-        try {
-          const nome = r === '/notifications' ? 'Notificações' : r === '/notifications/new' ? 'Enviar Notificação' : r;
-          await createTransaction({ nome_tela: nome, rota: r });
-        } catch {}
+        '/notifications','/notifications/new',
+        '/supervisao/rvu'
+      ];
+      const routeNames = {
+        '/notifications': 'Notificações',
+        '/notifications/new': 'Enviar Notificação',
+        '/supervisao/rvu': 'Supervisão RVU',
+        '/reviews/vidas-uteis': 'Revisões - Vidas Úteis',
+        '/reviews': 'Revisões',
+        '/reviews/periodos': 'Revisões - Períodos',
+        '/reviews/delegacao': 'Revisões - Delegação',
+        '/reviews/massa': 'Revisões - Massa',
+        '/revisoes-massa': 'Revisões - Massa (Legado)',
+        '/reviews/cronogramas': 'Revisões - Cronogramas',
+        '/reviews/cronogramas/edit': 'Revisões - Cronogramas (Edição)'
+      };
+
+      let anyChange = false;
+      for (const r of requiredRoutes) {
+        const existing = baseTx.find((t) => String(t.rota) === r);
+        const desiredName = routeNames[r] || r;
+        
+        if (!existing) {
+          try {
+            await createTransaction({ nome_tela: desiredName, rota: r });
+            anyChange = true;
+          } catch {}
+        } else if (existing.nome_tela !== desiredName) {
+          try {
+            await updateTransaction(existing.id, { nome_tela: desiredName, rota: r });
+            anyChange = true;
+          } catch {}
+        }
       }
-      if (missing.length > 0) {
+      if (anyChange) {
         try { baseTx = (await getTransactions()) || baseTx; } catch {}
       }
       setTransactions(Array.isArray(baseTx) ? baseTx : []);
@@ -155,19 +205,43 @@ export default function PermissionsPage() {
       setGroupTransactions(Array.isArray(gt) ? gt : []);
       try {
         let tx = transactions.length ? transactions : (await getTransactions()) || [];
-        const requiredRoutes = new Set([
+        const requiredRoutes = [
           '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
-          '/notifications','/notifications/new'
-        ]);
-        const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));
-        const missing = Array.from(requiredRoutes).filter((r) => !existingRoutes.has(r));
-        for (const r of missing) {
-          try {
-            const nome = r === '/notifications' ? 'Notificações' : r === '/notifications/new' ? 'Enviar Notificação' : r;
-            await createTransaction({ nome_tela: nome, rota: r });
-          } catch {}
+          '/notifications','/notifications/new',
+          '/supervisao/rvu'
+        ];
+        const routeNames = {
+          '/notifications': 'Notificações',
+          '/notifications/new': 'Enviar Notificação',
+          '/supervisao/rvu': 'Supervisão RVU',
+          '/reviews/vidas-uteis': 'Revisões - Vidas Úteis',
+          '/reviews': 'Revisões',
+          '/reviews/periodos': 'Revisões - Períodos',
+          '/reviews/delegacao': 'Revisões - Delegação',
+          '/reviews/massa': 'Revisões - Massa',
+          '/revisoes-massa': 'Revisões - Massa (Legado)',
+          '/reviews/cronogramas': 'Revisões - Cronogramas',
+          '/reviews/cronogramas/edit': 'Revisões - Cronogramas (Edição)'
+        };
+
+        let anyChange = false;
+        for (const r of requiredRoutes) {
+          const existing = tx.find((t) => String(t.rota) === r);
+          const desiredName = routeNames[r] || r;
+          
+          if (!existing) {
+            try {
+              await createTransaction({ nome_tela: desiredName, rota: r });
+              anyChange = true;
+            } catch {}
+          } else if (existing.nome_tela !== desiredName) {
+            try {
+              await updateTransaction(existing.id, { nome_tela: desiredName, rota: r });
+              anyChange = true;
+            } catch {}
+          }
         }
-        if (missing.length > 0) {
+        if (anyChange) {
           tx = (await getTransactions()) || tx;
           setTransactions(Array.isArray(tx) ? tx : transactions);
         }
@@ -196,20 +270,44 @@ export default function PermissionsPage() {
         // Vincular transações padrão de Revisões automaticamente
         try {
           let tx = transactions.length ? transactions : (await getTransactions()) || [];
-          const requiredRoutes = new Set([
+          const requiredRoutes = [
             '/reviews','/reviews/periodos','/reviews/cronogramas','/reviews/cronogramas/edit','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis',
-            '/notifications','/notifications/new'
-          ]);
-          const existingRoutes = new Set(tx.map((tr) => String(tr.rota || '')));
-          const missing = Array.from(requiredRoutes).filter((r) => !existingRoutes.has(r));
-          for (const r of missing) {
-            try {
-              const nome = r === '/notifications' ? 'Notificações' : r === '/notifications/new' ? 'Enviar Notificação' : r;
-              await createTransaction({ nome_tela: nome, rota: r });
-            } catch {}
+            '/notifications','/notifications/new',
+            '/supervisao/rvu'
+          ];
+          const routeNames = {
+            '/notifications': 'Notificações',
+            '/notifications/new': 'Enviar Notificação',
+            '/supervisao/rvu': 'Supervisão RVU',
+            '/reviews/vidas-uteis': 'Revisões - Vidas Úteis',
+            '/reviews': 'Revisões',
+            '/reviews/periodos': 'Revisões - Períodos',
+            '/reviews/delegacao': 'Revisões - Delegação',
+            '/reviews/massa': 'Revisões - Massa',
+            '/revisoes-massa': 'Revisões - Massa (Legado)',
+            '/reviews/cronogramas': 'Revisões - Cronogramas',
+            '/reviews/cronogramas/edit': 'Revisões - Cronogramas (Edição)'
+          };
+
+          let anyChange = false;
+          for (const r of requiredRoutes) {
+            const existing = tx.find((t) => String(t.rota) === r);
+            const desiredName = routeNames[r] || r;
+            
+            if (!existing) {
+              try {
+                await createTransaction({ nome_tela: desiredName, rota: r });
+                anyChange = true;
+              } catch {}
+            } else if (existing.nome_tela !== desiredName) {
+              try {
+                await updateTransaction(existing.id, { nome_tela: desiredName, rota: r });
+                anyChange = true;
+              } catch {}
+            }
           }
           tx = (await getTransactions()) || [];
-          const toLink = tx.filter((tr) => requiredRoutes.has(String(tr.rota || '')));
+          const toLink = tx.filter((tr) => requiredRoutes.includes(String(tr.rota || '')));
           for (const tr of toLink) {
             try { await addGroupTransaction(created.id, tr.id); } catch {}
           }
@@ -441,9 +539,12 @@ export default function PermissionsPage() {
                 <div className="flex items-end gap-2">
                   <Select label="Transação" value={selectedTransacaoId} onChange={(e) => setSelectedTransacaoId(e.target.value)} className="flex-1">
                     <option value="">Selecione...</option>
-                    {transactions.filter((tr) => !groupTransactions.some((gt) => gt.id === tr.id)).map((tr) => (
-                      <option key={tr.id} value={tr.id}>{tr.nome_tela} ({tr.rota})</option>
-                    ))}
+                    {transactions
+                      .filter((tr) => !groupTransactions.some((gt) => gt.id === tr.id))
+                      .sort((a, b) => (a.nome_tela || a.rota || '').localeCompare(b.nome_tela || b.rota || ''))
+                      .map((tr) => (
+                        <option key={tr.id} value={tr.id}>{tr.nome_tela} ({tr.rota})</option>
+                      ))}
                   </Select>
                   <Button variant="primary" onClick={onAddTransaction} disabled={!selectedTransacaoId}>Adicionar</Button>
                 </div>
