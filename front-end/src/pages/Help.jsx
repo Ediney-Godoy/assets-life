@@ -365,25 +365,65 @@ export default function HelpPage() {
       case 'reviews':
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <ClipboardCheck className="text-blue-600 dark:text-blue-400" /> {t('help_reviews_flow_title') || 'Fluxo de Revisão'}
-                </h2>
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 shadow-sm">
-                  <ol className="space-y-4">
-                    {[
-                        t('help_reviews_flow_step_period') || '1) Abra um Período de Revisão.',
-                        t('help_reviews_flow_step_import') || '2) Importe ou sincronize os dados do ERP.',
-                        t('help_reviews_flow_step_delegate') || '3) Delegue conjuntos de bens para usuários revisores.',
-                        t('help_reviews_flow_step_review') || '4) Usuários realizam a revisão (Vidas Úteis).',
-                        t('help_reviews_flow_step_mass') || '5) Revisão em Massa para ajustes em lote.',
-                        t('help_reviews_flow_step_reports') || '6) Gere relatórios finais.'
-                    ].map((step, idx) => (
-                        <li key={idx} className="flex gap-3">
-                            <span className="flex-none font-bold text-slate-400 dark:text-slate-600">{idx + 1}.</span>
-                            <span className="text-slate-700 dark:text-slate-300">{step.replace(/^\d+\)\s*/, '')}</span>
-                        </li>
-                    ))}
-                  </ol>
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-2">
+                        <ClipboardCheck className="text-blue-600 dark:text-blue-400" /> {t('help_reviews_flow_title') || 'Fluxo de Revisão'}
+                    </h2>
+                    <p className="text-slate-600 dark:text-slate-400 text-lg">
+                        {t('help_reviews_intro') || "O módulo de Revisões permite o gerenciamento completo do ciclo de vida útil dos ativos, desde a abertura do período até a aprovação final. Siga o guia abaixo para entender cada etapa."}
+                    </p>
+                </div>
+                
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-950 shadow-sm">
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-b border-slate-200 dark:border-slate-800 font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                        <FileText size={18} /> {t('help_reviews_flow_title') || 'Guia Detalhado'}
+                    </div>
+                    
+                    <div className="p-6 space-y-8">
+                        {[
+                            {
+                                id: 1,
+                                title: t('help_reviews_step1_title') || "1. Gestão de Períodos",
+                                desc: t('help_reviews_step1_desc') || "Tudo começa com a criação de um Período de Revisão.",
+                                details: t('help_reviews_step1_details') || "Defina datas e responsáveis."
+                            },
+                            {
+                                id: 2,
+                                title: t('help_reviews_step2_title') || "2. Importação da Base",
+                                desc: t('help_reviews_step2_desc') || "Carregue os ativos que serão revisados.",
+                                details: t('help_reviews_step2_details') || "Use CSV ou Excel no cadastro do período."
+                            },
+                            {
+                                id: 3,
+                                title: t('help_reviews_step3_title') || "3. Delegação de Itens",
+                                desc: t('help_reviews_step3_desc') || "Distribua o trabalho para os revisores.",
+                                details: t('help_reviews_step3_details') || "Use filtros e atribua aos usuários."
+                            },
+                            {
+                                id: 4,
+                                title: t('help_reviews_step4_title') || "4. Realizando a Revisão",
+                                desc: t('help_reviews_step4_desc') || "O trabalho técnico de análise.",
+                                details: t('help_reviews_step4_details') || "Ajuste vidas úteis e justifique."
+                            },
+                            {
+                                id: 5,
+                                title: t('help_reviews_step5_title') || "5. Supervisão e Aprovação",
+                                desc: t('help_reviews_step5_desc') || "Controle de qualidade.",
+                                details: t('help_reviews_step5_details') || "Aprovar ou rejeitar revisões."
+                            }
+                        ].map((step) => (
+                             <div key={step.id} className="flex gap-4">
+                                <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm ring-4 ring-blue-50 dark:ring-blue-900/20 dark:bg-blue-900 dark:text-blue-300">
+                                    {step.id}
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-lg mb-1">{step.title}</h3>
+                                    <p className="text-slate-700 dark:text-slate-300 font-medium mb-1">{step.desc}</p>
+                                    <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{step.details}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         );
