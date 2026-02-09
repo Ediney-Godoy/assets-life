@@ -53,17 +53,17 @@ export default function Sidebar() {
     return allowed.has(route) || (parent ? allowed.has(parent) : false);
   };
 
-  const childMap = {
-    '/reviews': ['/avaliacoes','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/revisoes/vidas-uteis','/revisao/vidas-uteis','/reviews/cronogramas'],
-    '/reports': ['/relatorios-rvu','/reports/vida-util'],
-    '/supervisao-rvu': ['/supervisao/rvu','/supervisao-rvu'],
-    '/permissions': ['/permissions','/permissions/groups'],
-    '/cadastros': ['/companies','/ugs','/cost-centers','/users','/asset-species','/employees','/cadastros','/classes-contabeis','/contas-contabeis','/assets'],
-    '/notifications': ['/notifications','/notifications/new'],
+  // Mapeamento de rotas alternativas/filhas para itens de menu pais
+  const mappings = {
+    '/reviews': ['/reviews/periodos', '/reviews/delegacao', '/reviews/massa', '/revisoes-massa', '/reviews/vidas-uteis', '/reviews/cronogramas'],
+    '/reports': ['/reports/vida-util', '/relatorios/rvu'],
+    '/permissions': ['/permissions/groups'],
+    '/notifications': ['/notifications/new'],
+    '/supervisao-rvu': ['/supervisao/rvu'],
   };
 
   const hasChildrenAllowed = (parent) => {
-    const list = childMap[parent] || [];
+    const list = mappings[parent] || [];
     for (const r of list) if (allowed.has(r)) return true;
     for (const r of allowed) if (r.startsWith(parent + '/')) return true;
     return false;
