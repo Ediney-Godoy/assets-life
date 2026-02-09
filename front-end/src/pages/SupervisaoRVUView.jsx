@@ -27,7 +27,8 @@ export default function SupervisaoRVUView() {
   const [hist, setHist] = useState([]);
   const [query, setQuery] = useState('');
 
-  const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', revisor_id: '', status: 'Pendente', periodo_inicio: '', periodo_fim: '', periodo_id: '' });
+  const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', revisor_id: '', status: 'Pendente', periodo_id: '' });
+  const [dynamicFilters, setDynamicFilters] = useState({ classe: '', centro_custo: '', valor_min: '', valor_max: '' });
 
   const [drawerItem, setDrawerItem] = useState(null);
   const [showComment, setShowComment] = useState(false);
@@ -136,6 +137,24 @@ export default function SupervisaoRVUView() {
         )
       : items;
 
+    let res = base;
+
+    // Dynamic filters (Client-side)
+    if (dynamicFilters.classe) {
+      const f = dynamicFilters.classe.toLowerCase();
+      res = res.filter(i => String(i.classe_contabil || '').toLowerCase().includes(f));
+    }
+    if (dynamicFilters.centro_custo) {
+      const f = dynamicFilters.centro_custo.toLowerCase();
+      res = res.filter(i => String(i.centro_custo || '').toLowerCase().includes(f));
+    }
+    if (dynamicFilters.valor_min) {
+      res = res.filter(i => Number(i.valor_contabil || 0) >= Number(dynamicFilters.valor_min));
+    }
+    if (dynamicFilters.valor_max) {
+      res = res.filter(i => Number(i.valor_contabil || 0) <= Number(dynamicFilters.valor_max));
+    }
+
     const score = (x) => {
       const origem = Number(x.vida_util_atual || 0);
       const delta = Number(x.delta_vida_util || 0);
@@ -144,12 +163,12 @@ export default function SupervisaoRVUView() {
       return highlighted * 1000 + ratio; // prioriza destacados e, em seguida, maior discrepância
     };
 
-    return [...base].sort((a, b) => {
+    return [...res].sort((a, b) => {
       const diff = score(b) - score(a);
       if (diff !== 0) return diff;
       return 0;
     });
-  }, [items, query]);
+  }, [items, query, dynamicFilters]);
 
   const resumo = useMemo(() => {
     const total = items.length;
@@ -320,7 +339,8 @@ export default function SupervisaoRVUView() {
 
       {/* Filtros */}
       <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Linha Principal */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
           <div>
             <label className="block text-sm mb-1">Empresa</label>
             <select 
@@ -334,31 +354,11 @@ export default function SupervisaoRVUView() {
             </select>
           </div>
           <div>
-            <label className="block text-sm mb-1">Unidade Gerencial</label>
-            <select className="input" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
-              <option value="">Todas</option>
-              {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
-            </select>
-          </div>
-          <div>
             <label className="block text-sm mb-1">Período</label>
             <select 
               className="input" 
               value={filters.periodo_id} 
-              onChange={(e) => {
-                const pid = e.target.value;
-                setFilters((f) => {
-                  const newF = { ...f, periodo_id: pid };
-                  if (pid) {
-                    const p = periodos.find(x => String(x.id) === String(pid));
-                    if (p) {
-                      if (p.data_abertura) newF.periodo_inicio = String(p.data_abertura).split('T')[0];
-                      if (p.data_fechamento_prevista) newF.periodo_fim = String(p.data_fechamento_prevista).split('T')[0];
-                    }
-                  }
-                  return newF;
-                });
-              }}
+              onChange={(e) => setFilters((f) => ({ ...f, periodo_id: e.target.value }))}
             >
               <option value="">Todos</option>
               {periodosVisiveis.map((p) => (
@@ -373,15 +373,8 @@ export default function SupervisaoRVUView() {
               className="input bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" 
               value={responsavelPeriodo} 
               readOnly 
-              placeholder="Selecione um período"
+              placeholder="-"
             />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Filtrar Revisor (Delegado)</label>
-            <select className="input" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
-              <option value="">Todos</option>
-              {revisores.map((r) => <option key={r.id} value={r.id}>{r.nome_completo || r.name}</option>)}
-            </select>
           </div>
           <div>
             <label className="block text-sm mb-1">Status</label>
@@ -390,15 +383,66 @@ export default function SupervisaoRVUView() {
             </select>
           </div>
           <div>
-            <label className="block text-sm mb-1">Período Inicial</label>
-            <input type="date" className="input" placeholder="dd/mm/aaaa" value={filters.periodo_inicio} onChange={(e) => setFilters((f) => ({ ...f, periodo_inicio: e.target.value }))} />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Período Final</label>
-            <input type="date" className="input" placeholder="dd/mm/aaaa" value={filters.periodo_fim} onChange={(e) => setFilters((f) => ({ ...f, periodo_fim: e.target.value }))} />
+            <label className="block text-sm mb-1">Filtrar Revisor (Delegado)</label>
+            <select className="input" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
+              <option value="">Todos</option>
+              {revisores.map((r) => <option key={r.id} value={r.id}>{r.nome_completo || r.name}</option>)}
+            </select>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-3">
+
+        {/* Filtros Dinâmicos */}
+        <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Filtros Dinâmicos</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-sm mb-1">Unidade Gerencial</label>
+              <select className="input" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
+                <option value="">Todas</option>
+                {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Classe Contábil</label>
+              <input 
+                className="input" 
+                placeholder="Ex: Veículos..." 
+                value={dynamicFilters.classe}
+                onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Centro de Custos</label>
+              <input 
+                className="input" 
+                placeholder="Ex: ADM..." 
+                value={dynamicFilters.centro_custo}
+                onChange={(e) => setDynamicFilters(d => ({ ...d, centro_custo: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Valor Contábil (Mín/Máx)</label>
+              <div className="flex gap-2">
+                <input 
+                  type="number"
+                  className="input" 
+                  placeholder="Min" 
+                  value={dynamicFilters.valor_min}
+                  onChange={(e) => setDynamicFilters(d => ({ ...d, valor_min: e.target.value }))}
+                />
+                <input 
+                  type="number"
+                  className="input" 
+                  placeholder="Max" 
+                  value={dynamicFilters.valor_max}
+                  onChange={(e) => setDynamicFilters(d => ({ ...d, valor_max: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mt-4">
           {/* Botão pequeno com ícone de filtro */}
           <button
             className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-600 text-white shadow hover:bg-indigo-700"
