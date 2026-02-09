@@ -75,14 +75,16 @@ export default function SupervisaoRVUView() {
     loadBase();
   }, []);
 
-  // Recarrega revisores e UGs quando empresa muda
+  // Recarrega revisores e UGs quando empresa muda ou período é selecionado
   useEffect(() => {
     const reloadScoped = async () => {
       try {
         const empresaId = filters.empresa_id || undefined;
+        const periodoId = filters.periodo_id || undefined;
+        
         const [ug, rev] = await Promise.all([
           getManagementUnits(empresaId),
-          getUsers(empresaId),
+          getUsers(empresaId, periodoId),
         ]);
         setUgs(ug || []);
         setRevisores(rev || []);
@@ -92,7 +94,7 @@ export default function SupervisaoRVUView() {
       }
     };
     reloadScoped();
-  }, [filters.empresa_id]);
+  }, [filters.empresa_id, filters.periodo_id]);
 
   const aplicarFiltros = async () => {
     setLoading(true);
