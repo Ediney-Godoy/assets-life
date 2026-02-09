@@ -29,6 +29,17 @@ export default function SupervisaoRVUView() {
 
   const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', revisor_id: '', status: 'Pendente', periodo_id: '' });
   const [dynamicFilters, setDynamicFilters] = useState({ classe: '', centro_custo: '', valor_min: '', valor_max: '' });
+  const [filterType, setFilterType] = useState('todos');
+
+  const uniqueClasses = useMemo(() => {
+    const vals = Array.from(new Set(items.map((i) => i.classe_contabil).filter(Boolean)));
+    return vals.sort();
+  }, [items]);
+
+  const uniqueCCs = useMemo(() => {
+    const vals = Array.from(new Set(items.map((i) => i.centro_custo).filter(Boolean)));
+    return vals.sort();
+  }, [items]);
 
   const [drawerItem, setDrawerItem] = useState(null);
   const [showComment, setShowComment] = useState(false);
@@ -398,49 +409,84 @@ export default function SupervisaoRVUView() {
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Filtros Dinâmicos</div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <label className="block text-sm mb-1">Unidade Gerencial</label>
-              <select className="input" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
-                <option value="">Todas</option>
-                {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
+              <label className="block text-sm mb-1">Tipo de Filtro</label>
+              <select 
+                className="input" 
+                value={filterType} 
+                onChange={(e) => {
+                  const t = e.target.value;
+                  setFilterType(t);
+                  setDynamicFilters({ classe: '', centro_custo: '', valor_min: '', valor_max: '' });
+                  if (t !== 'ug') setFilters(f => ({ ...f, ug_id: '' }));
+                }}
+              >
+                <option value="todos">Todos os itens</option>
+                <option value="ug">Unidade Gerencial</option>
+                <option value="classe">Classe Contábil</option>
+                <option value="centro_custo">Centro de Custos</option>
+                <option value="valor">Valor Contábil</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm mb-1">Classe Contábil</label>
-              <input 
-                className="input" 
-                placeholder="Ex: Veículos..." 
-                value={dynamicFilters.classe}
-                onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Centro de Custos</label>
-              <input 
-                className="input" 
-                placeholder="Ex: ADM..." 
-                value={dynamicFilters.centro_custo}
-                onChange={(e) => setDynamicFilters(d => ({ ...d, centro_custo: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Valor Contábil (Mín/Máx)</label>
-              <div className="flex gap-2">
-                <input 
-                  type="number"
-                  className="input" 
-                  placeholder="Min" 
-                  value={dynamicFilters.valor_min}
-                  onChange={(e) => setDynamicFilters(d => ({ ...d, valor_min: e.target.value }))}
-                />
-                <input 
-                  type="number"
-                  className="input" 
-                  placeholder="Max" 
-                  value={dynamicFilters.valor_max}
-                  onChange={(e) => setDynamicFilters(d => ({ ...d, valor_max: e.target.value }))}
-                />
+
+            {filterType === 'ug' && (
+              <div>
+                <label className="block text-sm mb-1">Unidade Gerencial</label>
+                <select className="input" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
+                  <option value="">Todas</option>
+                  {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
+                </select>
               </div>
-            </div>
+            )}
+
+            {filterType === 'classe' && (
+              <div>
+                <label className="block text-sm mb-1">Classe Contábil</label>
+                <select 
+                  className="input" 
+                  value={dynamicFilters.classe}
+                  onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
+                >
+                  <option value="">Todas</option>
+                  {uniqueClasses.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
+
+            {filterType === 'centro_custo' && (
+              <div>
+                <label className="block text-sm mb-1">Centro de Custos</label>
+                <select 
+                  className="input" 
+                  value={dynamicFilters.centro_custo}
+                  onChange={(e) => setDynamicFilters(d => ({ ...d, centro_custo: e.target.value }))}
+                >
+                  <option value="">Todos</option>
+                  {uniqueCCs.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
+
+            {filterType === 'valor' && (
+              <div>
+                <label className="block text-sm mb-1">Valor Contábil (Mín/Máx)</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="number"
+                    className="input" 
+                    placeholder="Min" 
+                    value={dynamicFilters.valor_min}
+                    onChange={(e) => setDynamicFilters(d => ({ ...d, valor_min: e.target.value }))}
+                  />
+                  <input 
+                    type="number"
+                    className="input" 
+                    placeholder="Max" 
+                    value={dynamicFilters.valor_max}
+                    onChange={(e) => setDynamicFilters(d => ({ ...d, valor_max: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
