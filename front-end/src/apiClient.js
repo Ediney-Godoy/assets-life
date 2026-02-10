@@ -886,7 +886,7 @@ export async function reverterSupervisaoRVU(payload) {
 }
 
 export async function aprovarSupervisaoRVU(payload) {
-  return request('/supervisao/rvu/aprovar', { method: 'POST', body: JSON.stringify(payload) });
+  return request('/supervisao/rvu/aprovar', { method: 'POST', body: JSON.stringify(payload), timeout: 120000 });
 }
 
 export async function historicoSupervisaoRVU(params = {}) {
