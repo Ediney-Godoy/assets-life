@@ -1,0 +1,5 @@
+commit a4a9c6c7a307bcaa33a4fc31ab25625914a1b95c
+Author: Ediney-Godoy <ediney.dev@gmail.com>
+Date:   Tue Feb 10 20:48:21 2026 -0300
+
+    Fix: Add mass approval checkboxes and period logic
