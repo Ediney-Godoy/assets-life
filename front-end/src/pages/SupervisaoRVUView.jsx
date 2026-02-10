@@ -30,6 +30,7 @@ export default function SupervisaoRVUView() {
   const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', revisor_id: '', status: 'Pendente', periodo_id: '' });
   const [dynamicFilters, setDynamicFilters] = useState({ classe: '', centro_custo: '', valor_min: '', valor_max: '' });
   const [filterType, setFilterType] = useState('todos');
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
 
   const uniqueClasses = useMemo(() => {
     const vals = Array.from(new Set(items.map((i) => i.classe_contabil).filter(Boolean)));
@@ -337,21 +338,25 @@ export default function SupervisaoRVUView() {
       )}
       <div className="flex items-center justify-between mb-3">
         <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Supervisão RVU</div>
-        <button
-          className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-slate-200 text-slate-800 shadow hover:bg-slate-300"
-          onClick={() => { try { window.history.back(); } catch { window.location.href = '/'; } }}
-          title="Voltar"
-          aria-label="Voltar"
-        >
-          {/* Ícone seta voltar */}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       {/* Filtros */}
-      <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
+      <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4 relative">
+        <button
+          className="absolute top-2 right-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors z-10"
+          onClick={() => setFiltersExpanded(!filtersExpanded)}
+          title={filtersExpanded ? "Ocultar filtros" : "Mostrar filtros"}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {filtersExpanded ? (
+              <path d="M18 15l-6-6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            ) : (
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            )}
+          </svg>
+        </button>
+
+        <div className={`transition-all duration-300 overflow-hidden ${filtersExpanded ? 'opacity-100' : 'max-h-0 opacity-0'}`}>
         {/* Linha Principal */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
           <div>
@@ -526,6 +531,7 @@ export default function SupervisaoRVUView() {
               <path d="M6.8 8.5l3.2 3.2m0-3.2l-3.2 3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
+        </div>
         </div>
       </div>
 
