@@ -404,49 +404,59 @@ def reverter(payload: ReverterCreate, current_user: UsuarioModel = Depends(get_c
 @router.post('/aprovar')
 def aprovar(payload: AprovarCreate, current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
     ensure_tables()
-    it = db.query(RevisaoItemModel).filter(RevisaoItemModel.id == payload.ativo_id).first()
-    if not it:
-        raise HTTPException(status_code=404, detail='Item de revisão não encontrado')
-    # autorização por empresa
-    allowed = get_allowed_company_ids(db, current_user)
-    per_check = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == (payload.periodo_id or it.periodo_id)).first() if (payload.periodo_id or it.periodo_id) else None
-    if allowed and per_check and getattr(per_check, 'empresa_id', None) not in allowed:
-        raise HTTPException(status_code=403, detail='Acesso negado ao item desta empresa')
-    # período status
-    per = None
-    if payload.periodo_id or it.periodo_id:
-        per = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == (payload.periodo_id or it.periodo_id)).first()
-    if getattr(per, 'status', None) == 'Encerrado':
-        raise HTTPException(status_code=400, detail='Período encerrado: aprovações bloqueadas')
-    # marca como aprovado
-    it.status = 'Aprovado'
-    db.commit()
-    # histórico
-    revisada_total = int(it.vida_util_revisada or 0)
-    db.execute(sa.text(
-        """
-        INSERT INTO revisoes_historico (ativo_id, supervisor_id, vida_util_revisada, acao, status, motivo_reversao)
-        VALUES (:ativo_id, :supervisor_id, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
-        """
-    ), {
-        'ativo_id': payload.ativo_id,
-        'supervisor_id': payload.supervisor_id,
-        'vida_util_revisada': revisada_total,
-        'motivo': payload.motivo or ''
-    })
-    # auditoria
-    db.execute(sa.text(
-        """
-        INSERT INTO auditoria_rvu (usuario_id, acao, entidade, entidade_id, detalhes)
-        VALUES (:usuario_id, 'aprovar', 'revisao_item', :entidade_id, :detalhes)
-        """
-    ), {
-        'usuario_id': payload.supervisor_id,
-        'entidade_id': payload.ativo_id,
-        'detalhes': f"Aprovacao registrada. {payload.motivo or ''}"
-    })
-    db.commit()
-    return { 'ok': True }
+    try:
+        it = db.query(RevisaoItemModel).filter(RevisaoItemModel.id == payload.ativo_id).first()
+        if not it:
+            raise HTTPException(status_code=404, detail='Item de revisão não encontrado')
+        # autorização por empresa
+        allowed = get_allowed_company_ids(db, current_user)
+        per_check = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == (payload.periodo_id or it.periodo_id)).first() if (payload.periodo_id or it.periodo_id) else None
+        if allowed and per_check and getattr(per_check, 'empresa_id', None) not in allowed:
+            raise HTTPException(status_code=403, detail='Acesso negado ao item desta empresa')
+        # período status
+        per = None
+        if payload.periodo_id or it.periodo_id:
+            per = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == (payload.periodo_id or it.periodo_id)).first()
+        if getattr(per, 'status', None) == 'Encerrado':
+            raise HTTPException(status_code=400, detail='Período encerrado: aprovações bloqueadas')
+        # marca como aprovado
+        it.status = 'Aprovado'
+        db.commit()
+        # histórico
+        revisada_total = int(it.vida_util_revisada or 0)
+        # Use current_user.id instead of payload.supervisor_id to ensure validity
+        safe_supervisor_id = current_user.id
+        
+        db.execute(sa.text(
+            """
+            INSERT INTO revisoes_historico (ativo_id, supervisor_id, vida_util_revisada, acao, status, motivo_reversao)
+            VALUES (:ativo_id, :supervisor_id, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
+            """
+        ), {
+            'ativo_id': payload.ativo_id,
+            'supervisor_id': safe_supervisor_id,
+            'vida_util_revisada': revisada_total,
+            'motivo': payload.motivo or ''
+        })
+        # auditoria
+        db.execute(sa.text(
+            """
+            INSERT INTO auditoria_rvu (usuario_id, acao, entidade, entidade_id, detalhes)
+            VALUES (:usuario_id, 'aprovar', 'revisao_item', :entidade_id, :detalhes)
+            """
+        ), {
+            'usuario_id': safe_supervisor_id,
+            'entidade_id': payload.ativo_id,
+            'detalhes': f"Aprovacao registrada. {payload.motivo or ''}"
+        })
+        db.commit()
+        return { 'ok': True }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERRO /supervisao/rvu/aprovar: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
 @router.get('/historico')
