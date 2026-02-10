@@ -874,7 +874,7 @@ export async function updatePermissionGroup(id, payload) {
 export async function listarSupervisaoRVU(params = {}) {
   const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
   // Em bases grandes, ampliar timeout para evitar abort precoce
-  return request(`/supervisao/rvu/listar${q ? `?${q}` : ''}`, { timeout: 60000 });
+  return request(`/supervisao/rvu/listar${q ? `?${q}` : ''}`, { timeout: 120000 });
 }
 
 export async function comentarSupervisaoRVU(payload) {
@@ -892,7 +892,7 @@ export async function aprovarSupervisaoRVU(payload) {
 export async function historicoSupervisaoRVU(params = {}) {
   const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
   // Histórico é informativo; dar mais tempo para bases grandes
-  return request(`/supervisao/rvu/historico${q ? `?${q}` : ''}`, { timeout: 60000 });
+  return request(`/supervisao/rvu/historico${q ? `?${q}` : ''}`, { timeout: 120000 });
 }
 
 export async function listarComentariosRVU(ativoId) {
