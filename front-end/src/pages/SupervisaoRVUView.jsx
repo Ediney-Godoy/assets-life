@@ -641,6 +641,7 @@ export default function SupervisaoRVUView() {
         onScroll={handleScrollTable}
         className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto"
       >
+        {/* Force update for mass approval checkboxes */}
         <table className="min-w-full text-sm">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900">
             <tr>
