@@ -59,10 +59,17 @@ def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> list[int
     return sorted(empresas_ids)
 
 
+_tables_ensured = False
+
 def ensure_tables():
     """Cria tabelas auxiliares de comentários, histórico e auditoria de RVU se não existirem.
     Em desenvolvimento, evita necessidade de migração imediata.
+    Executa apenas uma vez por ciclo de vida da aplicação para evitar overhead e locks.
     """
+    global _tables_ensured
+    if _tables_ensured:
+        return
+
     # Tenta criar tabelas mesmo se ALLOW_DDL for falso, pois são essenciais para o funcionamento
     # e a falta delas causa erro 500 na aprovação.
     # O comando IF NOT EXISTS garante que não haverá erro se já existirem.
@@ -171,6 +178,8 @@ def ensure_tables():
             conn.commit()
     except Exception as e:
         print(f"Aviso: Falha ao garantir tabelas (auditoria_rvu): {e}")
+
+    _tables_ensured = True
 
 
 # Evita executar DDL automaticamente no import do módulo; rotas chamam sob demanda
