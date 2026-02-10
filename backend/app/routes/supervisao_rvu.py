@@ -284,6 +284,7 @@ def listar(
             'vida_util_revisada': revisada_total,
             'delta_vida_util': (0 if revisada_total is None else (revisada_total - atual_total)),
             'revisor': revisor_nome,
+            'revisor_id': getattr(it, 'criado_por', None),
             'condicao_fisica': getattr(it, 'condicao_fisica', None),
             'justificativa': getattr(it, 'justificativa', None),
             'data_revisao': getattr(it, 'criado_em', None),
