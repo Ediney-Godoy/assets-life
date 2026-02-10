@@ -173,6 +173,16 @@ def update_periodo(
             if pending_reviews > 0:
                 raise HTTPException(status_code=400, detail=f"Não é possível fechar o período: Existem {pending_reviews} ativos não revisados.")
 
+            # Validação 3: Verificar se há revisões pendentes de aprovação (Status 'Revisado')
+            # O sistema não deve permitir o fechamento sem que todas as revisões estejam aprovadas.
+            unapproved_reviews = db.query(sa.func.count(RevisaoItemModel.id)).filter(
+                RevisaoItemModel.periodo_id == periodo_id,
+                RevisaoItemModel.status == 'Revisado'
+            ).scalar()
+
+            if unapproved_reviews > 0:
+                raise HTTPException(status_code=400, detail=f"Não é possível fechar o período: Existem {unapproved_reviews} revisões aguardando aprovação.")
+
         periodo.status = payload.status
         if payload.status == 'Fechado':
             periodo.data_fechamento = date.today()

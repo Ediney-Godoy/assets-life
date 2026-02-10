@@ -889,6 +889,10 @@ export async function aprovarSupervisaoRVU(payload) {
   return request('/supervisao/rvu/aprovar', { method: 'POST', body: JSON.stringify(payload), timeout: 120000 });
 }
 
+export async function aprovarMassaSupervisaoRVU(payload) {
+  return request('/supervisao/rvu/aprovar-massa', { method: 'POST', body: JSON.stringify(payload), timeout: 120000 });
+}
+
 export async function historicoSupervisaoRVU(params = {}) {
   const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
   // Histórico é informativo; dar mais tempo para bases grandes

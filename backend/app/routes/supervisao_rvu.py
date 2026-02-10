@@ -209,6 +209,12 @@ class AprovarCreate(BaseModel):
     periodo_id: Optional[int] = None
 
 
+class AprovarMassaCreate(BaseModel):
+    ativos_ids: List[int]
+    motivo: Optional[str] = None
+    periodo_id: Optional[int] = None
+
+
 @router.get('/listar')
 def listar(
     empresa_id: Optional[int] = None,
@@ -516,6 +522,103 @@ def aprovar(payload: AprovarCreate, current_user: UsuarioModel = Depends(get_cur
         print(f"ERRO /supervisao/rvu/aprovar: {str(e)}")
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+@router.post('/aprovar-massa')
+def aprovar_massa(payload: AprovarMassaCreate, current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    ensure_tables()
+    
+    if not payload.ativos_ids:
+        raise HTTPException(status_code=400, detail="Nenhum item selecionado")
+
+    # Fetch items
+    items = db.query(RevisaoItemModel).filter(RevisaoItemModel.id.in_(payload.ativos_ids)).all()
+    if not items:
+        return {'ok': True, 'count': 0, 'errors': []}
+
+    allowed = get_allowed_company_ids(db, current_user)
+    
+    # Pre-fetch periods to minimize queries
+    period_ids = {it.periodo_id for it in items if it.periodo_id}
+    periods = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id.in_(period_ids)).all()
+    periods_map = {p.id: p for p in periods}
+    
+    success_count = 0
+    errors = []
+
+    safe_supervisor_id = current_user.id
+
+    for it in items:
+        try:
+            # Check company permission
+            per = periods_map.get(it.periodo_id)
+            if allowed and per and per.empresa_id not in allowed:
+                errors.append(f"Item {it.numero_imobilizado}: Acesso negado à empresa")
+                continue
+
+            # Check period status
+            if per and per.status == 'Encerrado':
+                errors.append(f"Item {it.numero_imobilizado}: Período encerrado")
+                continue
+            
+            # Skip if already approved (optional, but good practice)
+            if it.status == 'Aprovado':
+                # Already approved, maybe just count it or skip?
+                # Let's count it as success or just skip updates
+                success_count += 1
+                continue
+
+            # Update status
+            it.status = 'Aprovado'
+            
+            # History
+            revisada_total = int(it.vida_util_revisada or 0)
+            revisor_id = getattr(it, 'criado_por', None)
+            if not revisor_id and per:
+                revisor_id = getattr(per, 'responsavel_id', None)
+            
+            # Insert history
+            db.execute(sa.text(
+                """
+                INSERT INTO revisoes_historico (ativo_id, supervisor_id, revisor_id, vida_util_revisada, acao, status, motivo_reversao)
+                VALUES (:ativo_id, :supervisor_id, :revisor_id, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
+                """
+            ), {
+                'ativo_id': it.id,
+                'supervisor_id': safe_supervisor_id,
+                'revisor_id': revisor_id,
+                'vida_util_revisada': revisada_total,
+                'motivo': payload.motivo or ''
+            })
+            
+            # Insert audit
+            db.execute(sa.text(
+                """
+                INSERT INTO auditoria_rvu (usuario_id, acao, entidade, entidade_id, detalhes)
+                VALUES (:usuario_id, 'aprovar', 'revisao_item', :entidade_id, :detalhes)
+                """
+            ), {
+                'usuario_id': safe_supervisor_id,
+                'entidade_id': it.id,
+                'detalhes': f"Aprovacao em massa. {payload.motivo or ''}"
+            })
+
+            success_count += 1
+        except Exception as e:
+            errors.append(f"Item {it.numero_imobilizado}: {str(e)}")
+            continue
+    
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar aprovações em massa: {str(e)}")
+
+    return {
+        'ok': True,
+        'count': success_count,
+        'errors': errors
+    }
 
 
 @router.get('/historico')

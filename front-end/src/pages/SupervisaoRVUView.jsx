@@ -9,6 +9,7 @@ import {
   comentarSupervisaoRVU,
   reverterSupervisaoRVU,
   aprovarSupervisaoRVU,
+  aprovarMassaSupervisaoRVU,
   historicoSupervisaoRVU,
   listarComentariosRVU,
 } from '../apiClient';
@@ -276,6 +277,52 @@ export default function SupervisaoRVUView() {
     try { return it?.revisor_id || 0; } catch { return 0; }
   };
 
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [massLoading, setMassLoading] = useState(false);
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredItems.length && filteredItems.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredItems.map((i) => i.id)));
+    }
+  };
+
+  const handleMassApprove = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Deseja aprovar ${selectedIds.size} itens selecionados?`)) return;
+
+    setMassLoading(true);
+    try {
+      const res = await aprovarMassaSupervisaoRVU({
+        ativos_ids: Array.from(selectedIds),
+        periodo_id: filters.periodo_id ? Number(filters.periodo_id) : undefined
+      });
+      if (res.ok) {
+        toast.success(`Aprovados: ${res.count}`);
+        if (res.errors && res.errors.length > 0) {
+          toast.error(`${res.errors.length} erros ocorreram`);
+          console.error('Erros:', res.errors);
+        }
+        setSelectedIds(new Set());
+        aplicarFiltros();
+      }
+    } catch (err) {
+      toast.error(err.message || 'Erro na aprovação em massa');
+    } finally {
+      setMassLoading(false);
+    }
+  };
+
   const exportarExcel = async () => {
     // Exportação nativa XLSX com os itens filtrados
     const headers = [
@@ -520,6 +567,18 @@ export default function SupervisaoRVUView() {
         </div>
 
         <div className="flex items-center gap-2 mt-4">
+          {/* Botão de aprovação em massa */}
+          {selectedIds.size > 0 && (
+            <button
+              className="inline-flex items-center justify-center h-9 px-3 rounded-full bg-emerald-600 text-white shadow hover:bg-emerald-700 text-sm font-medium transition-all"
+              onClick={handleMassApprove}
+              disabled={massLoading}
+              title="Aprovar itens selecionados"
+            >
+              {massLoading ? '...' : `Aprovar (${selectedIds.size})`}
+            </button>
+          )}
+
           {/* Botão pequeno com ícone de filtro */}
           <button
             className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-600 text-white shadow hover:bg-indigo-700"
@@ -585,6 +644,14 @@ export default function SupervisaoRVUView() {
         <table className="min-w-full text-sm">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900">
             <tr>
+              <th className="p-2 w-10 text-center">
+                <input
+                  type="checkbox"
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  checked={selectedIds.size === filteredItems.length && filteredItems.length > 0}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               {['Nº Imobilizado','Descrição','Classe Contábil','Valor Contábil','Vida Útil Atual','Vida Útil Revisada','Δ Vida Útil (%)','Revisor','Condição Física','Justificativa','Data Revisão','Status','💬','Ações'].map((h) => (
                 <th key={h} className="text-left p-2 font-medium text-slate-700 dark:text-slate-300">{h}</th>
               ))}
@@ -597,6 +664,14 @@ export default function SupervisaoRVUView() {
               const discrepante = origem > 0 && Math.abs(delta) / origem > 0.2;
               return (
                 <tr key={i.id} className={discrepante ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}>
+                  <td className="p-2 text-center">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      checked={selectedIds.has(i.id)}
+                      onChange={() => toggleSelect(i.id)}
+                    />
+                  </td>
                   <td className="p-2">{i.numero_imobilizado}</td>
                   <td className="p-2">{i.descricao}</td>
                   <td className="p-2">{i.classe_contabil}</td>
@@ -621,7 +696,7 @@ export default function SupervisaoRVUView() {
               );
             })}
             {filteredItems.length === 0 && (
-              <tr><td className="p-2 text-slate-600" colSpan={14}>Nenhum item encontrado.</td></tr>
+              <tr><td className="p-2 text-slate-600" colSpan={15}>Nenhum item encontrado.</td></tr>
             )}
           </tbody>
         </table>
