@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getCompanies,
@@ -31,6 +31,30 @@ export default function SupervisaoRVUView() {
   const [dynamicFilters, setDynamicFilters] = useState({ classe: '', centro_custo: '', valor_min: '', valor_max: '' });
   const [filterType, setFilterType] = useState('todos');
   const [filtersExpanded, setFiltersExpanded] = useState(true);
+
+  // Refs para sincronizar scrollbar superior e tabela
+  const tableContainerRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [tableWidth, setTableWidth] = useState(0);
+
+  // Atualiza largura do spacer quando dados mudam
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      setTableWidth(tableContainerRef.current.scrollWidth);
+    }
+  }, [items, query, dynamicFilters, filtersExpanded]);
+
+  const handleScrollTable = (e) => {
+    if (topScrollRef.current) {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
+
+  const handleScrollTop = (e) => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
 
   const uniqueClasses = useMemo(() => {
     const vals = Array.from(new Set(items.map((i) => i.classe_contabil).filter(Boolean)));
@@ -544,7 +568,20 @@ export default function SupervisaoRVUView() {
       </div>
 
       {/* Tabela Principal */}
-      <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
+      {/* Scrollbar Superior Sincronizada */}
+      <div 
+        ref={topScrollRef}
+        onScroll={handleScrollTop}
+        className="overflow-x-auto mb-1"
+      >
+        <div style={{ width: tableWidth, height: '1px' }}></div>
+      </div>
+
+      <div 
+        ref={tableContainerRef}
+        onScroll={handleScrollTable}
+        className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto"
+      >
         <table className="min-w-full text-sm">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900">
             <tr>

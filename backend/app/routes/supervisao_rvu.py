@@ -133,6 +133,27 @@ def ensure_tables():
 
     try:
         with engine.connect() as conn:
+            # garantir colunas extras em revisoes_historico se tabela já existir
+            for alt in [
+                "ALTER TABLE revisoes_historico ADD COLUMN IF NOT EXISTS revisor_id INTEGER",
+                "ALTER TABLE revisoes_historico ADD COLUMN IF NOT EXISTS supervisor_id INTEGER",
+                "ALTER TABLE revisoes_historico ADD COLUMN IF NOT EXISTS vida_util_anterior INTEGER",
+                "ALTER TABLE revisoes_historico ADD COLUMN IF NOT EXISTS vida_util_revisada INTEGER",
+                "ALTER TABLE revisoes_historico ADD COLUMN IF NOT EXISTS motivo_reversao TEXT",
+                "ALTER TABLE revisoes_historico ADD COLUMN IF NOT EXISTS data_reversao TIMESTAMP",
+                "ALTER TABLE revisoes_historico ADD COLUMN IF NOT EXISTS acao VARCHAR(20)",
+                "ALTER TABLE revisoes_historico ADD COLUMN IF NOT EXISTS status VARCHAR(20)",
+            ]:
+                try:
+                    conn.execute(sa.text(alt))
+                    conn.commit()
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    try:
+        with engine.connect() as conn:
             # Auditoria específica de RVU
             conn.execute(sa.text(
                 """
@@ -196,6 +217,7 @@ def listar(
         raise HTTPException(status_code=403, detail='Acesso negado à empresa informada')
     
     # Query otimizada com joins para evitar N+1
+    # O revisor exibido deve ser o Responsável pela revisão cadastrado no Período (RevisaoPeriodoModel.responsavel_id)
     q = db.query(
         RevisaoItemModel,
         RevisaoPeriodoModel.status.label('periodo_status'),
@@ -203,7 +225,7 @@ def listar(
     ).join(
         RevisaoPeriodoModel, RevisaoItemModel.periodo_id == RevisaoPeriodoModel.id
     ).outerjoin(
-        UsuarioModel, RevisaoItemModel.criado_por == UsuarioModel.id
+        UsuarioModel, RevisaoPeriodoModel.responsavel_id == UsuarioModel.id
     )
 
     # Filtros (incorporando lógica de _filters_query)
@@ -449,14 +471,20 @@ def aprovar(payload: AprovarCreate, current_user: UsuarioModel = Depends(get_cur
         # Use current_user.id instead of payload.supervisor_id to ensure validity
         safe_supervisor_id = current_user.id
         
+        # Determine revisor_id (who performed the review or is responsible)
+        revisor_id = getattr(it, 'criado_por', None)
+        if not revisor_id and per:
+            revisor_id = getattr(per, 'responsavel_id', None)
+        
         db.execute(sa.text(
             """
-            INSERT INTO revisoes_historico (ativo_id, supervisor_id, vida_util_revisada, acao, status, motivo_reversao)
-            VALUES (:ativo_id, :supervisor_id, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
+            INSERT INTO revisoes_historico (ativo_id, supervisor_id, revisor_id, vida_util_revisada, acao, status, motivo_reversao)
+            VALUES (:ativo_id, :supervisor_id, :revisor_id, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
             """
         ), {
             'ativo_id': payload.ativo_id,
             'supervisor_id': safe_supervisor_id,
+            'revisor_id': revisor_id,
             'vida_util_revisada': revisada_total,
             'motivo': payload.motivo or ''
         })
