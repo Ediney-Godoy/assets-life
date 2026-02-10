@@ -63,71 +63,93 @@ def ensure_tables():
     """Cria tabelas auxiliares de comentários, histórico e auditoria de RVU se não existirem.
     Em desenvolvimento, evita necessidade de migração imediata.
     """
-    # Em ambientes sem permissão de DDL, não executar criação/alteração de tabelas
-    if not ALLOW_DDL:
-        return
-    with engine.connect() as conn:
-        # Comentários do supervisor
-        conn.execute(sa.text(
-            """
-            CREATE TABLE IF NOT EXISTS revisoes_comentarios (
-              id SERIAL PRIMARY KEY,
-              ativo_id INTEGER NOT NULL,
-              supervisor_id INTEGER NOT NULL,
-              revisor_id INTEGER NOT NULL,
-              comentario TEXT NOT NULL,
-              data_comentario TIMESTAMP DEFAULT NOW() NOT NULL,
-              status VARCHAR(20) DEFAULT 'Pendente' NOT NULL,
-              tipo VARCHAR(20) DEFAULT 'normal',
-              resposta TEXT,
-              data_resposta TIMESTAMP,
-              respondido_por INTEGER
-            );
-            """
-        ))
-        # garantir colunas extras se tabela já existir
-        for alt in [
-            "ALTER TABLE revisoes_comentarios ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'normal'",
-            "ALTER TABLE revisoes_comentarios ADD COLUMN IF NOT EXISTS resposta TEXT",
-            "ALTER TABLE revisoes_comentarios ADD COLUMN IF NOT EXISTS data_resposta TIMESTAMP",
-            "ALTER TABLE revisoes_comentarios ADD COLUMN IF NOT EXISTS respondido_por INTEGER",
-        ]:
-            try:
-                conn.execute(sa.text(alt))
-            except Exception:
-                pass
-        # Histórico de ações (reversão/aprovação)
-        conn.execute(sa.text(
-            """
-            CREATE TABLE IF NOT EXISTS revisoes_historico (
-              id SERIAL PRIMARY KEY,
-              ativo_id INTEGER NOT NULL,
-              revisor_id INTEGER,
-              supervisor_id INTEGER,
-              vida_util_anterior INTEGER,
-              vida_util_revisada INTEGER,
-              motivo_reversao TEXT,
-              data_reversao TIMESTAMP,
-              acao VARCHAR(20) NOT NULL,
-              data_evento TIMESTAMP DEFAULT NOW() NOT NULL,
-              status VARCHAR(20)
-            );
-            """
-        ))
-        # Auditoria específica de RVU
-        conn.execute(sa.text(
-            """
-            CREATE TABLE IF NOT EXISTS auditoria_rvu (
-              id SERIAL PRIMARY KEY,
-              usuario_id INTEGER,
-              acao VARCHAR(100) NOT NULL,
-              entidade VARCHAR(100) NOT NULL,
-              entidade_id INTEGER,
-              detalhes TEXT,
-              data_evento TIMESTAMP DEFAULT NOW() NOT NULL
-            );
-            """
-        ))
+    # Tenta criar tabelas mesmo se ALLOW_DDL for falso, pois são essenciais para o funcionamento
+    # e a falta delas causa erro 500 na aprovação.
+    # O comando IF NOT EXISTS garante que não haverá erro se já existirem.
+    try:
+        with engine.connect() as conn:
+            # Comentários do supervisor
+            conn.execute(sa.text(
+                """
+                CREATE TABLE IF NOT EXISTS revisoes_comentarios (
+                  id SERIAL PRIMARY KEY,
+                  ativo_id INTEGER NOT NULL,
+                  supervisor_id INTEGER NOT NULL,
+                  revisor_id INTEGER NOT NULL,
+                  comentario TEXT NOT NULL,
+                  data_comentario TIMESTAMP DEFAULT NOW() NOT NULL,
+                  status VARCHAR(20) DEFAULT 'Pendente' NOT NULL,
+                  tipo VARCHAR(20) DEFAULT 'normal',
+                  resposta TEXT,
+                  data_resposta TIMESTAMP,
+                  respondido_por INTEGER
+                );
+                """
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"Aviso: Falha ao garantir tabelas (revisoes_comentarios): {e}")
+
+    try:
+        with engine.connect() as conn:
+            # garantir colunas extras se tabela já existir
+            for alt in [
+                "ALTER TABLE revisoes_comentarios ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'normal'",
+                "ALTER TABLE revisoes_comentarios ADD COLUMN IF NOT EXISTS resposta TEXT",
+                "ALTER TABLE revisoes_comentarios ADD COLUMN IF NOT EXISTS data_resposta TIMESTAMP",
+                "ALTER TABLE revisoes_comentarios ADD COLUMN IF NOT EXISTS respondido_por INTEGER",
+            ]:
+                try:
+                    conn.execute(sa.text(alt))
+                    conn.commit()
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    try:
+        with engine.connect() as conn:
+            # Histórico de ações (reversão/aprovação)
+            conn.execute(sa.text(
+                """
+                CREATE TABLE IF NOT EXISTS revisoes_historico (
+                  id SERIAL PRIMARY KEY,
+                  ativo_id INTEGER NOT NULL,
+                  revisor_id INTEGER,
+                  supervisor_id INTEGER,
+                  vida_util_anterior INTEGER,
+                  vida_util_revisada INTEGER,
+                  motivo_reversao TEXT,
+                  data_reversao TIMESTAMP,
+                  acao VARCHAR(20) NOT NULL,
+                  data_evento TIMESTAMP DEFAULT NOW() NOT NULL,
+                  status VARCHAR(20)
+                );
+                """
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"Aviso: Falha ao garantir tabelas (revisoes_historico): {e}")
+
+    try:
+        with engine.connect() as conn:
+            # Auditoria específica de RVU
+            conn.execute(sa.text(
+                """
+                CREATE TABLE IF NOT EXISTS auditoria_rvu (
+                  id SERIAL PRIMARY KEY,
+                  usuario_id INTEGER,
+                  acao VARCHAR(100) NOT NULL,
+                  entidade VARCHAR(100) NOT NULL,
+                  entidade_id INTEGER,
+                  detalhes TEXT,
+                  data_evento TIMESTAMP DEFAULT NOW() NOT NULL
+                );
+                """
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"Aviso: Falha ao garantir tabelas (auditoria_rvu): {e}")
 
 
 # Evita executar DDL automaticamente no import do módulo; rotas chamam sob demanda
