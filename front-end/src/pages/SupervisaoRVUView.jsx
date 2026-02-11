@@ -430,9 +430,9 @@ export default function SupervisaoRVUView() {
       {activeTab === 'supervisao' && (
         <>
       {/* Filtros */}
-      <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4 relative">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 p-5 mb-6 relative">
         <button
-          className="absolute top-2 right-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors z-10"
+          className="absolute top-4 right-4 inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors z-10"
           onClick={() => setFiltersExpanded(!filtersExpanded)}
           title={filtersExpanded ? "Ocultar filtros" : "Mostrar filtros"}
         >
@@ -446,12 +446,13 @@ export default function SupervisaoRVUView() {
         </button>
 
         <div className={`transition-all duration-300 overflow-hidden ${filtersExpanded ? 'opacity-100' : 'max-h-0 opacity-0'}`}>
-        {/* Linha Principal */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
-          <div>
-            <label className="block text-sm mb-1">Empresa</label>
+        
+        {/* Linha Principal - Grid Layout Modernizado */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Empresa</label>
             <select 
-              className="input disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-800" 
+              className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
               value={filters.empresa_id} 
               onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}
               disabled={companies.length === 1}
@@ -460,10 +461,10 @@ export default function SupervisaoRVUView() {
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm mb-1">Período</label>
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Período</label>
             <select 
-              className="input" 
+              className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
               value={filters.periodo_id} 
               onChange={(e) => setFilters((f) => ({ ...f, periodo_id: e.target.value }))}
             >
@@ -473,39 +474,39 @@ export default function SupervisaoRVUView() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-sm mb-1">Responsável (Período)</label>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Responsável</label>
             <input 
               type="text" 
-              className="input bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" 
+              className="input w-full h-10 bg-slate-100 text-slate-600 border-slate-200 cursor-not-allowed text-sm" 
               value={responsavelPeriodo} 
               readOnly 
               placeholder="-"
+              title="Responsável pelo Período"
             />
           </div>
-          <div>
-            <label className="block text-sm mb-1">Status</label>
-            <select className="input" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+            <select className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
               {['Todos','Revisado','Aprovado','Pendente','Revertido'].map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm mb-1">Filtrar Revisor (Delegado)</label>
-            <select className="input" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Revisor</label>
+            <select className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
               <option value="">Todos</option>
               {revisores.map((r) => <option key={r.id} value={r.id}>{r.nome_completo || r.name}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Filtros Dinâmicos */}
-        <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-          <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Filtros Dinâmicos</div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div>
-              <label className="block text-sm mb-1">Tipo de Filtro</label>
+        {/* Filtros Dinâmicos - Integrados */}
+        <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+             <div className="md:col-span-3">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Filtro Avançado</label>
               <select 
-                className="input" 
+                className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
                 value={filterType} 
                 onChange={(e) => {
                   const t = e.target.value;
@@ -514,7 +515,7 @@ export default function SupervisaoRVUView() {
                   if (t !== 'ug') setFilters(f => ({ ...f, ug_id: '' }));
                 }}
               >
-                <option value="todos">Todos os itens</option>
+                <option value="todos">Nenhum</option>
                 <option value="ug">Unidade Gerencial</option>
                 <option value="classe">Classe Contábil</option>
                 <option value="centro_custo">Centro de Custos</option>
@@ -522,10 +523,11 @@ export default function SupervisaoRVUView() {
               </select>
             </div>
 
+            <div className="md:col-span-4">
             {filterType === 'ug' && (
-              <div>
-                <label className="block text-sm mb-1">Unidade Gerencial</label>
-                <select className="input" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
+              <div className="animate-fade-in">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Selecione a UG</label>
+                <select className="input w-full h-10" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
                   <option value="">Todas</option>
                   {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
                 </select>
@@ -533,10 +535,10 @@ export default function SupervisaoRVUView() {
             )}
 
             {filterType === 'classe' && (
-              <div>
-                <label className="block text-sm mb-1">Classe Contábil</label>
+              <div className="animate-fade-in">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Selecione a Classe</label>
                 <select 
-                  className="input" 
+                  className="input w-full h-10" 
                   value={dynamicFilters.classe}
                   onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
                 >
@@ -547,10 +549,10 @@ export default function SupervisaoRVUView() {
             )}
 
             {filterType === 'centro_custo' && (
-              <div>
-                <label className="block text-sm mb-1">Centro de Custos</label>
+              <div className="animate-fade-in">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Selecione o Centro de Custo</label>
                 <select 
-                  className="input" 
+                  className="input w-full h-10" 
                   value={dynamicFilters.centro_custo}
                   onChange={(e) => setDynamicFilters(d => ({ ...d, centro_custo: e.target.value }))}
                 >
@@ -561,19 +563,19 @@ export default function SupervisaoRVUView() {
             )}
 
             {filterType === 'valor' && (
-              <div>
-                <label className="block text-sm mb-1">Valor Contábil (Mín/Máx)</label>
+              <div className="animate-fade-in">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Intervalo de Valor</label>
                 <div className="flex gap-2">
                   <input 
                     type="number"
-                    className="input" 
+                    className="input w-full h-10" 
                     placeholder="Min" 
                     value={dynamicFilters.valor_min}
                     onChange={(e) => setDynamicFilters(d => ({ ...d, valor_min: e.target.value }))}
                   />
                   <input 
                     type="number"
-                    className="input" 
+                    className="input w-full h-10" 
                     placeholder="Max" 
                     value={dynamicFilters.valor_max}
                     onChange={(e) => setDynamicFilters(d => ({ ...d, valor_max: e.target.value }))}
@@ -581,58 +583,73 @@ export default function SupervisaoRVUView() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-4">
-          {/* Botão de aprovação em massa */}
+        {/* Linha de Busca e Ações */}
+        <div className="flex items-center gap-3 pt-2">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <input
+              className="input w-full h-10 pl-10 bg-white border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 transition-all shadow-sm"
+              placeholder="Busca rápida por descrição ou Nº do imobilizado..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') aplicarFiltros(); }}
+            />
+          </div>
+
+          <button
+            className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 font-medium transition-colors gap-2"
+            onClick={aplicarFiltros}
+            title="Aplicar Filtros"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 4h18l-7 8v5l-4 3v-8L3 4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            </svg>
+            <span className="hidden sm:inline">Filtrar</span>
+          </button>
+
+          <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
           {selectedIds.size > 0 && (
             <button
-              className="inline-flex items-center justify-center h-9 px-3 rounded-full bg-emerald-600 text-white shadow hover:bg-emerald-700 text-sm font-medium transition-all"
+              className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 font-medium transition-colors gap-2"
               onClick={handleMassApprove}
               disabled={massLoading}
               title="Aprovar itens selecionados"
             >
-              {massLoading ? '...' : `Aprovar (${selectedIds.size})`}
+              {massLoading ? (
+                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                   <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+              <span>Aprovar ({selectedIds.size})</span>
             </button>
           )}
 
-          {/* Botão pequeno com ícone de filtro */}
           <button
-            className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-600 text-white shadow hover:bg-indigo-700"
-            onClick={aplicarFiltros}
-            title="Aplicar Filtros"
-            aria-label="Aplicar Filtros"
-          >
-            {/* Ícone funil (filtro) */}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 4h18l-7 8v5l-4 3v-8L3 4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            </svg>
-          </button>
-          <input
-            className="input flex-1"
-            placeholder="Busca rápida por descrição ou Nº"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') aplicarFiltros(); }}
-          />
-          {/* Botão pequeno com ícone do Excel */}
-          <button
-            className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-600 text-white shadow hover:bg-green-700"
+            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-green-600 hover:bg-green-50 hover:border-green-200 shadow-sm transition-colors"
             onClick={exportarExcel}
-            title="Exportar para o Excel"
-            aria-label="Exportar para o Excel"
+            title="Exportar para Excel"
           >
-            {/* Ícone estilo Excel */}
-            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              {/* Folha com grid */}
-              <rect x="5" y="4" width="12" height="16" rx="2" fill="currentColor" opacity="0.15"/>
-              <path d="M9 4v16M14 4v16M5 9h12M5 14h12" stroke="currentColor" strokeWidth="1.6" opacity="0.9"/>
-              {/* X (marca Excel) */}
-              <path d="M6.8 8.5l3.2 3.2m0-3.2l-3.2 3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="10 9 9 9 8 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
         </div>
+        
         </div>
       </div>
 
