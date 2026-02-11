@@ -148,7 +148,12 @@ export default function MassRevisionView() {
     return { anos: Math.floor(m / 12), meses: m % 12 };
   };
   const isItemRevisado = (it) => {
-    return (it.status === 'Revisado' || it.status === 'Aprovado') || Boolean(it.alterado);
+    const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const s = normalize(it.status);
+    // Se o status for 'revertido', deve voltar para a aba de pendentes ("A Revisar")
+    if (s === 'revertido') return false;
+    const statusReviewed = (s === 'revisado' || s === 'revisada' || s === 'aprovado' || s === 'concluido');
+    return statusReviewed || Boolean(it.alterado);
   };
 
   const retryLoad = async () => {
