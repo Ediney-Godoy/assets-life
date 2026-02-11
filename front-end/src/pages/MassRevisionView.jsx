@@ -147,6 +147,7 @@ export default function MassRevisionView() {
     if (!Number.isFinite(m)) return { anos: null, meses: null };
     return { anos: Math.floor(m / 12), meses: m % 12 };
   };
+  // Helper para verificar se o item já foi revisado/analisado
   const isItemRevisado = (it) => {
     const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const s = normalize(it.status);

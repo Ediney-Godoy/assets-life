@@ -18,6 +18,7 @@ from ..models import (
     Usuario as UsuarioModel,
     GrupoUsuario as GrupoUsuarioModel,
     GrupoEmpresa as GrupoEmpresaModel,
+    RevisaoDelegacao as RevisaoDelegacaoModel,
 )
 
 router = APIRouter(prefix="/supervisao/rvu", tags=["Supervisão RVU"])
@@ -444,6 +445,31 @@ def reverter(payload: ReverterCreate, current_user: UsuarioModel = Depends(get_c
     it.vida_util_revisada = None
     it.data_fim_revisada = None
     it.status = 'Revertido'
+    it.alterado = False
+    it.justificativa = None
+    it.condicao_fisica = None
+
+    # Garante que o revisor tenha delegação ativa para o item revertido
+    if payload.revisor_id:
+        target_periodo_id = payload.periodo_id or it.periodo_id
+        deleg = db.query(RevisaoDelegacaoModel).filter(
+            RevisaoDelegacaoModel.periodo_id == target_periodo_id,
+            RevisaoDelegacaoModel.ativo_id == it.id,
+            RevisaoDelegacaoModel.revisor_id == payload.revisor_id
+        ).first()
+        
+        if not deleg:
+            new_deleg = RevisaoDelegacaoModel(
+                periodo_id=target_periodo_id,
+                ativo_id=it.id,
+                revisor_id=payload.revisor_id,
+                atribuido_por=payload.supervisor_id,
+                status='Ativo'
+            )
+            db.add(new_deleg)
+        elif deleg.status != 'Ativo':
+            deleg.status = 'Ativo'
+
     db.commit()
     # auditoria
     db.execute(sa.text(
