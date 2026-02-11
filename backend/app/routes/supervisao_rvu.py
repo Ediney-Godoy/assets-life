@@ -254,7 +254,7 @@ def listar(
     if ug_id:
         q = q.filter(RevisaoPeriodoModel.ug_id == int(ug_id))
     if revisor_id:
-        q = q.filter(RevisaoItemModel.criado_por == int(revisor_id))
+        q = q.filter(RevisaoPeriodoModel.responsavel_id == int(revisor_id))
     if periodo_id:
         q = q.filter(RevisaoItemModel.periodo_id == int(periodo_id))
     
@@ -491,15 +491,21 @@ def aprovar(payload: AprovarCreate, current_user: UsuarioModel = Depends(get_cur
         if not revisor_id and per:
             revisor_id = getattr(per, 'responsavel_id', None)
         
+        # Determine previous useful life (vida_util_periodos is usually total months)
+        vida_anterior = (it.vida_util_periodos or 0)
+        if vida_anterior == 0 and (it.vida_util_anos or 0) > 0:
+            vida_anterior = (it.vida_util_anos or 0) * 12
+
         db.execute(sa.text(
             """
-            INSERT INTO revisoes_historico (ativo_id, supervisor_id, revisor_id, vida_util_revisada, acao, status, motivo_reversao)
-            VALUES (:ativo_id, :supervisor_id, :revisor_id, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
+            INSERT INTO revisoes_historico (ativo_id, supervisor_id, revisor_id, vida_util_anterior, vida_util_revisada, acao, status, motivo_reversao)
+            VALUES (:ativo_id, :supervisor_id, :revisor_id, :vida_util_anterior, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
             """
         ), {
             'ativo_id': payload.ativo_id,
             'supervisor_id': safe_supervisor_id,
             'revisor_id': revisor_id,
+            'vida_util_anterior': vida_anterior,
             'vida_util_revisada': revisada_total,
             'motivo': payload.motivo or ''
         })
@@ -577,16 +583,22 @@ def aprovar_massa(payload: AprovarMassaCreate, current_user: UsuarioModel = Depe
             if not revisor_id and per:
                 revisor_id = getattr(per, 'responsavel_id', None)
             
+            # Determine previous useful life
+            vida_anterior = (it.vida_util_periodos or 0)
+            if vida_anterior == 0 and (it.vida_util_anos or 0) > 0:
+                vida_anterior = (it.vida_util_anos or 0) * 12
+
             # Insert history
             db.execute(sa.text(
                 """
-                INSERT INTO revisoes_historico (ativo_id, supervisor_id, revisor_id, vida_util_revisada, acao, status, motivo_reversao)
-                VALUES (:ativo_id, :supervisor_id, :revisor_id, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
+                INSERT INTO revisoes_historico (ativo_id, supervisor_id, revisor_id, vida_util_anterior, vida_util_revisada, acao, status, motivo_reversao)
+                VALUES (:ativo_id, :supervisor_id, :revisor_id, :vida_util_anterior, :vida_util_revisada, 'aprovado', 'aprovado', :motivo)
                 """
             ), {
                 'ativo_id': it.id,
                 'supervisor_id': safe_supervisor_id,
                 'revisor_id': revisor_id,
+                'vida_util_anterior': vida_anterior,
                 'vida_util_revisada': revisada_total,
                 'motivo': payload.motivo or ''
             })
@@ -639,11 +651,13 @@ def historico(
     SELECT 
         rh.id, rh.ativo_id, rh.revisor_id, rh.supervisor_id, rh.vida_util_anterior, rh.vida_util_revisada, 
         rh.motivo_reversao, rh.data_reversao, rh.acao, rh.status, rh.data_evento,
-        ri.numero_imobilizado, ri.descricao,
-        u.nome_completo as usuario_nome
+        COALESCE(ri.numero_imobilizado, '') as numero_imobilizado, 
+        COALESCE(ri.descricao, '') as descricao,
+        COALESCE(u.nome_completo, u2.nome_completo, 'Desconhecido') as usuario_nome
     FROM revisoes_historico rh
     JOIN revisoes_itens ri ON rh.ativo_id = ri.id
     LEFT JOIN usuarios u ON rh.supervisor_id = u.id
+    LEFT JOIN usuarios u2 ON rh.revisor_id = u2.id
     """
     
     clauses = []
