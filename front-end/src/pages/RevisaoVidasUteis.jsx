@@ -195,6 +195,10 @@ export default function RevisaoVidasUteis() {
   const isItemRevisado = (it) => {
     const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const s = normalize(it.status);
+    
+    // Se o status for 'revertido', deve voltar para a aba de pendentes ("A Revisar")
+    if (s === 'revertido') return false;
+
     const statusReviewed = (s === 'revisado' || s === 'revisada' || s === 'aprovado' || s === 'concluido');
     const adjusted = Boolean(it.alterado);
     const hasJustification = Boolean(String(it.justificativa || '').trim());
