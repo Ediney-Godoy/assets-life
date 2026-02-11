@@ -1,1 +1,0 @@
-git show 365fdbf:"front-end/src/pages/SupervisaoRVUView.jsx" > old_file.txt

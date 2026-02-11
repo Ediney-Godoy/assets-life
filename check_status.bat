@@ -1,1 +1,0 @@
-git status > git_status_output.txt

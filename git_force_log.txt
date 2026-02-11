@@ -1,5 +1,0 @@
-commit 9b60a795fe46cd1770ac40cc942ded1b6ed487ea
-Author: Ediney-Godoy <ediney.dev@gmail.com>
-Date:   Tue Feb 10 20:51:54 2026 -0300
-
-    Force update: Ensure mass approval checkboxes are deployed

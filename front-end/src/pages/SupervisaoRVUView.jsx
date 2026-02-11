@@ -32,6 +32,7 @@ export default function SupervisaoRVUView() {
   const [dynamicFilters, setDynamicFilters] = useState({ classe: '', centro_custo: '', valor_min: '', valor_max: '' });
   const [filterType, setFilterType] = useState('todos');
   const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [activeTab, setActiveTab] = useState('supervisao');
 
   // Refs para sincronizar scrollbar superior e tabela
   const tableContainerRef = useRef(null);
@@ -411,6 +412,23 @@ export default function SupervisaoRVUView() {
         <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Supervisão RVU</div>
       </div>
 
+      <div className="flex space-x-1 mb-4 border-b border-slate-200 dark:border-slate-800">
+        <button
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === 'supervisao' ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'}`}
+          onClick={() => setActiveTab('supervisao')}
+        >
+          Relatório de Supervisão
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === 'logs' ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'}`}
+          onClick={() => setActiveTab('logs')}
+        >
+          Relatório de Logs
+        </button>
+      </div>
+
+      {activeTab === 'supervisao' && (
+        <>
       {/* Filtros */}
       <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4 relative">
         <button
@@ -702,37 +720,41 @@ export default function SupervisaoRVUView() {
           </tbody>
         </table>
       </div>
+      </>
+      )}
 
-      {/* Histórico */}
-      <div className="mt-4">
-        <div className="text-lg font-semibold mb-2">Histórico de Revisões</div>
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900">
-              <tr>
-                {['Data','Usuário','Ação','Ativo','Vida Útil Original','Vida Útil Revisada','Motivo / Comentário','Status'].map((h) => (
-                  <th key={h} className="text-left p-2 font-medium text-slate-700 dark:text-slate-300">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {hist.map((h, idx) => (
-                <tr key={idx}>
-                  <td className="p-2">{formatDateBR(h.data_evento || h.data_reversao)}</td>
-                  <td className="p-2">{h.supervisor_id || h.revisor_id}</td>
-                  <td className="p-2">{h.acao}</td>
-                  <td className="p-2">{h.ativo_id}</td>
-                  <td className="p-2">{h.vida_util_anterior ?? ''}</td>
-                  <td className="p-2">{h.vida_util_revisada ?? ''}</td>
-                  <td className="p-2">{h.motivo_reversao || ''}</td>
-                  <td className="p-2">{h.status || ''}</td>
+      {activeTab === 'logs' && (
+        <div className="mt-4">
+          <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr>
+                  {['Data','Usuário','Código Imobilizado','Descrição Imobilizado','Ação','Ativo ID','Vida Útil Original','Vida Útil Revisada','Motivo / Comentário','Status'].map((h) => (
+                    <th key={h} className="text-left p-2 font-medium text-slate-700 dark:text-slate-300">{h}</th>
+                  ))}
                 </tr>
-              ))}
-              {hist.length === 0 && <tr><td className="p-2 text-slate-600" colSpan={8}>Sem registros.</td></tr>}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {hist.map((h, idx) => (
+                  <tr key={idx}>
+                    <td className="p-2">{formatDateBR(h.data_evento || h.data_reversao)}</td>
+                    <td className="p-2">{h.usuario_nome || h.supervisor_id || h.revisor_id}</td>
+                    <td className="p-2">{h.numero_imobilizado || '-'}</td>
+                    <td className="p-2">{h.descricao || '-'}</td>
+                    <td className="p-2">{h.acao}</td>
+                    <td className="p-2">{h.ativo_id}</td>
+                    <td className="p-2">{h.vida_util_anterior ?? ''}</td>
+                    <td className="p-2">{h.vida_util_revisada ?? ''}</td>
+                    <td className="p-2">{h.motivo_reversao || ''}</td>
+                    <td className="p-2">{h.status || ''}</td>
+                  </tr>
+                ))}
+                {hist.length === 0 && <tr><td className="p-2 text-slate-600" colSpan={10}>Sem registros.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Drawer de ações */}
       {drawerItem && (

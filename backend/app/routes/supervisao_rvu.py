@@ -632,42 +632,52 @@ def historico(
 ):
     ensure_tables()
     allowed = get_allowed_company_ids(db, current_user)
-    # Se não houver empresas permitidas, retorne vazio
     if allowed and len(allowed) == 0:
         return []
-    base = "SELECT id, ativo_id, revisor_id, supervisor_id, vida_util_anterior, vida_util_revisada, motivo_reversao, data_reversao, acao, status, data_evento FROM revisoes_historico"
+    
+    base = """
+    SELECT 
+        rh.id, rh.ativo_id, rh.revisor_id, rh.supervisor_id, rh.vida_util_anterior, rh.vida_util_revisada, 
+        rh.motivo_reversao, rh.data_reversao, rh.acao, rh.status, rh.data_evento,
+        ri.numero_imobilizado, ri.descricao,
+        u.nome_completo as usuario_nome
+    FROM revisoes_historico rh
+    JOIN revisoes_itens ri ON rh.ativo_id = ri.id
+    LEFT JOIN usuarios u ON rh.supervisor_id = u.id
+    """
+    
     clauses = []
     params = {}
+    
     if ativo_id:
-        clauses.append("ativo_id = :ativo_id")
+        clauses.append("rh.ativo_id = :ativo_id")
         params['ativo_id'] = ativo_id
     if revisor_id:
-        clauses.append("revisor_id = :revisor_id")
+        clauses.append("rh.revisor_id = :revisor_id")
         params['revisor_id'] = revisor_id
     if supervisor_id:
-        clauses.append("supervisor_id = :supervisor_id")
+        clauses.append("rh.supervisor_id = :supervisor_id")
         params['supervisor_id'] = supervisor_id
     if q:
-        clauses.append("(motivo_reversao ILIKE :q)")
+        clauses.append("(rh.motivo_reversao ILIKE :q OR ri.descricao ILIKE :q OR ri.numero_imobilizado ILIKE :q)")
         params['q'] = f"%{q}%"
-    # Restringe por empresas permitidas do usuário sem montar listas enormes de ativos
-    # Usa EXISTS com join em revisoes_itens e revisoes_periodos para garantir escopo por empresa
+        
     if not ativo_id and allowed:
         try:
             allowed_list = ",".join(str(cid) for cid in allowed)
             clauses.append(
-                "EXISTS (SELECT 1 FROM revisoes_itens ri JOIN revisoes_periodos rp ON rp.id = ri.periodo_id "
-                "WHERE ri.id = revisoes_historico.ativo_id AND rp.empresa_id IN (" + allowed_list + "))"
+                "EXISTS (SELECT 1 FROM revisoes_periodos rp WHERE rp.id = ri.periodo_id AND rp.empresa_id IN (" + allowed_list + "))"
             )
         except Exception:
-            # Em caso de erro ao montar a cláusula, retorne vazio para evitar 500
             return []
-    sql = base + (" WHERE " + " AND ".join(clauses) if clauses else "") + " ORDER BY data_evento DESC"
+            
+    sql = base + (" WHERE " + " AND ".join(clauses) if clauses else "") + " ORDER BY rh.data_evento DESC"
+    
     try:
         rows = db.execute(sa.text(sql), params).mappings().all()
         return [dict(r) for r in rows]
-    except Exception:
-        # Em ambientes sem privilégio de DDL ou sem tabelas auxiliares, retorne vazio
+    except Exception as e:
+        print(f"Error in historico: {e}")
         return []
 
 
