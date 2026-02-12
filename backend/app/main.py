@@ -3448,12 +3448,16 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
     # Validações de negócio
     vida_revisada = data.get("vida_util_revisada")
     nova_data_fim = data.get("nova_data_fim")
+    
+    # Determina a data base para o cálculo (Início da Nova Vida Útil ou Abertura do Período)
+    base_start_date = periodo.data_inicio_nova_vida_util or periodo.data_abertura
+
     # Se informada nova_data_fim e não informada vida_util_revisada, calcular meses a partir do início definido no período
     if vida_revisada is None and nova_data_fim is not None:
-        if not periodo.data_inicio_nova_vida_util:
-            raise HTTPException(status_code=400, detail="Defina a Data de Início da Nova Vida Útil no cabeçalho do período")
+        if not base_start_date:
+            raise HTTPException(status_code=400, detail="Data base para cálculo (Início Nova Vida ou Abertura) não disponível")
         # calcular diferença em meses entre início e nova_data_fim
-        start = periodo.data_inicio_nova_vida_util
+        start = base_start_date
         end = nova_data_fim
         # months diff (aproximação similar à função de front-end)
         months = (end.year - start.year) * 12 + (end.month - start.month)
@@ -3465,9 +3469,9 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
         if vida_revisada <= 0:
             raise HTTPException(status_code=400, detail="Vida útil revisada deve ser maior que zero")
         # calcular data fim revisada com base na data de início prospectiva
-        if not periodo.data_inicio_nova_vida_util:
-            raise HTTPException(status_code=400, detail="Defina a Data de Início da Nova Vida Útil no cabeçalho do período")
-        data_fim_rev = _add_months(periodo.data_inicio_nova_vida_util, vida_revisada)
+        if not base_start_date:
+            raise HTTPException(status_code=400, detail="Data base para cálculo (Início Nova Vida ou Abertura) não disponível")
+        data_fim_rev = _add_months(base_start_date, vida_revisada)
         item.data_fim_revisada = data_fim_rev
         item.vida_util_revisada = vida_revisada
     # Se vida revisada não informada mas nova_data_fim informada, persistir nova_data_fim diretamente

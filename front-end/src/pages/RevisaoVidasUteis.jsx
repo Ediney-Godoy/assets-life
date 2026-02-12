@@ -890,7 +890,9 @@ export default function RevisaoVidasUteis() {
                   onChange={(e) => {
                     const val = e.target.value;
                     const periodoSel = periodos.find((p) => p.id === periodoId);
-                    const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util);
+                    // Fallback: se data_inicio_nova_vida_util não definida, usa data_abertura do período
+                    const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util || periodoSel?.data_abertura);
+                    
                     const anos = Number(val || 0);
                     const meses = Number(editForm.revisada_meses || 0);
                     const total = anos * 12 + meses;
@@ -911,7 +913,9 @@ export default function RevisaoVidasUteis() {
                   onChange={(e) => {
                     const val = e.target.value;
                     const periodoSel = periodos.find((p) => p.id === periodoId);
-                    const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util);
+                    // Fallback: se data_inicio_nova_vida_util não definida, usa data_abertura do período
+                    const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util || periodoSel?.data_abertura);
+                    
                     const anos = Number(editForm.revisada_anos || 0);
                     const meses = Number(val || 0);
                     const total = anos * 12 + meses;
@@ -933,7 +937,9 @@ export default function RevisaoVidasUteis() {
                 onChange={(e) => {
                   const val = e.target.value;
                   const periodoSel = periodos.find((p) => p.id === periodoId);
-                  const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util);
+                  // Fallback: se data_inicio_nova_vida_util não definida, usa data_abertura do período
+                  const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util || periodoSel?.data_abertura);
+                  
                   const novaFim = parseDate(val);
                   let total = null;
                   if (inicioNovaVida && novaFim) total = monthsDiff(inicioNovaVida, novaFim);
@@ -946,7 +952,7 @@ export default function RevisaoVidasUteis() {
               {/* Avisos contextuais */}
               {(() => {
                 const periodoSel = periodos.find((p) => p.id === periodoId);
-                const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util);
+                const inicioNovaVida = parseDate(periodoSel?.data_inicio_nova_vida_util || periodoSel?.data_abertura);
                 const novaFim = parseDate(editForm.nova_data_fim);
                 const monthsToEnd = novaFim ? monthsUntil(novaFim) : null;
                 const originalMonths = Number(editingItem?.vida_util_periodos || 0);
