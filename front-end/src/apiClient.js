@@ -1,5 +1,4 @@
 // URL do backend em produção (Koyeb)
-// Force update for timeout fix
 const PRODUCTION_API_URL = 'https://different-marlie-assetslifev2-bc199b4b.koyeb.app';
 
 // Base primária vinda do ambiente (sem barra final); em dev, fallback localhost:8000
