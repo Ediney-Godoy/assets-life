@@ -3544,6 +3544,11 @@ def update_revisao_item(rev_id: int, item_id: int, payload: RevisaoItemUpdate, d
         # Se original é 0 (desconhecido), considerar como alteração
         item.alterado = (original_periodos == 0) or (vida_revisada != original_periodos)
         item.status = "Revisado" if item.alterado else (item.status or "Pendente")
+    elif "incremento" in data and data["incremento"] == "Manter":
+        # Se "Manter" (sem alteração de vida útil), marcar como Revisado se estiver Pendente
+        # Isso garante que itens confirmados apareçam para o supervisor
+        if not item.status or item.status == 'Pendente':
+            item.status = 'Revisado'
 
     # Registrar autor se fornecido
     if payload.revisor_id is not None:

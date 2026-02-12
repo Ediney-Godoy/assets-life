@@ -335,12 +335,22 @@ export default function RevisaoVidasUteis() {
     
     // Filtra delegações para o usuário logado
     // Nota: d.id pode ser negativo para delegações virtuais (itens órfãos revertidos)
-    return new Set(
+    const delegatedIds = new Set(
       list
         .filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === String(uid))
         .map((d) => d.ativo_id)
     );
-  }, [delegacoes, currentUserId]);
+
+    // FIX: Garantir que itens revertidos criados pelo usuário também apareçam, 
+    // mesmo se a delegação estiver perdida/inativa
+    (items || []).forEach(it => {
+      if (it.status === 'Revertido' && String(it.criado_por || '') === String(uid)) {
+        delegatedIds.add(it.id);
+      }
+    });
+
+    return delegatedIds;
+  }, [delegacoes, currentUserId, items]);
 
   const filteredByTab = React.useMemo(() => {
     const base = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
@@ -622,6 +632,17 @@ export default function RevisaoVidasUteis() {
       };
       const updated = await updateReviewItem(periodoId, editingItem.id, payload);
       setItems((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
+      
+      // Notificação de auto-aprovação
+      if (updated.status === 'Aprovado') {
+        // Tentar usar toast se disponível, senão alert (ou componente customizado de feedback)
+        // Como não vi import de toast, vou usar alert por enquanto, mas o ideal seria um toast.
+        // O usuário pediu "notificação", um alert é intrusivo mas garante ciência.
+        // Melhor: adicionar uma mensagem de sucesso no próprio formulário ou usar um mecanismo de feedback menos intrusivo se possível.
+        // Vou usar um alert simples pois é garantido.
+        alert(t('item_auto_approved_msg') || 'Item aprovado automaticamente (sem alterações e vida útil > 18 meses).');
+      }
+
       // Após salvar, recarrega itens do período para refletir campos calculados no backend
       try {
         const refreshed = await getReviewItems(periodoId);

@@ -450,19 +450,30 @@ def reverter(payload: ReverterCreate, current_user: UsuarioModel = Depends(get_c
     it.condicao_fisica = None
 
     # Garante que o revisor tenha delegação ativa para o item revertido
-    if payload.revisor_id:
-        target_periodo_id = payload.periodo_id or it.periodo_id
+    # Se revisor_id não veio no payload (ex: item sem revisor_id registrado no item), tentar recuperar da delegação existente
+    target_revisor_id = payload.revisor_id
+    target_periodo_id = payload.periodo_id or it.periodo_id
+    
+    if not target_revisor_id:
+        existing_deleg = db.query(RevisaoDelegacaoModel).filter(
+            RevisaoDelegacaoModel.periodo_id == target_periodo_id,
+            RevisaoDelegacaoModel.ativo_id == it.id
+        ).first()
+        if existing_deleg:
+            target_revisor_id = existing_deleg.revisor_id
+
+    if target_revisor_id:
         deleg = db.query(RevisaoDelegacaoModel).filter(
             RevisaoDelegacaoModel.periodo_id == target_periodo_id,
             RevisaoDelegacaoModel.ativo_id == it.id,
-            RevisaoDelegacaoModel.revisor_id == payload.revisor_id
+            RevisaoDelegacaoModel.revisor_id == target_revisor_id
         ).first()
         
         if not deleg:
             new_deleg = RevisaoDelegacaoModel(
                 periodo_id=target_periodo_id,
                 ativo_id=it.id,
-                revisor_id=payload.revisor_id,
+                revisor_id=target_revisor_id,
                 atribuido_por=payload.supervisor_id,
                 status='Ativo'
             )

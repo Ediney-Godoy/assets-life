@@ -12,6 +12,7 @@ export default function HelpPage() {
     { id: 'ugs', label: t('ugs') || 'Cadastro de UGs', icon: <Layers size={18} /> },
     { id: 'cronogramas', label: t('tab_cronograma') || 'Cronogramas', icon: <Calendar size={18} /> },
     { id: 'reviews', label: t('tab_vidas_uteis') || 'Revisão de Vidas Úteis', icon: <ClipboardCheck size={18} /> },
+    { id: 'supervision', label: 'Supervisão RVU', icon: <ClipboardCheck size={18} /> },
     { id: 'tips', label: t('help_tips_title') || 'Dicas Gerais', icon: <Info size={18} /> },
   ];
 
@@ -426,6 +427,77 @@ export default function HelpPage() {
                     </div>
                 </div>
             </div>
+        );
+
+      case 'supervision':
+        return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-2">
+                <ClipboardCheck className="text-blue-600 dark:text-blue-400" /> Supervisão RVU
+                </h2>
+                <p className="text-slate-600 dark:text-slate-400 text-lg">
+                Gerencie, aprove ou reverta as revisões de vida útil realizadas pelos revisores.
+                </p>
+            </div>
+
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-950 shadow-sm">
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-b border-slate-200 dark:border-slate-800 font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <FileText size={18} /> Fluxo de Supervisão
+              </div>
+              <div className="p-6 space-y-6">
+                 
+                 {/* Auto-Aprovação */}
+                 <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-100 dark:border-green-800">
+                    <h3 className="text-lg font-semibold text-green-800 dark:text-green-300 mb-2 flex items-center gap-2">
+                        <ClipboardCheck size={20}/> Aprovação Automática
+                    </h3>
+                    <p className="text-sm text-green-800 dark:text-green-300 mb-2">
+                        Para agilizar o processo, o sistema aprova automaticamente itens que atendem aos seguintes critérios simultaneamente:
+                    </p>
+                    <ul className="list-disc pl-5 text-sm text-green-700 dark:text-green-400 space-y-1">
+                        <li><strong>Ação:</strong> O revisor selecionou "Manter" (sem alteração de vida útil).</li>
+                        <li><strong>Vida Útil Restante:</strong> O bem possui mais de 18 meses de vida útil restante.</li>
+                    </ul>
+                    <p className="text-xs text-green-600 dark:text-green-500 mt-2 italic">
+                        Nota: O usuário é notificado imediatamente quando um item é auto-aprovado.
+                    </p>
+                 </div>
+
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">1. Fila de Supervisão</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                            Os itens revisados aparecem na aba <strong>Revisados</strong> aguardando sua análise. Você pode filtrar por status:
+                        </p>
+                        <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                            <li><span className="font-medium text-slate-900 dark:text-slate-100">Revisado:</span> Itens que foram alterados ou justificados pelo revisor.</li>
+                            <li><span className="font-medium text-slate-900 dark:text-slate-100">Aprovado:</span> Itens já validados (manualmente ou automaticamente).</li>
+                            <li><span className="font-medium text-slate-900 dark:text-slate-100">Revertido:</span> Itens devolvidos para correção.</li>
+                        </ul>
+                    </div>
+                    <div>
+                         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">2. Ações do Supervisor</h3>
+                         <ul className="space-y-3">
+                            <li className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded border border-slate-100 dark:border-slate-800">
+                                <strong className="block text-blue-600 dark:text-blue-400 mb-1">Aprovar</strong>
+                                <span className="text-sm text-slate-600 dark:text-slate-400">
+                                    Valida a revisão. O item sai da fila de pendências e o novo valor de vida útil é confirmado.
+                                </span>
+                            </li>
+                            <li className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded border border-slate-100 dark:border-slate-800">
+                                <strong className="block text-orange-600 dark:text-orange-400 mb-1">Reverter</strong>
+                                <span className="text-sm text-slate-600 dark:text-slate-400">
+                                    Devolve o item para o revisor. <strong>Importante:</strong> A delegação é reativada para que o revisor possa ver e corrigir o item em sua lista.
+                                </span>
+                            </li>
+                         </ul>
+                    </div>
+                 </div>
+
+              </div>
+            </div>
+          </div>
         );
 
       case 'tips':

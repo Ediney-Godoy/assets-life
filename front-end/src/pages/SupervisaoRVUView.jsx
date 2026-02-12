@@ -28,7 +28,7 @@ export default function SupervisaoRVUView() {
   const [hist, setHist] = useState([]);
   const [query, setQuery] = useState('');
 
-  const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', revisor_id: '', status: 'Pendente', periodo_id: '' });
+  const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', revisor_id: '', status: 'Revisado', periodo_id: '' });
   const [dynamicFilters, setDynamicFilters] = useState({ classe: '', centro_custo: '', valor_min: '', valor_max: '' });
   const [filterType, setFilterType] = useState('todos');
   const [filtersExpanded, setFiltersExpanded] = useState(true);
