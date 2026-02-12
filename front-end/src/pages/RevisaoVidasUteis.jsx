@@ -332,7 +332,14 @@ export default function RevisaoVidasUteis() {
     const uid = currentUserId;
     if (!uid) return new Set();
     const list = Array.isArray(delegacoes) ? delegacoes : [];
-    return new Set(list.filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === String(uid)).map((d) => d.ativo_id));
+    
+    // Filtra delegações para o usuário logado
+    // Nota: d.id pode ser negativo para delegações virtuais (itens órfãos revertidos)
+    return new Set(
+      list
+        .filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === String(uid))
+        .map((d) => d.ativo_id)
+    );
   }, [delegacoes, currentUserId]);
 
   const filteredByTab = React.useMemo(() => {

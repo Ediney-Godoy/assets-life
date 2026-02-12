@@ -3842,7 +3842,10 @@ def list_revisao_delegacoes(rev_id: int, db: Session = Depends(get_db)):
 
     delegs = db.query(RevisaoDelegacaoModel).filter(RevisaoDelegacaoModel.periodo_id == rev_id).all()
     result: List[DelegacaoOut] = []
+    delegated_item_ids = set()
+
     for d in delegs:
+        delegated_item_ids.add(d.ativo_id)
         item = db.query(RevisaoItemModel).filter(RevisaoItemModel.id == d.ativo_id).first()
         revisor = db.query(UsuarioModel).filter(UsuarioModel.id == d.revisor_id).first()
         result.append(
@@ -3863,6 +3866,46 @@ def list_revisao_delegacoes(rev_id: int, db: Session = Depends(get_db)):
                 valor_contabil=(float(item.valor_contabil) if (hasattr(item, 'valor_contabil') and item.valor_contabil is not None) else None),
             )
         )
+    
+    # -------------------------------------------------------------------------
+    # FIX: Include 'Revertido' items that are missing delegation (orphaned)
+    # This ensures items reverted before the fix appear for their original revisor
+    # -------------------------------------------------------------------------
+    reverted_items = db.query(RevisaoItemModel).filter(
+        RevisaoItemModel.periodo_id == rev_id,
+        RevisaoItemModel.status == 'Revertido'
+    ).all()
+
+    from datetime import datetime
+    
+    for it in reverted_items:
+        if it.id in delegated_item_ids:
+            continue
+        
+        target_revisor_id = getattr(it, 'criado_por', None)
+        if target_revisor_id:
+            revisor = db.query(UsuarioModel).filter(UsuarioModel.id == target_revisor_id).first()
+            if revisor:
+                # Create virtual delegation (ID is negative to indicate virtual)
+                result.append(
+                    DelegacaoOut(
+                        id=-(it.id),
+                        periodo_id=rev_id,
+                        ativo_id=it.id,
+                        revisor_id=target_revisor_id,
+                        atribuido_por=periodo.responsavel_id or 0,
+                        data_atribuicao=datetime.now(),
+                        status='Ativo',
+                        numero_imobilizado=it.numero_imobilizado,
+                        descricao=it.descricao,
+                        revisor_nome=revisor.nome_completo,
+                        classe=it.classe,
+                        conta_contabil=it.conta_contabil,
+                        centro_custo=it.centro_custo,
+                        valor_contabil=(float(it.valor_contabil) if (hasattr(it, 'valor_contabil') and it.valor_contabil is not None) else None),
+                    )
+                )
+
     return result
 
 @app.post("/revisoes/delegacoes", response_model=DelegacaoOut)
