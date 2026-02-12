@@ -286,8 +286,8 @@ async function request(path, options = {}) {
     const url = `${base}${path}`;
     console.log('[apiClient] Tentando requisição para:', url);
     const controller = new AbortController();
-    // Timeout padrão aumentado para 60s (cold start do backend)
-    const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 60000);
+    // Timeout padrão aumentado para 120s (cold start severo do backend)
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 120000);
     try {
       console.log('[apiClient] Fetch iniciado:', { url, method: options.method || 'GET' });
       const res = await fetch(url, {
