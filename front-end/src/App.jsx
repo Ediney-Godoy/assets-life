@@ -17,7 +17,29 @@ import EmployeesPage from './pages/Employees';
 import ManagementUnitsPage from './pages/ManagementUnits';
 import TabsDemo from './pages/TabsDemo';
 import ReviewsMenu from './pages/ReviewsMenu';
-const ReviewsPageLazy = React.lazy(() => import('./pages/Reviews'));
+// Helper para retry em lazy loading (chunks antigos após deploy)
+const lazyWithRetry = (componentImport) =>
+  React.lazy(async () => {
+    try {
+      return await componentImport();
+    } catch (error) {
+      const isChunkError = error.message?.includes('Failed to fetch dynamically imported module') ||
+                          error.message?.includes('Falha ao buscar o módulo importado dinamicamente');
+      if (isChunkError) {
+        console.warn('Chunk load error detected in lazy import. Reloading...');
+        const hasReloaded = sessionStorage.getItem('chunk_retry_' + window.location.pathname);
+        if (!hasReloaded) {
+          sessionStorage.setItem('chunk_retry_' + window.location.pathname, 'true');
+          window.location.reload();
+        }
+        // Retorna promessa pendente para evitar crash imediato enquanto recarrega
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  });
+
+const ReviewsPageLazy = lazyWithRetry(() => import('./pages/Reviews'));
 import DelegacaoPage from './pages/Delegacao';
 import RevisaoVidasUteis from './pages/RevisaoVidasUteis';
 import MassRevisionView from './pages/MassRevisionView';
