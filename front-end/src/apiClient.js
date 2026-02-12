@@ -118,8 +118,10 @@ async function resolveBase() {
     if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const res = await fetch(`${PRIMARY_BASE}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+        // Aumentado para 15s para suportar cold start
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        // Usa /version (leve) em vez de /health (pesado/DB) para checar conectividade
+        const res = await fetch(`${PRIMARY_BASE}/version`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
         clearTimeout(timeoutId);
         if (res.ok) {
           ACTIVE_BASE = PRIMARY_BASE;
@@ -147,9 +149,11 @@ async function resolveBase() {
     console.log('[apiClient] resolveBase() - Testando base:', base);
     if (!base) continue; // Pula valores nulos/undefined
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    // Aumentado para 15s para suportar cold start
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
-      const res = await fetch(`${base}/health`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+      // Usa /version para teste de conectividade mais leve
+      const res = await fetch(`${base}/version`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
       clearTimeout(timeoutId);
       if (res.ok) {
         ACTIVE_BASE = base;
@@ -272,7 +276,8 @@ async function request(path, options = {}) {
     const url = `${base}${path}`;
     console.log('[apiClient] Tentando requisição para:', url);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 20000);
+    // Timeout padrão aumentado para 60s (cold start do backend)
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 60000);
     try {
       console.log('[apiClient] Fetch iniciado:', { url, method: options.method || 'GET' });
       const res = await fetch(url, {
