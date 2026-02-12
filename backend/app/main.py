@@ -81,6 +81,8 @@ origins = [
     # Backend Koyeb (para testes diretos)
     "https://brief-grete-assetlife-f50c6bd0.koyeb.app",
     "https://different-marlie-assetslifev2-bc199b4b.koyeb.app",
+    # Vercel www
+    "https://www.assets-life-bp3b.vercel.app",
 ]
 
 # Origin adicional via variável de ambiente (ex.: "http://192.168.101.8:5175" ou URL de produção)
@@ -624,6 +626,10 @@ def health_db():
             headers={"X-Error-Id": error_id},
         )
 
+@app.get("/")
+def root():
+    return {"status": "online", "service": "Asset Life API", "version": "0.2.0"}
+
 @app.get("/version")
 def version():
     version_id = (
@@ -643,10 +649,6 @@ def debug_schema(table_name: str, db: Session = Depends(get_db)):
         return {"table": table_name, "columns": columns}
     except Exception as e:
         return {"error": str(e)}
-
-@app.get("/")
-def root():
-    return {"message": "Asset Life API"}
 
 # Endpoint /health já definido acima com verificação de banco de dados
 
