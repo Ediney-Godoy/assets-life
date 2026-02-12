@@ -524,12 +524,17 @@ export default function RevisaoVidasUteis() {
 
   const handleSave = async () => {
     if (!editingItem || !periodoId) return;
-    // Guardar: exige data de início da nova vida útil definida no cadastro de períodos
     const periodoSel = periodos.find((p) => p.id === periodoId);
-    if (!periodoSel?.data_inicio_nova_vida_util) {
-      setError(t('error_missing_start_new_useful_life_date'));
+    
+    // Fallback: se data_inicio_nova_vida_util não definida, usa data_abertura do período
+    // Isso permite salvar mesmo que o cadastro do período esteja incompleto, assumindo a abertura como base
+    const baseDateStr = periodoSel?.data_inicio_nova_vida_util || periodoSel?.data_abertura;
+    
+    if (!baseDateStr) {
+      setError(t('error_missing_start_new_useful_life_date') || 'Data base para cálculo (Início Nova Vida ou Abertura) não disponível.');
       return;
     }
+    
     try {
       // Converter entrada em anos + meses para meses totais (12 meses/ano)
       let mesesRevisados = null;
@@ -542,7 +547,7 @@ export default function RevisaoVidasUteis() {
       }
 
       // Bidirecional: se usuário informou nova_data_fim, recalculamos mesesRevisados com base no início do período
-      const inicioNovaVida = parseDate(periodoSel.data_inicio_nova_vida_util);
+      const inicioNovaVida = parseDate(baseDateStr);
       const novaFim = parseDate(editForm.nova_data_fim);
       if (!mesesRevisados && novaFim && inicioNovaVida) {
         const m = monthsDiff(inicioNovaVida, novaFim);
