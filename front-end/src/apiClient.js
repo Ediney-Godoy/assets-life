@@ -114,6 +114,16 @@ const SAFE_CANDIDATES = IS_HTTPS
 
 async function resolveBase() {
   if (DEBUG_API) console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
+
+  // Em produção, confiar na configuração para evitar timeout de cold start
+  // Isso evita que a verificação de saúde falhe se o backend demorar > 15s para subir
+  if (IS_PROD && PRIMARY_BASE) {
+    if (DEBUG_API) console.log('[apiClient] resolveBase() - IS_PROD=true, usando PRIMARY_BASE imediatamente:', PRIMARY_BASE);
+    ACTIVE_BASE = PRIMARY_BASE;
+    try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
+    return PRIMARY_BASE;
+  }
+
   try {
     if (IS_HTTPS && PRIMARY_BASE && /^https:\/\//i.test(String(PRIMARY_BASE))) {
       try {
