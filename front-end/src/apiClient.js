@@ -113,13 +113,25 @@ const SAFE_CANDIDATES = IS_HTTPS
   ? BASE_CANDIDATES.filter((b) => /^https:\/\//i.test(String(b)))
   : BASE_CANDIDATES;
 
+// Tenta resolver a URL base da API
+// Retorna a URL base ativa ou lança erro
 async function resolveBase() {
+  if (ACTIVE_BASE) return ACTIVE_BASE;
+
+  // Detecta se estamos usando uma URL de produção (Koyeb, Render, etc.)
+  // para evitar health check rigoroso que falha em cold starts
+  const isProductionUrl = PRIMARY_BASE && (
+    PRIMARY_BASE.includes('koyeb.app') || 
+    PRIMARY_BASE.includes('onrender.com') || 
+    PRIMARY_BASE.includes('herokuapp.com')
+  );
+
   if (DEBUG_API) console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
 
-  // Em produção, confiar na configuração para evitar timeout de cold start
+  // Em produção ou URL de produção, confiar na configuração para evitar timeout de cold start
   // Isso evita que a verificação de saúde falhe se o backend demorar > 15s para subir
-  if (IS_PROD && PRIMARY_BASE) {
-    if (DEBUG_API) console.log('[apiClient] resolveBase() - IS_PROD=true, usando PRIMARY_BASE imediatamente:', PRIMARY_BASE);
+  if ((IS_PROD || isProductionUrl) && PRIMARY_BASE) {
+    if (DEBUG_API) console.log('[apiClient] resolveBase() - IS_PROD/ProdURL=true, usando PRIMARY_BASE imediatamente:', PRIMARY_BASE);
     ACTIVE_BASE = PRIMARY_BASE;
     try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
     return PRIMARY_BASE;
