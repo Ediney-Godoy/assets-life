@@ -556,7 +556,7 @@ export async function deleteAsset(id) {
 export async function getRelatoriosResumo(params = {}) {
   const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
   // Em datasets grandes a consulta pode demorar; ampliar timeout
-  return request(`/relatorios/rvu/resumo${q ? `?${q}` : ''}`, { timeout: 60000 });
+  return request(`/relatorios/rvu/resumo${q ? `?${q}` : ''}`, { timeout: 120000 });
 }
 
 export async function getRelatoriosExcel(params = {}) {

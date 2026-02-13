@@ -33,6 +33,11 @@ function deltaVidaUtil(aAtual, mAtual, aNova, mNova) {
 export default function RelatoriosRVUView() {
   const { t } = useTranslation();
   const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', classe_id: '', revisor_id: '', periodo_id: '', periodo_inicio: '', periodo_fim: '', status: 'Todos' });
+  const [dynamicFilters, setDynamicFilters] = useState({ centro_custo: '', valor_min: '', valor_max: '' });
+  const [filterType, setFilterType] = useState('todos');
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [query, setQuery] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [loadingGen, setLoadingGen] = useState(false);
   const [companies, setCompanies] = useState([]);
@@ -44,6 +49,26 @@ export default function RelatoriosRVUView() {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [logs, setLogs] = useState([]);
+
+  const periodoSelecionado = useMemo(() => {
+    const id = String(filters.periodo_id || '').trim();
+    if (!id) return null;
+    return periodos.find((p) => String(p.id) === id) || null;
+  }, [filters.periodo_id, periodos]);
+
+  const responsavelPeriodo = useMemo(() => {
+    if (!periodoSelecionado) return '';
+    const r = revisores.find(u => String(u.id) === String(periodoSelecionado.responsavel_id));
+    return r ? (r.nome_completo || r.name) : '—';
+  }, [periodoSelecionado, revisores]);
+
+  const periodosVisiveis = useMemo(() => {
+    let list = Array.isArray(periodos) ? periodos : [];
+    if (filters.empresa_id) {
+      list = list.filter((p) => String(p.empresa_id || '') === String(filters.empresa_id));
+    }
+    return list;
+  }, [periodos, filters.empresa_id]);
 
   useEffect(() => {
     const loadBase = async () => {
@@ -121,7 +146,7 @@ export default function RelatoriosRVUView() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getRelatoriosResumo({
+      const params = {
         empresa_id: filters.empresa_id || undefined,
         ug_id: filters.ug_id || undefined,
         classe_id: filters.classe_id || undefined,
@@ -129,7 +154,11 @@ export default function RelatoriosRVUView() {
         periodo_inicio: filters.periodo_inicio || undefined,
         periodo_fim: filters.periodo_fim || undefined,
         status: filters.status === 'Todos' ? undefined : filters.status,
-      });
+        centro_custo: dynamicFilters.centro_custo || undefined,
+        valor_min: dynamicFilters.valor_min || undefined,
+        valor_max: dynamicFilters.valor_max || undefined,
+      };
+      const data = await getRelatoriosResumo(params);
       setRows(data || []);
     } catch (err) {
       setError(err.message || 'Erro ao aplicar filtros');
@@ -142,7 +171,14 @@ export default function RelatoriosRVUView() {
     setLoadingGen(true);
     setSuccessMsg(null);
     try {
-      const blob = await getRelatoriosExcel(filters);
+      const params = {
+        ...filters,
+        status: filters.status === 'Todos' ? undefined : filters.status,
+        centro_custo: dynamicFilters.centro_custo || undefined,
+        valor_min: dynamicFilters.valor_min || undefined,
+        valor_max: dynamicFilters.valor_max || undefined,
+      };
+      const blob = await getRelatoriosExcel(params);
       const url = window.URL.createObjectURL(new Blob([blob]));
       const a = document.createElement('a');
       a.href = url;
@@ -163,7 +199,14 @@ export default function RelatoriosRVUView() {
     setLoadingGen(true);
     setSuccessMsg(null);
     try {
-      const blob = await getRelatoriosPdf(filters);
+      const params = {
+        ...filters,
+        status: filters.status === 'Todos' ? undefined : filters.status,
+        centro_custo: dynamicFilters.centro_custo || undefined,
+        valor_min: dynamicFilters.valor_min || undefined,
+        valor_max: dynamicFilters.valor_max || undefined,
+      };
+      const blob = await getRelatoriosPdf(params);
       const url = window.URL.createObjectURL(new Blob([blob]));
       const a = document.createElement('a');
       a.href = url;
@@ -202,8 +245,35 @@ export default function RelatoriosRVUView() {
     { key: 'status', header: t('status') },
   ]), []);
 
+  const uniqueCCs = useMemo(() => {
+    const vals = Array.from(new Set(rows.map((i) => i.centro_custo).filter(Boolean)));
+    return vals.sort();
+  }, [rows]);
+
   // Ordena para priorizar itens com alteração discrepante (>20% da vida útil atual)
   const sortedRows = useMemo(() => {
+    let res = rows;
+
+    if (query) {
+      const q = query.toLowerCase();
+      res = res.filter(i => 
+        String(i.numero_imobilizado || '').toLowerCase().includes(q) ||
+        String(i.descricao || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Client-side filtering for dynamic fields not handled by API
+    if (dynamicFilters.centro_custo) {
+      const f = dynamicFilters.centro_custo.toLowerCase();
+      res = res.filter(i => String(i.centro_custo || '').toLowerCase().includes(f));
+    }
+    if (dynamicFilters.valor_min) {
+      res = res.filter(i => Number(i.valor_contabil || 0) >= Number(dynamicFilters.valor_min));
+    }
+    if (dynamicFilters.valor_max) {
+      res = res.filter(i => Number(i.valor_contabil || 0) <= Number(dynamicFilters.valor_max));
+    }
+
     const score = (r) => {
       const totalAtual = Number(r.vida_util_atual_anos || 0) * 12 + Number(r.vida_util_atual_meses || 0);
       const d = deltaVidaUtil(r.vida_util_atual_anos, r.vida_util_atual_meses, r.vida_util_revisada_anos, r.vida_util_revisada_meses);
@@ -211,24 +281,35 @@ export default function RelatoriosRVUView() {
       const highlighted = ratio > 0.2 ? 1 : 0;
       return highlighted * 1000 + ratio;
     };
-    return [...rows].sort((a, b) => {
+    return [...res].sort((a, b) => {
       const diff = score(b) - score(a);
       if (diff !== 0) return diff;
       return 0;
     });
-  }, [rows]);
+  }, [rows, dynamicFilters, query]);
 
   return (
     <div className="p-4">
       <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('useful_life_report_title')}</div>
 
       {/* Filtros */}
-      <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('company_label')}</label>
+      <div className="bg-white dark:bg-slate-950 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 p-5 mb-6 relative">
+        <button
+          className="absolute top-4 right-4 inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors z-10"
+          onClick={() => setFiltersExpanded(!filtersExpanded)}
+          title={filtersExpanded ? "Ocultar filtros" : "Mostrar filtros"}
+        >
+          {filtersExpanded ? <Filter size={16} className="rotate-180" /> : <Filter size={16} />}
+        </button>
+
+        <div className={`transition-all duration-300 overflow-hidden ${filtersExpanded ? 'opacity-100' : 'max-h-0 opacity-0'}`}>
+        
+        {/* Linha Principal */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('company_label')}</label>
             <select 
-              className="min-w-[280px] w-[340px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-70 disabled:cursor-not-allowed" 
+              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
               value={filters.empresa_id} 
               onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}
               disabled={!!localStorage.getItem('assetlife_empresa')}
@@ -237,68 +318,182 @@ export default function RelatoriosRVUView() {
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('filter_ug')}</label>
-            <select className="min-w-[360px] w-[380px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
-              <option value="">{t('all')}</option>
-              {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('filter_class')}</label>
-            <select className="min-w-[180px] w-[220px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.classe_id} onChange={(e) => setFilters((f) => ({ ...f, classe_id: e.target.value }))}>
-              <option value="">{t('all')}</option>
-              {classes.map((cl) => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('review_period_label') || 'Período de Revisão'}</label>
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('review_period_label') || 'Período'}</label>
             <select 
-              className="min-w-[280px] w-[340px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" 
+              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
               value={filters.periodo_id} 
               onChange={(e) => setFilters((f) => ({ ...f, periodo_id: e.target.value }))}
             >
               <option value="">{t('all')}</option>
-              {periodos.map((p) => <option key={p.id} value={p.id}>{p.descricao}</option>)}
+              {periodosVisiveis.map((p) => <option key={p.id} value={p.id}>{p.descricao}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('reviewer_label')}</label>
-            <select className="min-w-[280px] w-[340px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Responsável</label>
+            <input 
+              type="text" 
+              className="w-full h-10 px-3 rounded-md border bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed" 
+              value={responsavelPeriodo} 
+              readOnly 
+              title="Responsável pelo Período"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('status')}</label>
+            <select 
+              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+              value={filters.status} 
+              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+            >
+              <option value="Todos">{t('all')}</option>
+              <option value="Revisado">{t('status_reviewed')}</option>
+              <option value="Aprovado">{t('status_approved')}</option>
+              <option value="Pendente">{t('status_pending')}</option>
+              <option value="Revertido">Revertido</option>
+            </select>
+          </div>
+          <div className="md:col-span-1">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('reviewer_label')}</label>
+            <select 
+              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+              value={filters.revisor_id} 
+              onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}
+            >
               <option value="">{t('all')}</option>
               {revisores.map((r) => <option key={r.id} value={r.id}>{r.full_name || r.nome_completo || r.nome}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-[4px]">
-            <div>
-              <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('period_start_label')}</label>
-              <input type="date" className="w-[180px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.periodo_inicio} onChange={(e) => setFilters((f) => ({ ...f, periodo_inicio: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('period_end_label')}</label>
-              <input type="date" className="w-[180px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.periodo_fim} onChange={(e) => setFilters((f) => ({ ...f, periodo_fim: e.target.value }))} />
-            </div>
+        </div>
+
+        {/* Linha Secundária (Filtro Avançado) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end">
+           <div className="md:col-span-3">
+             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Filtro Avançado</label>
+             <select 
+               className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+               value={filterType} 
+               onChange={(e) => {
+                 const t = e.target.value;
+                 setFilterType(t);
+                 setDynamicFilters({ centro_custo: '', valor_min: '', valor_max: '' });
+                 if (t !== 'ug') setFilters(f => ({ ...f, ug_id: '' }));
+                 if (t !== 'classe') setFilters(f => ({ ...f, classe_id: '' }));
+               }}
+             >
+               <option value="todos">Nenhum</option>
+               <option value="ug">Unidade Gerencial</option>
+               <option value="classe">Classe Contábil</option>
+               <option value="centro_custo">Centro de Custos</option>
+               <option value="valor">Valor Contábil</option>
+             </select>
+           </div>
+
+           <div className="md:col-span-9">
+             {filterType === 'ug' && (
+               <select 
+                 className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                 value={filters.ug_id} 
+                 onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}
+               >
+                 <option value="">Todas</option>
+                 {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
+               </select>
+             )}
+             {filterType === 'classe' && (
+               <select 
+                 className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                 value={filters.classe_id} 
+                 onChange={(e) => setFilters((f) => ({ ...f, classe_id: e.target.value }))}
+               >
+                 <option value="">Todas</option>
+                 {classes.map((cl) => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
+               </select>
+             )}
+             {filterType === 'centro_custo' && (
+               <select 
+                 className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                 value={dynamicFilters.centro_custo} 
+                 onChange={(e) => setDynamicFilters(d => ({ ...d, centro_custo: e.target.value }))}
+               >
+                 <option value="">Todos</option>
+                 {uniqueCCs.map((cc) => <option key={cc} value={cc}>{cc}</option>)}
+               </select>
+             )}
+             {filterType === 'valor' && (
+               <div className="flex items-center space-x-2">
+                 <input 
+                   type="number" 
+                   placeholder="Min" 
+                   className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                   value={dynamicFilters.valor_min} 
+                   onChange={(e) => setDynamicFilters(d => ({ ...d, valor_min: e.target.value }))} 
+                 />
+                 <span className="text-slate-400">-</span>
+                 <input 
+                   type="number" 
+                   placeholder="Max" 
+                   className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                   value={dynamicFilters.valor_max} 
+                   onChange={(e) => setDynamicFilters(d => ({ ...d, valor_max: e.target.value }))} 
+                 />
+               </div>
+             )}
+           </div>
+        </div>
+
+        {/* Linha de Busca e Ações */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="w-full md:w-1/2">
+             <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Busca rápida por descrição ou Nº do imobilizado..." 
+                  className="w-full h-10 pl-10 pr-4 rounded-md border bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+             </div>
           </div>
-          <div>
-            <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">{t('status')}</label>
-            <select className="min-w-[180px] w-[220px] px-3 py-2 rounded-md border bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
-              <option value="Todos">{t('all')}</option>
-              <option value="Revisado">{t('status_reviewed')}</option>
-              <option value="Pendente">{t('status_pending')}</option>
-              <option value="Aprovado">{t('status_approved')}</option>
-            </select>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={applyFilters}
+              className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md shadow-sm transition-colors flex items-center h-10"
+            >
+              <Filter size={18} className="mr-2" />
+              Filtrar
+            </button>
+             <button
+              type="button"
+              onClick={onGeneratePdf}
+              disabled={loadingGen}
+              className="w-10 h-10 flex items-center justify-center rounded border bg-white border-slate-300 hover:bg-slate-50 transition-colors"
+              title={t('generate_pdf')}
+            >
+              <img src="/Pdf.svg" alt="PDF" className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={onGenerateExcel}
+              disabled={loadingGen}
+              className="w-10 h-10 flex items-center justify-center rounded border bg-white border-slate-300 hover:bg-slate-50 transition-colors"
+              title={t('export_excel')}
+            >
+              <img src="/Excel.svg" alt="Excel" className="w-5 h-5" />
+            </button>
+             <button
+              type="button"
+              onClick={refreshLogs}
+              className="w-10 h-10 flex items-center justify-center rounded border bg-white border-slate-300 hover:bg-slate-50 transition-colors text-slate-600"
+              title={t('reports_history')}
+            >
+              <Clock size={18} />
+            </button>
           </div>
         </div>
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={applyFilters}
-            className="px-2 py-1 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-            title={t('apply_filters')}
-            aria-label={t('apply_filters')}
-          >
-            <Filter size={16} />
-          </button>
+        
         </div>
       </div>
 
@@ -331,47 +526,7 @@ export default function RelatoriosRVUView() {
         )}
       </div>
 
-      {/* Ações */}
-      <div className="flex items-center gap-2 mb-6">
-        <button
-          type="button"
-          onClick={onGeneratePdf}
-          disabled={loadingGen}
-          className="p-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-          title={t('generate_pdf')}
-          aria-label={t('generate_pdf')}
-        >
-          <img src="/Pdf.svg" alt="" className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          onClick={onGenerateExcel}
-          disabled={loadingGen}
-          className="p-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-          title={t('export_excel')}
-          aria-label={t('export_excel')}
-        >
-          <img src="/Excel.svg" alt="" className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          onClick={applyFilters}
-          className="p-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-          title={t('view_preview')}
-          aria-label={t('view_preview')}
-        >
-          <Search size={18} />
-        </button>
-        <button
-          type="button"
-          onClick={refreshLogs}
-          className="p-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-          title={t('reports_history')}
-          aria-label={t('reports_history')}
-        >
-          <Clock size={18} />
-        </button>
-      </div>
+
 
       {successMsg && <div className="text-green-700 mb-4">{successMsg}</div>}
 
