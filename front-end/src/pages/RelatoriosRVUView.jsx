@@ -355,7 +355,7 @@ export default function RelatoriosRVUView() {
             </select>
           </div>
           <div className="md:col-span-3">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('review_period_label') || 'Período'}</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Período</label>
             <select 
               className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
               value={filters.periodo_id} 
@@ -428,15 +428,19 @@ export default function RelatoriosRVUView() {
                </select>
              )}
              {filterType === 'classe' && (
-               <select 
-                 className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
-                 value={dynamicFilters.classe} 
-                 onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
-               >
-                 <option value="">Todas</option>
-                 {uniqueClasses.map((cl) => <option key={cl} value={cl}>{cl}</option>)}
-               </select>
-             )}
+              <select 
+                className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                value={dynamicFilters.classe} 
+                onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
+              >
+                <option value="">Todas</option>
+                {uniqueClasses.map((cl) => {
+                  const clsObj = classes.find(c => String(c.codigo) === String(cl));
+                  const label = clsObj ? `${clsObj.codigo} - ${clsObj.descricao}` : cl;
+                  return <option key={cl} value={cl}>{label}</option>;
+                })}
+              </select>
+            )}
              {filterType === 'centro_custo' && (
                <select 
                  className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
