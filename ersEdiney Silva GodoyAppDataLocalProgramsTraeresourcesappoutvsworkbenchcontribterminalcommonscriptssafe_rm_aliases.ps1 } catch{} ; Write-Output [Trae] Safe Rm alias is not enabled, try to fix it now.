@@ -2387,3 +2387,24 @@ Date:   Wed Feb 11 13:18:40 2026 -0300
  TAB ...................................... Complete filename & cycle.
  SHIFT-TAB ...................... ESC-TAB   Complete filename & reverse cycle.
  ctrl-L ................................... Complete filename, list all.
+[33mcommit 5ed9b95957adbcc481b10129142472905f2e7548[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Ediney-Godoy <ediney.dev@gmail.com>
+Date:   Thu Feb 12 19:25:07 2026 -0300
+
+    fix_timeouts_and_connection_check
+[33mcommit 2074faf4be22de0dfd808b1efa11283fb780e7ac[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Ediney-Godoy <ediney.dev@gmail.com>
+Date:   Thu Feb 12 19:51:46 2026 -0300
+
+    fix_force_timeout_update
+
+[1mdiff --git a/front-end/src/apiClient.js b/front-end/src/apiClient.js[m
+[1mindex f7288ebd..747ead39 100644[m
+[1m--- a/front-end/src/apiClient.js[m
+[1m+++ b/front-end/src/apiClient.js[m
+[36m@@ -1,4 +1,5 @@[m
+ // URL do backend em produção (Koyeb)[m
+[32m+[m[32m// Force update for timeout fix[m
+ const PRODUCTION_API_URL = 'https://different-marlie-assetslifev2-bc199b4b.koyeb.app';[m
+ [m
+ // Base primária vinda do ambiente (sem barra final); em dev, fallback localhost:8000[m
