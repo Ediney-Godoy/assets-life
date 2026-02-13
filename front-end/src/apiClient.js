@@ -39,6 +39,14 @@ let ACTIVE_BASE = null;
 const DEBUG_API = (() => {
   try { return (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('debug_api') === '1'); } catch { return false; }
 })();
+
+const debugLog = (...args) => {
+  if (DEBUG_API) console.log(...args);
+};
+
+const debugWarn = (...args) => {
+  if (DEBUG_API) console.warn(...args);
+};
 try {
   if (typeof window !== 'undefined' && window.location?.hostname) {
     HOST_BASE = `http://${window.location.hostname}:8000`;
@@ -50,8 +58,16 @@ const IS_HTTPS = (() => { try { return typeof window !== 'undefined' && window.l
 // Lista de URLs antigas que devem ser limpas
 const OLD_URLS = [
   'https://brief-grete-assetlife-f50c6bd0.koyeb.app',
+  'https://brief-grete-assetlife-f50c6bd0.koyeb.app/',
+  'http://brief-grete-assetlife-f50c6bd0.koyeb.app',
+  'http://brief-grete-assetlife-f50c6bd0.koyeb.app/',
   // Adicione outras URLs antigas aqui se necessário
 ];
+
+function normalizeBaseUrl(base) {
+  if (!base) return base;
+  return String(base).replace(/\/+$/, '');
+}
 
 const DEFAULT_KOYEB_BASES = [
   'https://different-marlie-assetslifev2-bc199b4b.koyeb.app',
@@ -61,36 +77,58 @@ const DEFAULT_KOYEB_BASES = [
 // Limpa cache de URL antiga antes de usar
 if (typeof window !== 'undefined') {
   try {
-    const cachedBase = window.__ASSETS_API_BASE;
-    console.log('[apiClient] Verificando cache:', { cachedBase, PRIMARY_BASE, OLD_URLS });
+    const cachedBase = normalizeBaseUrl(window.__ASSETS_API_BASE);
+    debugLog('[apiClient] Verificando cache:', { cachedBase, PRIMARY_BASE, OLD_URLS });
     
     // Se há uma URL configurada via env e é diferente da cacheada, limpa o cache
-    if (PRIMARY_BASE && cachedBase && cachedBase !== PRIMARY_BASE) {
-      console.log('[apiClient] Limpando cache de URL antiga:', cachedBase, '→ Nova:', PRIMARY_BASE);
+    const normalizedPrimary = normalizeBaseUrl(PRIMARY_BASE);
+
+    if (normalizedPrimary && cachedBase && cachedBase !== normalizedPrimary) {
+      debugLog('[apiClient] Limpando cache de URL antiga:', cachedBase, '→ Nova:', PRIMARY_BASE);
       delete window.__ASSETS_API_BASE;
       ACTIVE_BASE = null;
     }
     // Em preview/local (HTTP), não usar base remota HTTPS cacheada
     else if (!IS_HTTPS && cachedBase && /^https:\/\//i.test(String(cachedBase))) {
-      console.log('[apiClient] Removendo base remota em ambiente HTTP:', cachedBase);
+      debugLog('[apiClient] Removendo base remota em ambiente HTTP:', cachedBase);
       delete window.__ASSETS_API_BASE;
       ACTIVE_BASE = null;
     }
     // Se a URL cacheada é uma URL antiga conhecida, limpa mesmo sem PRIMARY_BASE
-    else if (cachedBase && OLD_URLS.includes(cachedBase)) {
-      console.log('[apiClient] ⚠️ Limpando cache de URL antiga conhecida:', cachedBase);
+    else if (cachedBase && OLD_URLS.map(normalizeBaseUrl).includes(cachedBase)) {
+      debugWarn('[apiClient] Limpando cache de URL antiga conhecida:', cachedBase);
       delete window.__ASSETS_API_BASE;
       ACTIVE_BASE = null;
-      console.log('[apiClient] ✅ Cache limpo! ACTIVE_BASE resetado.');
+      debugLog('[apiClient] Cache limpo! ACTIVE_BASE resetado.');
     }
     // Restaura ACTIVE_BASE do cache apenas se não foi limpo e não é URL antiga
-    else if (window.__ASSETS_API_BASE && !OLD_URLS.includes(window.__ASSETS_API_BASE)) {
-      ACTIVE_BASE = window.__ASSETS_API_BASE;
-      console.log('[apiClient] Restaurando ACTIVE_BASE do cache:', ACTIVE_BASE);
+    else if (cachedBase && !OLD_URLS.map(normalizeBaseUrl).includes(cachedBase)) {
+      ACTIVE_BASE = cachedBase;
+      try { window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
+      debugLog('[apiClient] Restaurando ACTIVE_BASE do cache:', ACTIVE_BASE);
     }
   } catch (e) {
     console.error('[apiClient] Erro ao limpar cache:', e);
   }
+}
+
+export function resetApiBaseCache() {
+  try {
+    if (typeof window !== 'undefined') {
+      delete window.__ASSETS_API_BASE;
+    }
+  } catch {}
+  ACTIVE_BASE = null;
+}
+
+export function getApiDebugInfo() {
+  return {
+    PRIMARY_BASE,
+    ACTIVE_BASE,
+    IS_HTTPS,
+    IS_PROD,
+    SAFE_CANDIDATES,
+  };
 }
 
 const BASE_CANDIDATES = (() => {
@@ -125,12 +163,12 @@ async function resolveBase() {
     PRIMARY_BASE.includes('herokuapp.com')
   );
 
-  if (DEBUG_API) console.log('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
+  debugLog('[apiClient] resolveBase() chamado, ACTIVE_BASE:', ACTIVE_BASE);
 
   // Em produção ou URL de produção, confiar na configuração para evitar timeout de cold start
   // Isso evita que a verificação de saúde falhe se o backend demorar > 15s para subir
   if ((IS_PROD || isProductionUrl) && PRIMARY_BASE) {
-    if (DEBUG_API) console.log('[apiClient] resolveBase() - IS_PROD/ProdURL=true, usando PRIMARY_BASE imediatamente:', PRIMARY_BASE);
+    debugLog('[apiClient] resolveBase() - IS_PROD/ProdURL=true, usando PRIMARY_BASE imediatamente:', PRIMARY_BASE);
     ACTIVE_BASE = PRIMARY_BASE;
     try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
     return PRIMARY_BASE;
@@ -148,7 +186,7 @@ async function resolveBase() {
         if (res.ok) {
           ACTIVE_BASE = PRIMARY_BASE;
           try { if (typeof window !== 'undefined') window.__ASSETS_API_BASE = ACTIVE_BASE; } catch {}
-          if (DEBUG_API) console.log('[apiClient] resolveBase() - PRIMARY_BASE OK:', PRIMARY_BASE);
+          debugLog('[apiClient] resolveBase() - PRIMARY_BASE OK:', PRIMARY_BASE);
           return PRIMARY_BASE;
         }
       } catch {}
@@ -156,19 +194,19 @@ async function resolveBase() {
   } catch {}
   // Se já temos uma base ativa, reutiliza
   if (ACTIVE_BASE) {
-    if (DEBUG_API) console.log('[apiClient] Usando ACTIVE_BASE existente:', ACTIVE_BASE);
+    debugLog('[apiClient] Usando ACTIVE_BASE existente:', ACTIVE_BASE);
     return ACTIVE_BASE;
   }
   
-  console.log('[apiClient] resolveBase() - SAFE_CANDIDATES.length:', SAFE_CANDIDATES.length);
+  debugLog('[apiClient] resolveBase() - SAFE_CANDIDATES.length:', SAFE_CANDIDATES.length);
   if (SAFE_CANDIDATES.length === 0) {
     // Se não há candidatos seguros, retorna null para evitar loop
-    console.log('[apiClient] resolveBase() - Nenhuma base disponível, retornando null');
+    debugWarn('[apiClient] resolveBase() - Nenhuma base disponível, retornando null');
     return null;
   }
-  console.log('[apiClient] resolveBase() - Testando SAFE_CANDIDATES:', SAFE_CANDIDATES);
+  debugLog('[apiClient] resolveBase() - Testando SAFE_CANDIDATES:', SAFE_CANDIDATES);
   for (const base of SAFE_CANDIDATES) {
-    console.log('[apiClient] resolveBase() - Testando base:', base);
+    debugLog('[apiClient] resolveBase() - Testando base:', base);
     if (!base) continue; // Pula valores nulos/undefined
     const controller = new AbortController();
     // Aumentado para 15s para suportar cold start
@@ -244,21 +282,21 @@ async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 2000) {
 }
 
 async function request(path, options = {}) {
-  console.log('[apiClient] request() chamado:', { path, method: options.method || 'GET' });
+  debugLog('[apiClient] request() chamado:', { path, method: options.method || 'GET' });
   const token = getToken();
-  console.log('[apiClient] Token presente:', token ? 'SIM' : 'NÃO');
+  debugLog('[apiClient] Token presente:', token ? 'SIM' : 'NÃO');
+  const isLoginPath = path === '/auth/login';
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
-    ...(token && !(options.headers || {}).Authorization ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token && !isLoginPath && !(options.headers || {}).Authorization ? { Authorization: `Bearer ${token}` } : {}),
   };
-  console.log('[apiClient] Headers preparados:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : undefined });
+  debugLog('[apiClient] Headers preparados:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : undefined });
 
   // Anexa contexto de empresa selecionada (segregação de dados)
   try {
     const empresaId = localStorage.getItem('assetlife_empresa');
     // Não enviar X-Company-Id durante o login
-    const isLoginPath = path === '/auth/login';
     if (empresaId && !headers['X-Company-Id'] && !isLoginPath) {
       headers['X-Company-Id'] = String(empresaId);
     }
@@ -267,9 +305,9 @@ async function request(path, options = {}) {
   let lastErr;
   // Tenta primeiro a base ativa (se houver), depois demais candidatas
   // Resolve uma base válida antes de tentar, reduzindo tentativas bloqueadas por Mixed Content
-  console.log('[apiClient] Resolvendo base...');
+  debugLog('[apiClient] Resolvendo base...');
   const initialBase = await resolveBase();
-  console.log('[apiClient] Base inicial resolvida:', initialBase);
+  debugLog('[apiClient] Base inicial resolvida:', initialBase);
 
   // Se não conseguiu resolver e estamos em HTTPS, tenta PRIMARY_BASE diretamente
   let bases = [];
@@ -281,10 +319,10 @@ async function request(path, options = {}) {
   } else {
     bases = [...SAFE_CANDIDATES].filter(Boolean);
   }
-  console.log('[apiClient] Bases candidatas:', bases);
-  console.log('[apiClient] IS_HTTPS:', IS_HTTPS);
-  console.log('[apiClient] PRIMARY_BASE:', PRIMARY_BASE);
-  console.log('[apiClient] SAFE_CANDIDATES:', SAFE_CANDIDATES);
+  debugLog('[apiClient] Bases candidatas:', bases);
+  debugLog('[apiClient] IS_HTTPS:', IS_HTTPS);
+  debugLog('[apiClient] PRIMARY_BASE:', PRIMARY_BASE);
+  debugLog('[apiClient] SAFE_CANDIDATES:', SAFE_CANDIDATES);
 
   // Se ainda não há bases, retorna erro imediatamente
   if (bases.length === 0) {
@@ -296,19 +334,19 @@ async function request(path, options = {}) {
   }
   for (const base of bases) {
     const url = `${base}${path}`;
-    console.log('[apiClient] Tentando requisição para:', url);
+    debugLog('[apiClient] Tentando requisição para:', url);
     const controller = new AbortController();
     // Timeout padrão aumentado para 120s (cold start severo do backend)
     const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 120000);
     try {
-      console.log('[apiClient] Fetch iniciado:', { url, method: options.method || 'GET' });
+      debugLog('[apiClient] Fetch iniciado:', { url, method: options.method || 'GET' });
       const res = await fetch(url, {
         ...options,
         signal: controller.signal,
         headers,
       });
       clearTimeout(timeoutId);
-      console.log('[apiClient] Resposta recebida:', { status: res.status, statusText: res.statusText, ok: res.ok });
+      debugLog('[apiClient] Resposta recebida:', { status: res.status, statusText: res.statusText, ok: res.ok });
       if (!res.ok) {
         const text = await res.text();
         // Tratamento amigável para endpoints de notificações ausentes
@@ -362,6 +400,13 @@ async function request(path, options = {}) {
             const d = j && (j.detail || j.message || j.error);
             if (typeof d === 'string' && d.trim()) message = d;
           } catch {}
+
+          const shouldTryNextBase = (bases.length > 1) && (res.status === 404 || res.status === 405 || res.status === 410);
+          if (shouldTryNextBase) {
+            lastErr = new Error(`${message} (base=${base})`);
+            continue;
+          }
+
           const p = String(path || '');
           const m = String(options.method || 'GET').toUpperCase();
           if (m === 'POST' && /^\/cronogramas(?:\?|$)/.test(p)) {
@@ -389,10 +434,10 @@ async function request(path, options = {}) {
       }
       if (res.status === 204) return null;
       const contentType = res.headers.get('content-type') || '';
-      console.log('[apiClient] Content-Type:', contentType);
+      debugLog('[apiClient] Content-Type:', contentType);
       if (contentType.includes('application/json')) {
         const json = await res.json();
-        console.log('[apiClient] JSON retornado:', json);
+        debugLog('[apiClient] JSON retornado:', json);
         return json;
       }
       // Conteúdos binários (PDF/Excel)
@@ -414,13 +459,18 @@ async function request(path, options = {}) {
       }
       // Tratamento amigável para abort por timeout
       if (err?.name === 'AbortError' || /aborted|AbortError/i.test(String(err?.message || ''))) {
-        console.log('[apiClient] Timeout detectado');
+        debugWarn('[apiClient] Timeout detectado');
         lastErr = new Error('Tempo limite atingido. Ajuste os filtros ou tente novamente.');
       } else {
-        lastErr = err;
+        const emsg = String(err?.message || err);
+        if (/Failed to fetch|NetworkError/i.test(emsg)) {
+          lastErr = new Error(`Falha de conexão ao acessar ${url}`);
+        } else {
+          lastErr = err;
+        }
       }
       // tenta próximo base em caso de falhas de rede/timeout
-      console.log('[apiClient] Tentando próxima base...');
+      debugLog('[apiClient] Tentando próxima base...');
       continue;
     }
   }
@@ -428,7 +478,7 @@ async function request(path, options = {}) {
   const msg = String(lastErr?.message || '');
   console.error('[apiClient] Todas as bases falharam. Último erro:', lastErr);
   if (/Failed to fetch|NetworkError|TypeError: Failed to fetch/i.test(msg)) {
-    throw new Error('Falha de conexão com a API. Verifique a base configurada, token de acesso e permissões/CORS.');
+    throw new Error('Falha de conexão com a API. Verifique a URL do backend (VITE_API_URL) e permissões/CORS. Se o problema persistir, limpe o cache do navegador e recarregue a página.');
   }
   throw lastErr || new Error('Falha ao conectar ao backend');
 }
@@ -1177,7 +1227,7 @@ export async function clonePermissionGroup(grupoId, payload) {
 
 // Auth (opcional)
 export async function login(payload) {
-  console.log('[apiClient] login() chamado com payload:', { ...payload, senha: '***' });
+  debugLog('[apiClient] login() chamado com payload:', { ...payload, senha: '***' });
   // Em produção (Koyeb free), a instância pode ter cold start e levar >90s para acordar.
   // Usa retry logic com exponential backoff para lidar com cold start.
   try {
@@ -1186,7 +1236,7 @@ export async function login(payload) {
       3, // máximo de 3 retries
       3000 // delay inicial de 3s
     );
-    console.log('[apiClient] login() retornou:', result ? 'OK' : 'null/undefined');
+    debugLog('[apiClient] login() retornou:', result ? 'OK' : 'null/undefined');
     return result;
   } catch (err) {
     console.error('[apiClient] login() erro:', err);

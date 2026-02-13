@@ -3,7 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { login, saveToken, authMePermissions, authMe } from '../apiClient';
+import { login, saveToken, authMePermissions, authMe, resetApiBaseCache, getApiDebugInfo } from '../apiClient';
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation();
@@ -13,13 +13,20 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [formError, setFormError] = useState('');
+  const [showConnectionHelp, setShowConnectionHelp] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     console.log('[Login] onSubmit chamado');
-    if (!identifier || !password) {
+    setFormError('');
+    setShowConnectionHelp(false);
+    const idTrimmed = String(identifier || '').trim();
+    if (!idTrimmed || !password) {
       console.log('[Login] Campos vazios, abortando');
-      toast.error(t('login_fill_required'));
+      const msg = t('login_fill_required');
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
     setLoading(true);
@@ -31,7 +38,7 @@ export default function LoginPage() {
     }, 10000);
 
     try {
-      const id = String(identifier || '').trim();
+      const id = idTrimmed;
       const isEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(id);
       // Backend espera { email, senha } OU { identificador, senha }
       const payload = isEmail ? { email: id, senha: password } : { identificador: id, senha: password };
@@ -73,23 +80,42 @@ export default function LoginPage() {
       console.error('[Login] Erro capturado:', err);
       console.error('[Login] Erro message:', err?.message);
       console.error('[Login] Erro stack:', err?.stack);
+      try {
+        console.log('[Login] API debug info:', getApiDebugInfo());
+      } catch {}
       const detail = extractError(err);
       const msg = String(err?.message || '').trim();
       console.log('[Login] Detail extraído:', detail);
       console.log('[Login] Mensagem final:', msg);
       // Em caso de erro de rede/CORS, mostre mensagem específica
       if (/Falha de conexão com a API/i.test(msg)) {
-        toast.error('Não foi possível conectar ao servidor. Por favor, tente novamente em alguns minutos.');
+        const m = 'Não foi possível conectar ao servidor. Limpe o cache de conexão e tente novamente.';
+        setFormError(m);
+        setShowConnectionHelp(true);
+        toast.error(m);
       } else if (/Tempo limite atingido/i.test(msg)) {
-        toast.error('O servidor está demorando muito para responder. Por favor, tente novamente.');
+        const m = 'O servidor está demorando muito para responder. Por favor, tente novamente.';
+        setFormError(m);
+        toast.error(m);
       } else {
-        toast.error(detail || t('login_invalid_credentials'));
+        const m = detail || t('login_invalid_credentials');
+        setFormError(m);
+        toast.error(m);
       }
     } finally {
       setLoading(false);
       setLoadingMessage('');
       console.log('[Login] Finalizando, loading = false');
     }
+  };
+
+  const handleResetConnection = () => {
+    try {
+      resetApiBaseCache();
+    } catch {}
+    try {
+      window.location.reload();
+    } catch {}
   };
 
   const changeLang = (lng) => i18n.changeLanguage(lng);
@@ -137,9 +163,25 @@ export default function LoginPage() {
             {loading ? loadingMessage || t('login_signing_in') : t('login_sign_in')}
           </button>
         </form>
+        {!!formError && (
+          <div className="mt-3 text-xs text-center text-red-700 dark:text-red-300">
+            {formError}
+          </div>
+        )}
         {loading && loadingMessage && (
           <div className="mt-3 text-xs text-center text-slate-600 dark:text-slate-400">
             {loadingMessage}
+          </div>
+        )}
+        {showConnectionHelp && (
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={handleResetConnection}
+              className="text-xs px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Limpar cache de conexão e recarregar
+            </button>
           </div>
         )}
         <div className="flex items-center justify-between mt-4 text-sm">
