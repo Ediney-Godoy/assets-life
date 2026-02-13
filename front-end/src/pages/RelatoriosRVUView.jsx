@@ -32,8 +32,8 @@ function deltaVidaUtil(aAtual, mAtual, aNova, mNova) {
 
 export default function RelatoriosRVUView() {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState({ empresa_id: '', ug_id: '', classe_id: '', revisor_id: '', periodo_id: '', periodo_inicio: '', periodo_fim: '', status: 'Todos' });
-  const [dynamicFilters, setDynamicFilters] = useState({ centro_custo: '', valor_min: '', valor_max: '' });
+  const [filters, setFilters] = useState({ empresa_id: '', periodo_id: '', periodo_inicio: '', periodo_fim: '', status: 'Todos' });
+  const [dynamicFilters, setDynamicFilters] = useState({ centro_custo: '', valor_min: '', valor_max: '', ug: '', classe: '', revisor: '' });
   const [filterType, setFilterType] = useState('todos');
   const [filtersExpanded, setFiltersExpanded] = useState(true);
   const [query, setQuery] = useState('');
@@ -124,23 +124,22 @@ export default function RelatoriosRVUView() {
     let active = true;
     (async () => {
       try {
-        // Passa o periodo_id para filtrar revisores com delegação ativa (se houver período)
         const list = await getUsers(filters.empresa_id || undefined, filters.periodo_id || undefined);
         if (!active) return;
         setRevisores(list || []);
-        setFilters((f) => {
-          if (!f.revisor_id) return f;
-          const exists = (list || []).some((u) => String(u.id) === String(f.revisor_id));
-          return exists ? f : { ...f, revisor_id: '' };
-        });
       } catch {
         if (!active) return;
         setRevisores([]);
-        setFilters((f) => ({ ...f, revisor_id: '' }));
       }
     })();
     return () => { active = false; };
   }, [filters.empresa_id, filters.periodo_id]);
+
+  useEffect(() => {
+    if (filters.periodo_id) {
+      applyFilters();
+    }
+  }, [filters.periodo_id, filters.status, filters.empresa_id]);
 
   const applyFilters = async () => {
     setLoading(true);
@@ -148,15 +147,10 @@ export default function RelatoriosRVUView() {
     try {
       const params = {
         empresa_id: filters.empresa_id || undefined,
-        ug_id: filters.ug_id || undefined,
-        classe_id: filters.classe_id || undefined,
-        revisor_id: filters.revisor_id || undefined,
+        periodo_id: filters.periodo_id || undefined,
         periodo_inicio: filters.periodo_inicio || undefined,
         periodo_fim: filters.periodo_fim || undefined,
         status: filters.status === 'Todos' ? undefined : filters.status,
-        centro_custo: dynamicFilters.centro_custo || undefined,
-        valor_min: dynamicFilters.valor_min || undefined,
-        valor_max: dynamicFilters.valor_max || undefined,
       };
       const data = await getRelatoriosResumo(params);
       setRows(data || []);
@@ -174,6 +168,9 @@ export default function RelatoriosRVUView() {
       const params = {
         ...filters,
         status: filters.status === 'Todos' ? undefined : filters.status,
+        ug_id: dynamicFilters.ug || undefined,
+        classe: dynamicFilters.classe || undefined,
+        revisor: dynamicFilters.revisor || undefined,
         centro_custo: dynamicFilters.centro_custo || undefined,
         valor_min: dynamicFilters.valor_min || undefined,
         valor_max: dynamicFilters.valor_max || undefined,
@@ -202,6 +199,9 @@ export default function RelatoriosRVUView() {
       const params = {
         ...filters,
         status: filters.status === 'Todos' ? undefined : filters.status,
+        ug_id: dynamicFilters.ug || undefined,
+        classe: dynamicFilters.classe || undefined,
+        revisor: dynamicFilters.revisor || undefined,
         centro_custo: dynamicFilters.centro_custo || undefined,
         valor_min: dynamicFilters.valor_min || undefined,
         valor_max: dynamicFilters.valor_max || undefined,
@@ -250,6 +250,18 @@ export default function RelatoriosRVUView() {
     return vals.sort();
   }, [rows]);
 
+  const uniqueClasses = useMemo(() => {
+    // Assuming 'classe' field contains the name
+    const vals = Array.from(new Set(rows.map((i) => i.classe).filter(Boolean)));
+    return vals.sort();
+  }, [rows]);
+
+  const uniqueRevisores = useMemo(() => {
+    // Assuming 'revisor' field contains the name
+    const vals = Array.from(new Set(rows.map((i) => i.revisor).filter(Boolean)));
+    return vals.sort();
+  }, [rows]);
+
   // Ordena para priorizar itens com alteração discrepante (>20% da vida útil atual)
   const sortedRows = useMemo(() => {
     let res = rows;
@@ -265,13 +277,37 @@ export default function RelatoriosRVUView() {
     // Client-side filtering for dynamic fields not handled by API
     if (dynamicFilters.centro_custo) {
       const f = dynamicFilters.centro_custo.toLowerCase();
-      res = res.filter(i => String(i.centro_custo || '').toLowerCase().includes(f));
+      res = res.filter(i => String(i.centro_custo || '').toLowerCase() === f);
     }
     if (dynamicFilters.valor_min) {
       res = res.filter(i => Number(i.valor_contabil || 0) >= Number(dynamicFilters.valor_min));
     }
     if (dynamicFilters.valor_max) {
       res = res.filter(i => Number(i.valor_contabil || 0) <= Number(dynamicFilters.valor_max));
+    }
+    if (dynamicFilters.ug) {
+       // If ug filter is ID based but rows have names? Usually summary has formatted strings.
+       // Assuming user selects from dynamic dropdown which uses 'uniqueUGs' or global UGs?
+       // Let's assume dynamicFilters.ug holds the ID if we use the global list, or name if we use derived.
+       // The UI below uses 'ugs' (global). Let's stick to global UGs for dropdown but filter locally.
+       // Check if row has ug_id. Usually summary rows might not have all IDs.
+       // If row has only 'unidade_gerencial' name, we must match name.
+       // If dynamicFilters.ug is ID, we need to find the name or row must have ug_id.
+       // Safest: Filter by ID if available, else name.
+       // Actually, getRelatoriosResumo might return ug_id.
+       // If not, we should rely on what we have. 
+       // For now, let's assume rows have 'ug_id'.
+       if (res.length > 0 && 'ug_id' in res[0]) {
+          res = res.filter(i => String(i.ug_id) === String(dynamicFilters.ug));
+       }
+    }
+    if (dynamicFilters.classe) {
+       // Using derived uniqueClasses (names)
+       res = res.filter(i => String(i.classe || '') === String(dynamicFilters.classe));
+    }
+    if (dynamicFilters.revisor) {
+       // Using derived uniqueRevisores (names)
+       res = res.filter(i => String(i.revisor || '') === String(dynamicFilters.revisor));
     }
 
     const score = (r) => {
@@ -354,15 +390,7 @@ export default function RelatoriosRVUView() {
             </select>
           </div>
           <div className="md:col-span-1">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('reviewer_label')}</label>
-            <select 
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
-              value={filters.revisor_id} 
-              onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}
-            >
-              <option value="">{t('all')}</option>
-              {revisores.map((r) => <option key={r.id} value={r.id}>{r.full_name || r.nome_completo || r.nome}</option>)}
-            </select>
+             {/* Espaço reservado ou removido, pois Revisor foi para Filtro Avançado */}
           </div>
         </div>
 
@@ -376,15 +404,14 @@ export default function RelatoriosRVUView() {
                onChange={(e) => {
                  const t = e.target.value;
                  setFilterType(t);
-                 setDynamicFilters({ centro_custo: '', valor_min: '', valor_max: '' });
-                 if (t !== 'ug') setFilters(f => ({ ...f, ug_id: '' }));
-                 if (t !== 'classe') setFilters(f => ({ ...f, classe_id: '' }));
+                 setDynamicFilters({ centro_custo: '', valor_min: '', valor_max: '', ug: '', classe: '', revisor: '' });
                }}
              >
                <option value="todos">Nenhum</option>
                <option value="ug">Unidade Gerencial</option>
                <option value="classe">Classe Contábil</option>
                <option value="centro_custo">Centro de Custos</option>
+               <option value="revisor">Revisor</option>
                <option value="valor">Valor Contábil</option>
              </select>
            </div>
@@ -393,8 +420,8 @@ export default function RelatoriosRVUView() {
              {filterType === 'ug' && (
                <select 
                  className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
-                 value={filters.ug_id} 
-                 onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}
+                 value={dynamicFilters.ug} 
+                 onChange={(e) => setDynamicFilters(d => ({ ...d, ug: e.target.value }))}
                >
                  <option value="">Todas</option>
                  {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
@@ -403,11 +430,11 @@ export default function RelatoriosRVUView() {
              {filterType === 'classe' && (
                <select 
                  className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
-                 value={filters.classe_id} 
-                 onChange={(e) => setFilters((f) => ({ ...f, classe_id: e.target.value }))}
+                 value={dynamicFilters.classe} 
+                 onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
                >
                  <option value="">Todas</option>
-                 {classes.map((cl) => <option key={cl.id} value={cl.id}>{cl.nome}</option>)}
+                 {uniqueClasses.map((cl) => <option key={cl} value={cl}>{cl}</option>)}
                </select>
              )}
              {filterType === 'centro_custo' && (
@@ -418,6 +445,16 @@ export default function RelatoriosRVUView() {
                >
                  <option value="">Todos</option>
                  {uniqueCCs.map((cc) => <option key={cc} value={cc}>{cc}</option>)}
+               </select>
+             )}
+             {filterType === 'revisor' && (
+               <select 
+                 className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                 value={dynamicFilters.revisor} 
+                 onChange={(e) => setDynamicFilters(d => ({ ...d, revisor: e.target.value }))}
+               >
+                 <option value="">Todos</option>
+                 {uniqueRevisores.map((r) => <option key={r} value={r}>{r}</option>)}
                </select>
              )}
              {filterType === 'valor' && (
