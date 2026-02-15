@@ -65,12 +65,13 @@ export default function PermissionsPage() {
       const requiredRoutes = [
         '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
         '/notifications','/notifications/new',
-        '/supervisao/rvu'
+        '/supervisao/rvu','/simulador/depreciacao'
       ];
       const routeNames = {
         '/notifications': 'Notificações',
         '/notifications/new': 'Enviar Notificação',
         '/supervisao/rvu': 'Supervisão RVU',
+        '/simulador/depreciacao': 'Simulador de Depreciação',
         '/reviews/vidas-uteis': 'Revisões - Vidas Úteis',
         '/reviews': 'Revisões',
         '/reviews/periodos': 'Revisões - Períodos',
@@ -130,12 +131,13 @@ export default function PermissionsPage() {
       const requiredRoutes = [
         '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
         '/notifications','/notifications/new',
-        '/supervisao/rvu'
+        '/supervisao/rvu','/simulador/depreciacao'
       ];
       const routeNames = {
         '/notifications': 'Notificações',
         '/notifications/new': 'Enviar Notificação',
         '/supervisao/rvu': 'Supervisão RVU',
+        '/simulador/depreciacao': 'Simulador de Depreciação',
         '/reviews/vidas-uteis': 'Revisões - Vidas Úteis',
         '/reviews': 'Revisões',
         '/reviews/periodos': 'Revisões - Períodos',
@@ -208,12 +210,13 @@ export default function PermissionsPage() {
         const requiredRoutes = [
           '/reviews','/reviews/periodos','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis','/reviews/cronogramas','/reviews/cronogramas/edit',
           '/notifications','/notifications/new',
-          '/supervisao/rvu'
+          '/supervisao/rvu','/simulador/depreciacao'
         ];
         const routeNames = {
           '/notifications': 'Notificações',
           '/notifications/new': 'Enviar Notificação',
           '/supervisao/rvu': 'Supervisão RVU',
+          '/simulador/depreciacao': 'Simulador de Depreciação',
           '/reviews/vidas-uteis': 'Revisões - Vidas Úteis',
           '/reviews': 'Revisões',
           '/reviews/periodos': 'Revisões - Períodos',
@@ -273,12 +276,13 @@ export default function PermissionsPage() {
           const requiredRoutes = [
             '/reviews','/reviews/periodos','/reviews/cronogramas','/reviews/cronogramas/edit','/reviews/delegacao','/reviews/massa','/revisoes-massa','/reviews/vidas-uteis',
             '/notifications','/notifications/new',
-            '/supervisao/rvu'
+            '/supervisao/rvu','/simulador/depreciacao'
           ];
           const routeNames = {
             '/notifications': 'Notificações',
             '/notifications/new': 'Enviar Notificação',
             '/supervisao/rvu': 'Supervisão RVU',
+            '/simulador/depreciacao': 'Simulador de Depreciação',
             '/reviews/vidas-uteis': 'Revisões - Vidas Úteis',
             '/reviews': 'Revisões',
             '/reviews/periodos': 'Revisões - Períodos',
