@@ -6,6 +6,7 @@ import {
   getManagementUnits,
   getAccountingClasses,
   getCostCenters,
+  getReviewPeriods,
   simularDepreciacao,
   simularDepreciacaoExcel,
   simularDepreciacaoPdf,
@@ -29,16 +30,6 @@ function formatDateBR(value) {
   }
 }
 
-function toMonthStart(value) {
-  if (!value) return null;
-  try {
-    const d = new Date(value);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-  } catch {
-    return null;
-  }
-}
-
 export default function SimuladorDepreciacaoView() {
   const { t } = useTranslation();
 
@@ -46,11 +37,11 @@ export default function SimuladorDepreciacaoView() {
   const [ugs, setUgs] = useState([]);
   const [classes, setClasses] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
+  const [periodos, setPeriodos] = useState([]);
 
   const [filters, setFilters] = useState({
     empresa_id: '',
-    periodo_inicio: '',
-    periodo_fim: '',
+    periodo_id: '',
     status_revisao: 'Todos',
     classe_id: '',
     ug_id: '',
@@ -66,16 +57,31 @@ export default function SimuladorDepreciacaoView() {
   const [sintetico, setSintetico] = useState([]);
   const [aviso, setAviso] = useState('');
 
+  const periodosVisiveis = useMemo(() => {
+    let list = Array.isArray(periodos) ? periodos : [];
+    if (filters.empresa_id) {
+      list = list.filter((p) => String(p.empresa_id || '') === String(filters.empresa_id));
+    }
+    return list;
+  }, [periodos, filters.empresa_id]);
+
+  const periodoSelecionado = useMemo(() => {
+    const id = String(filters.periodo_id || '').trim();
+    if (!id) return null;
+    return periodosVisiveis.find((p) => String(p.id) === id) || null;
+  }, [filters.periodo_id, periodosVisiveis]);
+
   useEffect(() => {
     const loadBase = async () => {
       setLoadingBase(true);
       setError(null);
       try {
-        const [emp, ug, cls, ccs] = await Promise.all([
+        const [emp, ug, cls, ccs, per] = await Promise.all([
           getCompanies(),
           getManagementUnits(),
           getAccountingClasses ? getAccountingClasses() : Promise.resolve([]),
           getCostCenters ? getCostCenters() : Promise.resolve([]),
+          getReviewPeriods ? getReviewPeriods() : Promise.resolve([]),
         ]);
 
         const currentCompanyId = localStorage.getItem('assetlife_empresa');
@@ -89,9 +95,23 @@ export default function SimuladorDepreciacaoView() {
         setUgs(ug || []);
         setClasses(cls || []);
         setCostCenters(ccs || []);
+        setPeriodos(per || []);
 
         if (currentCompanyId) {
           setFilters((f) => ({ ...f, empresa_id: String(currentCompanyId) }));
+          const activePeriod = (per || []).find(
+            (p) =>
+              p.status === 'Aberto' &&
+              String(p.empresa_id || '') === String(currentCompanyId)
+          );
+          if (activePeriod) {
+            setFilters((f) => ({ ...f, empresa_id: String(currentCompanyId), periodo_id: String(activePeriod.id) }));
+          }
+        } else {
+          const activePeriod = (per || []).find((p) => p.status === 'Aberto');
+          if (activePeriod) {
+            setFilters((f) => ({ ...f, periodo_id: String(activePeriod.id) }));
+          }
         }
       } catch (err) {
         setError(err.message || 'Erro ao carregar dados da simulação');
@@ -109,20 +129,23 @@ export default function SimuladorDepreciacaoView() {
   const canSimulate = useMemo(() => {
     return (
       String(filters.empresa_id || '').trim() !== '' &&
-      String(filters.periodo_inicio || '').trim() !== '' &&
-      String(filters.periodo_fim || '').trim() !== ''
+      String(filters.periodo_id || '').trim() !== ''
     );
-  }, [filters.empresa_id, filters.periodo_inicio, filters.periodo_fim]);
+  }, [filters.empresa_id, filters.periodo_id]);
 
   const handleSimulate = async () => {
     if (!canSimulate || !filters.empresa_id) return;
+    const periodo = periodoSelecionado;
+    if (!periodo) return;
+    const periodoInicio = periodo.data_inicio_nova_vida_util || periodo.data_abertura;
+    const periodoFim = periodo.data_fechamento_prevista || periodoInicio;
     setLoadingSim(true);
     setError(null);
     try {
       const payload = {
         empresa_id: Number(filters.empresa_id),
-        periodo_inicio: toMonthStart(filters.periodo_inicio),
-        periodo_fim: toMonthStart(filters.periodo_fim),
+        periodo_inicio: periodoInicio,
+        periodo_fim: periodoFim,
         status_revisao: filters.status_revisao || 'Todos',
         classe_id: filters.classe_id || null,
         ug_id: filters.ug_id ? Number(filters.ug_id) : null,
@@ -144,13 +167,17 @@ export default function SimuladorDepreciacaoView() {
 
   const handleExport = async (type) => {
     if (!canSimulate || !filters.empresa_id) return;
+    const periodo = periodoSelecionado;
+    if (!periodo) return;
+    const periodoInicio = periodo.data_inicio_nova_vida_util || periodo.data_abertura;
+    const periodoFim = periodo.data_fechamento_prevista || periodoInicio;
     setLoadingExport(true);
     setError(null);
     try {
       const params = {
         empresa_id: Number(filters.empresa_id),
-        periodo_inicio: toMonthStart(filters.periodo_inicio),
-        periodo_fim: toMonthStart(filters.periodo_fim),
+        periodo_inicio: periodoInicio,
+        periodo_fim: periodoFim,
         status_revisao: filters.status_revisao || undefined,
         classe_id: filters.classe_id || undefined,
         ug_id: filters.ug_id ? Number(filters.ug_id) : undefined,
@@ -320,29 +347,23 @@ export default function SimuladorDepreciacaoView() {
               ))}
             </select>
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Período inicial
+              Período de revisão
             </label>
-            <input
-              type="month"
+            <select
               className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
-              value={filters.periodo_inicio}
-              onChange={(e) => handleFilterChange('periodo_inicio', e.target.value)}
+              value={filters.periodo_id}
+              onChange={(e) => handleFilterChange('periodo_id', e.target.value)}
               disabled={loadingBase}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Período final
-            </label>
-            <input
-              type="month"
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
-              value={filters.periodo_fim}
-              onChange={(e) => handleFilterChange('periodo_fim', e.target.value)}
-              disabled={loadingBase}
-            />
+            >
+              <option value="">Selecione</option>
+              {periodosVisiveis.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.descricao}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
@@ -578,4 +599,3 @@ export default function SimuladorDepreciacaoView() {
     </section>
   );
 }
-
