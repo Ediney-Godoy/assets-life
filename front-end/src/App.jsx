@@ -12,6 +12,7 @@ import DynamicTabs from './components/DynamicTabs';
 import DashboardPage from './pages/Dashboard';
 import CompaniesPage from './pages/Companies';
 import RelatoriosRVUView from './pages/RelatoriosRVUView';
+import SimuladorDepreciacaoView from './pages/SimuladorDepreciacaoView';
 import SupervisaoRVUView from './pages/SupervisaoRVUView';
 import EmployeesPage from './pages/Employees';
 import ManagementUnitsPage from './pages/ManagementUnits';
@@ -215,6 +216,7 @@ export default function App() {
       <Route path="/companies" element={<RequireAuth><RequireCompany><CompaniesPage /></RequireCompany></RequireAuth>} />
       <Route path="/relatorios-rvu" element={<RequireAuth><RequirePermission route="/relatorios-rvu"><RequireCompany><RelatoriosRVUView /></RequireCompany></RequirePermission></RequireAuth>} />
       <Route path="/relatorios/rvu" element={<RequireAuth><RequirePermission route="/relatorios-rvu"><RequireCompany><RelatoriosRVUView /></RequireCompany></RequirePermission></RequireAuth>} />
+      <Route path="/simulador/depreciacao" element={<RequireAuth><RequireCompany><SimuladorDepreciacaoView /></RequireCompany></RequireAuth>} />
       <Route path="/supervisao-rvu" element={<RequireAuth><RequirePermission route="/supervisao/rvu"><SupervisaoRVUView /></RequirePermission></RequireAuth>} />
       <Route path="/employees" element={<RequireAuth><EmployeesPage /></RequireAuth>} />
       <Route path="/ugs" element={<RequireAuth><ManagementUnitsPage /></RequireAuth>} />

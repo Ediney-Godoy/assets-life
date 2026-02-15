@@ -575,6 +575,28 @@ export async function listRelatoriosLog() {
   return request('/relatorios/rvu/log');
 }
 
+export async function simularDepreciacao(payload) {
+  return request('/simulador/depreciacao', { method: 'POST', body: JSON.stringify(payload), timeout: 120000 });
+}
+
+export async function simularDepreciacaoExcel(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  const ab = await request(`/simulador/depreciacao/excel${q ? `?${q}` : ''}`, {
+    headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    timeout: 60000,
+  });
+  return new Uint8Array(ab);
+}
+
+export async function simularDepreciacaoPdf(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  const ab = await request(`/simulador/depreciacao/pdf${q ? `?${q}` : ''}`, {
+    headers: { Accept: 'application/pdf' },
+    timeout: 60000,
+  });
+  return new Uint8Array(ab);
+}
+
 export async function createEmployee(payload) {
   return request('/colaboradores', { method: 'POST', body: JSON.stringify(payload) });
 }

@@ -1,5 +1,0 @@
-[33mcommit aadc522283fbff469ced1babe5259c225f6349cf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
-Author: Ediney-Godoy <ediney.dev@gmail.com>
-Date:   Thu Feb 5 23:14:58 2026 -0300
-
-    fix: Tratamento robusto para valores NULL em classes contabeis e validacao manual de cabecalho

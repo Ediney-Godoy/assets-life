@@ -49,6 +49,7 @@ from .routes.relatorios_rvu import router as relatorios_rvu_router
 from .routes.supervisao_rvu import router as supervisao_rvu_router
 from .routes.assets import router as assets_router
 from .routes.reviews import router as reviews_router
+from .routes.simulador_depreciacao import router as simulador_depreciacao_router
 print("Main: Routes imported", flush=True)
 app = FastAPI(title="Asset Life API", version="0.2.0")
 print("Main: FastAPI app created", flush=True)
@@ -60,6 +61,8 @@ print("Main: Including assets router...", flush=True)
 app.include_router(assets_router)
 print("Main: Including reviews router...", flush=True)
 app.include_router(reviews_router)
+print("Main: Including simulador depreciacao router...", flush=True)
+app.include_router(simulador_depreciacao_router)
 print("Main: Routers included", flush=True)
 
 print("Main: Creating tables...", flush=True)
