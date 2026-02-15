@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Filter, BarChart3, FileDown, FileText } from 'lucide-react';
+import { Filter, BarChart3, FileDown, FileText, ChevronDown } from 'lucide-react';
 import {
   getCompanies,
   getManagementUnits,
@@ -56,6 +56,12 @@ export default function SimuladorDepreciacaoView() {
   const [analitico, setAnalitico] = useState([]);
   const [sintetico, setSintetico] = useState([]);
   const [aviso, setAviso] = useState('');
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [activeTab, setActiveTab] = useState('sintetico');
+  const [showInfo, setShowInfo] = useState(false);
+
+  const topScrollRef = useRef(null);
+  const tableScrollRef = useRef(null);
 
   const periodosVisiveis = useMemo(() => {
     let list = Array.isArray(periodos) ? periodos : [];
@@ -270,6 +276,27 @@ export default function SimuladorDepreciacaoView() {
     });
   }, [analitico]);
 
+  useEffect(() => {
+    const topEl = topScrollRef.current;
+    const tableEl = tableScrollRef.current;
+    if (!topEl || !tableEl) return;
+
+    const syncFromTop = () => {
+      tableEl.scrollLeft = topEl.scrollLeft;
+    };
+    const syncFromTable = () => {
+      topEl.scrollLeft = tableEl.scrollLeft;
+    };
+
+    topEl.addEventListener('scroll', syncFromTop);
+    tableEl.addEventListener('scroll', syncFromTable);
+
+    return () => {
+      topEl.removeEventListener('scroll', syncFromTop);
+      tableEl.removeEventListener('scroll', syncFromTable);
+    };
+  }, [analyticRowsDecorated.length]);
+
   return (
     <section>
       <div className="mb-4 flex items-center justify-between px-4">
@@ -324,121 +351,274 @@ export default function SimuladorDepreciacaoView() {
       </div>
 
       <div className="px-4 mb-4">
-        <div className="flex items-center gap-2 mb-2 text-slate-600 text-sm">
-          <Filter size={16} />
-          <span>Filtros da simulação</span>
+        <div className="flex items-center justify-between mb-2 text-slate-600 text-sm">
+          <div className="flex items-center gap-2">
+            <Filter size={16} />
+            <span>Filtros da simulação</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersExpanded((v) => !v)}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50"
+          >
+            <span>{filtersExpanded ? 'Recolher' : 'Expandir'}</span>
+            <ChevronDown
+              size={14}
+              className={`transition-transform ${filtersExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-white dark:bg-slate-900 rounded-xl shadow-card border border-slate-200 dark:border-slate-800 p-4">
-          <div className="md:col-span-3">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Empresa
-            </label>
-            <select
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
-              value={filters.empresa_id}
-              onChange={(e) => handleFilterChange('empresa_id', e.target.value)}
-              disabled={loadingBase}
-            >
-              <option value="">Selecione</option>
-              {(companies || []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome || c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Período de revisão
-            </label>
-            <select
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
-              value={filters.periodo_id}
-              onChange={(e) => handleFilterChange('periodo_id', e.target.value)}
-              disabled={loadingBase}
-            >
-              <option value="">Selecione</option>
-              {periodosVisiveis.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.descricao}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Status da revisão
-            </label>
-            <select
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
-              value={filters.status_revisao}
-              onChange={(e) => handleFilterChange('status_revisao', e.target.value)}
-              disabled={loadingBase}
-            >
-              <option value="Todos">Todos</option>
-              <option value="Revisados">Revisados</option>
-              <option value="Não revisados">Não revisados</option>
-            </select>
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Classe contábil
-            </label>
-            <select
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
-              value={filters.classe_id}
-              onChange={(e) => handleFilterChange('classe_id', e.target.value)}
-              disabled={loadingBase}
-            >
-              <option value="">Todas</option>
-              {(classes || []).map((c) => (
-                <option key={c.id || c.codigo} value={c.codigo}>
-                  {c.codigo} - {c.descricao}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Unidade Gerencial
-            </label>
-            <select
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
-              value={filters.ug_id}
-              onChange={(e) => handleFilterChange('ug_id', e.target.value)}
-              disabled={loadingBase}
-            >
-              <option value="">Todas</option>
-              {(ugs || []).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nome || u.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Centro de Custos
-            </label>
-            <select
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
-              value={filters.centro_custo}
-              onChange={(e) => handleFilterChange('centro_custo', e.target.value)}
-              disabled={loadingBase}
-            >
-              <option value="">Todos</option>
-              {(costCenters || []).map((cc) => (
-                <option key={cc.id || cc.codigo} value={cc.codigo || cc.nome}>
-                  {cc.codigo ? `${cc.codigo} - ${cc.nome}` : cc.nome}
-                </option>
-              ))}
-            </select>
+        <div
+          className={`bg-white dark:bg-slate-900 rounded-xl shadow-card border border-slate-200 dark:border-slate-800 transition-all duration-300 overflow-hidden ${
+            filtersExpanded ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0'
+          }`}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4">
+            <div className="md:col-span-3">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Empresa
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                value={filters.empresa_id}
+                onChange={(e) => handleFilterChange('empresa_id', e.target.value)}
+                disabled={loadingBase}
+              >
+                <option value="">Selecione</option>
+                {(companies || []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome || c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-3">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Período de revisão
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                value={filters.periodo_id}
+                onChange={(e) => handleFilterChange('periodo_id', e.target.value)}
+                disabled={loadingBase}
+              >
+                <option value="">Selecione</option>
+                {periodosVisiveis.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.descricao}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Status da revisão
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                value={filters.status_revisao}
+                onChange={(e) => handleFilterChange('status_revisao', e.target.value)}
+                disabled={loadingBase}
+              >
+                <option value="Todos">Todos</option>
+                <option value="Revisados">Revisados</option>
+                <option value="Não revisados">Não revisados</option>
+              </select>
+            </div>
+            <div className="md:col-span-3">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Classe contábil
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                value={filters.classe_id}
+                onChange={(e) => handleFilterChange('classe_id', e.target.value)}
+                disabled={loadingBase}
+              >
+                <option value="">Todas</option>
+                {(classes || []).map((c) => (
+                  <option key={c.id || c.codigo} value={c.codigo}>
+                    {c.codigo} - {c.descricao}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Unidade Gerencial
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                value={filters.ug_id}
+                onChange={(e) => handleFilterChange('ug_id', e.target.value)}
+                disabled={loadingBase}
+              >
+                <option value="">Todas</option>
+                {(ugs || []).map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome || u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-3">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Centro de Custos
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                value={filters.centro_custo}
+                onChange={(e) => handleFilterChange('centro_custo', e.target.value)}
+                disabled={loadingBase}
+              >
+                <option value="">Todos</option>
+                {(costCenters || []).map((cc) => (
+                  <option key={cc.id || cc.codigo} value={cc.codigo || cc.nome}>
+                    {cc.codigo ? `${cc.codigo} - ${cc.nome}` : cc.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="px-4 space-y-6 pb-6">
-        <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="px-4 space-y-4 pb-6">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center">
+          <button
+            type="button"
+            onClick={() => setActiveTab('sintetico')}
+            className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px ${
+              activeTab === 'sintetico'
+                ? 'border-emerald-500 text-emerald-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Simulação por classes
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('analitico')}
+            className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px ${
+              activeTab === 'analitico'
+                ? 'border-emerald-500 text-emerald-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Visão analítica
+          </button>
+          </div>
+          <button
+            type="button"
+            title="Por que a contagem do simulador pode ser menor que a do dashboard?"
+            onClick={() => setShowInfo((v) => !v)}
+            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+            aria-label="Informações sobre contagem"
+          >
+            <span className="text-[11px] font-semibold">i</span>
+          </button>
+        </div>
+        {showInfo && (
+          <div className="text-xs rounded-md border border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200 px-3 py-2">
+            <p className="mb-1">
+              O simulador pode exibir menos itens que o dashboard porque aplica validações contábeis:
+            </p>
+            <ul className="list-disc ml-5 space-y-1">
+              <li>Ignora itens com valor de aquisição ≤ 0.</li>
+              <li>Ignora itens sem vida útil original válida (≤ 0 meses).</li>
+              <li>Ignora itens sem data de início de depreciação.</li>
+              <li>Respeita o filtro de status (Revisados/Não revisados).</li>
+            </ul>
+            <p className="mt-2">
+              Já o dashboard contabiliza todos os itens do período, independentemente dessas validações.
+            </p>
+          </div>
+        )}
+
+        {activeTab === 'sintetico' && (
+          <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Visão Sintética</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Consolidação por classe contábil.</p>
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {(sintetico || []).length > 0 ? `${sintetico.length} linhas` : 'Nenhum dado consolidado'}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
+                      Classe contábil
+                    </th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
+                      Quantidade de ativos
+                    </th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
+                      Depreciação original total
+                    </th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
+                      Depreciação simulada total
+                    </th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
+                      Diferença absoluta
+                    </th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
+                      Diferença percentual
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(!sintetico || sintetico.length === 0) && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-4 py-6 text-center text-slate-500 dark:text-slate-400 text-xs border-t border-slate-100 dark:border-slate-800"
+                      >
+                        {loadingSim || loadingBase ? 'Carregando…' : 'Nenhum resultado consolidado.'}
+                      </td>
+                    </tr>
+                  )}
+                  {(sintetico || []).map((row) => {
+                    const isTotal = row.classe === 'TOTAL';
+                    return (
+                      <tr key={row.classe || row.classe_descricao || 'linha'}>
+                        <td
+                          className={`px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px] ${
+                            isTotal ? 'font-semibold' : ''
+                          }`}
+                        >
+                          {isTotal ? 'TOTAL GERAL' : row.classe}
+                        </td>
+                        <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
+                          {row.quantidade_ativos}
+                        </td>
+                        <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
+                          {formatCurrencyBRL(row.depreciacao_original_total)}
+                        </td>
+                        <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
+                          {formatCurrencyBRL(row.depreciacao_revisada_total)}
+                        </td>
+                        <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
+                          {formatCurrencyBRL(row.diferenca_absoluta)}
+                        </td>
+                        <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
+                          {`${Number(row.diferenca_percentual || 0).toFixed(2)}%`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'analitico' && (
+        <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[65vh] flex flex-col">
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Visão Analítica</h3>
@@ -450,7 +630,13 @@ export default function SimuladorDepreciacaoView() {
               {analyticRowsDecorated.length > 0 ? `${analyticRowsDecorated.length} itens` : 'Nenhum item simulado'}
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div
+            ref={topScrollRef}
+            className="overflow-x-auto border-b border-slate-100 dark:border-slate-800"
+          >
+            <div style={{ width: '100%', minWidth: '1200px' }} />
+          </div>
+          <div ref={tableScrollRef} className="overflow-x-auto overflow-y-auto">
             <table className="min-w-full text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
@@ -516,85 +702,7 @@ export default function SimuladorDepreciacaoView() {
             <span>Ativos sem revisão aparecem como "Sem ajuste".</span>
           </div>
         </div>
-
-        <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Visão Sintética</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Consolidação por classe contábil.</p>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              {(sintetico || []).length > 0 ? `${sintetico.length} linhas` : 'Nenhum dado consolidado'}
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800">
-                <tr>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                    Classe contábil
-                  </th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                    Quantidade de ativos
-                  </th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                    Depreciação original total
-                  </th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                    Depreciação simulada total
-                  </th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                    Diferença absoluta
-                  </th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                    Diferença percentual
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(!sintetico || sintetico.length === 0) && (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-6 text-center text-slate-500 dark:text-slate-400 text-xs border-t border-slate-100 dark:border-slate-800"
-                    >
-                      {loadingSim || loadingBase ? 'Carregando…' : 'Nenhum resultado consolidado.'}
-                    </td>
-                  </tr>
-                )}
-                {(sintetico || []).map((row) => {
-                  const isTotal = row.classe === 'TOTAL';
-                  return (
-                    <tr key={row.classe || row.classe_descricao || 'linha'}>
-                      <td
-                        className={`px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px] ${
-                          isTotal ? 'font-semibold' : ''
-                        }`}
-                      >
-                        {isTotal ? 'TOTAL GERAL' : row.classe}
-                      </td>
-                      <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
-                        {row.quantidade_ativos}
-                      </td>
-                      <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
-                        {formatCurrencyBRL(row.depreciacao_original_total)}
-                      </td>
-                      <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
-                        {formatCurrencyBRL(row.depreciacao_revisada_total)}
-                      </td>
-                      <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
-                        {formatCurrencyBRL(row.diferenca_absoluta)}
-                      </td>
-                      <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
-                        {`${Number(row.diferenca_percentual || 0).toFixed(2)}%`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        )}
       </div>
     </section>
   );

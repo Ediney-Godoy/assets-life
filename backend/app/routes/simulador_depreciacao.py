@@ -611,4 +611,3 @@ def simular_pdf(
     }
     _log_simulacao(db, usuario_id=current_user.id, empresa_id=empresa_id, filtros=filtros)
     return Response(content=pdf_bytes, media_type="application/pdf")
-
