@@ -3206,7 +3206,28 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                 return date(1899, 12, 30) + timedelta(days=int(round(n)))
         except Exception:
             pass
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"):
+        # Try common explicit formats first (4-digit year)
+        for fmt in (
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+            "%d/%m/%Y",
+            "%d-%m-%Y",
+            "%m/%d/%Y",
+            "%m-%d-%Y",
+        ):
+            try:
+                return dt.strptime(s, fmt).date()
+            except Exception:
+                pass
+        # Fallbacks that accept 2-digit years in either BR (dd/mm/yy) or US (mm/dd/yy)
+        for fmt in (
+            "%d/%m/%y",
+            "%d-%m-%y",
+            "%m/%d/%y",
+            "%m-%d-%y",
+            "%y-%m-%d",
+            "%y/%m/%d",
+        ):
             try:
                 return dt.strptime(s, fmt).date()
             except Exception:
