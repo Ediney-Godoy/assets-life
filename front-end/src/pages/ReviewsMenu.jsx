@@ -154,47 +154,7 @@ export default function ReviewsMenu() {
           </button>
         )}
 
-        {hasPerm('/simulador/depreciacao') && (
-          <button
-            type="button"
-            onClick={() => navigate('/simulador/depreciacao')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-lime-50/60 dark:bg-lime-900/20 border-lime-100 dark:border-lime-900/30 hover:border-lime-200 dark:hover:border-lime-800"
-            aria-label="Simulador de Depreciação"
-            title="Simulador de Depreciação"
-          >
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-lime-100 dark:bg-lime-900/40 text-lime-700 dark:text-lime-300">
-                <BarChart3 size={22} />
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Simulador de Depreciação</div>
-                <div className="text-sm text-slate-600 dark:text-slate-300">
-                  Compare cenários de depreciação original x revisada.
-                </div>
-              </div>
-            </div>
-          </button>
-        )}
-
-        {hasPerm('/supervisao/rvu') && (
-          <button
-            type="button"
-            onClick={() => navigate('/supervisao-rvu')}
-            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-cyan-50/60 dark:bg-cyan-900/20 border-cyan-100 dark:border-cyan-900/30 hover:border-cyan-200 dark:hover:border-cyan-800"
-            aria-label={t('reviews_menu_supervision_title')}
-            title={t('reviews_menu_supervision_title')}
-          >
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300">
-                <UserCheck size={22} />
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_supervision_title')}</div>
-                <div className="text-sm text-slate-600 dark:text-slate-300">{t('reviews_menu_supervision_subtitle')}</div>
-              </div>
-            </div>
-          </button>
-        )}
+        {/* Simulador de Depreciação e Supervisão foram movidos para o menu Ferramentas */}
       </div>
     </section>
   );

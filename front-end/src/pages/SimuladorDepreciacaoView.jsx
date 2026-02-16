@@ -158,8 +158,22 @@ export default function SimuladorDepreciacaoView() {
         centro_custo: filters.centro_custo || null,
       };
       const resp = await simularDepreciacao(payload);
-      setAnalitico(resp.analitico || []);
-      setSintetico(resp.sintetico || []);
+
+      const classeFilter = String(filters.classe_id || '').trim();
+      let analiticoData = resp.analitico || [];
+      let sinteticoData = resp.sintetico || [];
+
+      if (classeFilter) {
+        analiticoData = analiticoData.filter(
+          (row) => String(row.classe || '') === classeFilter
+        );
+        sinteticoData = sinteticoData.filter(
+          (row) => String(row.classe || '') === classeFilter
+        );
+      }
+
+      setAnalitico(analiticoData);
+      setSintetico(sinteticoData);
       setAviso(resp.aviso || '');
     } catch (err) {
       setError(err.message || 'Falha ao executar simulação');

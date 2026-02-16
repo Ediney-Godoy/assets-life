@@ -49,7 +49,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       '/reviews': 'Cadastro de Períodos',
       '/reviews/delegacao': 'Delegações',
       '/reviews/vidas-uteis': 'Revisão de Vidas Úteis',
-      '/reviews/cronogramas': 'Cronogramas de Revisão',
+      '/reviews/cronogramas': 'Ferramentas',
       '/cost-centers': t('cost_centers_title') || 'Centros de Custos',
       '/reports': t('nav_reports') || 'Relatórios',
       '/about': t('nav_about') || 'Sobre',
