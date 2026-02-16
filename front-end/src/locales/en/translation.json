@@ -38,6 +38,7 @@
   "about_deploy": "Deployment: cloud hosting with optimized build.",
   "about_help_title": "Help & Support",
   "about_help": "For questions or suggestions, contact the system provider's support.",
+  "about_version_title": "Version",
 
   "companies_title": "Companies",
   "companies_subtitle": "Company registration and management.",
@@ -649,6 +650,8 @@
   "new_asset": "New Asset",
   "cronogram_menu_title": "Tools",
   "cronogram_menu_subtitle": "Manage review schedules",
+  "cronogram_card_title": "Schedule",
+  "cronogram_card_subtitle": "Manage review schedules",
   "cronogramas_ativos": "Active Schedules",
   "cronogramas_encerrados": "Closed Schedules",
   "simulator_menu_title": "Depreciation Simulator",

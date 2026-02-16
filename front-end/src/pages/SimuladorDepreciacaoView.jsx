@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Filter, BarChart3, FileDown, FileText, ChevronDown } from 'lucide-react';
+import Button from '../components/ui/Button';
 import {
   getCompanies,
   getManagementUnits,
@@ -321,33 +322,42 @@ export default function SimuladorDepreciacaoView() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="md"
             onClick={handleSimulate}
-            disabled={!canSimulate || loadingSim || loadingBase}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium shadow-sm hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            loading={loadingSim}
+            disabled={!canSimulate || loadingBase}
+            title={loadingSim ? t('simulator_running') : t('simulator_run')}
+            aria-label={loadingSim ? t('simulator_running') : t('simulator_run')}
+            className="p-1 h-9 w-9 justify-center"
           >
-            <BarChart3 size={16} />
-            {loadingSim ? t('simulator_running') : t('simulator_run')}
-          </button>
-          <button
-            type="button"
+            <BarChart3 size={18} />
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => handleExport('excel')}
-            disabled={!canSimulate || loadingExport || loadingBase}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-blue-600 text-white text-xs font-medium shadow-sm hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            loading={loadingExport}
+            disabled={!canSimulate || loadingBase}
+            title={t('simulator_export_excel')}
+            aria-label={t('simulator_export_excel')}
+            className="p-1 h-9 w-9 justify-center"
           >
-            <FileDown size={16} />
-            {t('simulator_export_excel')}
-          </button>
-          <button
-            type="button"
+            <FileDown size={18} />
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => handleExport('pdf')}
-            disabled={!canSimulate || loadingExport || loadingBase}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-rose-600 text-white text-xs font-medium shadow-sm hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            loading={loadingExport}
+            disabled={!canSimulate || loadingBase}
+            title={t('simulator_export_pdf')}
+            aria-label={t('simulator_export_pdf')}
+            className="p-1 h-9 w-9 justify-center"
           >
-            <FileText size={16} />
-            {t('simulator_export_pdf')}
-          </button>
+            <FileText size={18} />
+          </Button>
         </div>
       </div>
 

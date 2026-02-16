@@ -38,6 +38,7 @@
   "about_deploy": "Implantação: hospedagem em nuvem com build otimizado.",
   "about_help_title": "Ajuda e Suporte",
   "about_help": "Para dúvidas ou sugestões, entre em contato com o suporte do fornecedor responsável pelo sistema.",
+  "about_version_title": "Versão",
 
   "companies_title": "Empresas",
   "companies_subtitle": "Cadastro e gestão de empresas.",
@@ -702,6 +703,8 @@
   "selected_items_tooltip": "Selecionados",
   "cronogram_menu_title": "Ferramentas",
   "cronogram_menu_subtitle": "Gerenciar cronogramas de revisão",
+  "cronogram_card_title": "Cronograma",
+  "cronogram_card_subtitle": "Gerenciar cronogramas de revisão",
   "simulator_menu_title": "Simulador de Depreciação",
   "simulator_menu_subtitle": "Compare cenários de depreciação original x revisada.",
   "simulator_title": "Simulador de Depreciação",

@@ -605,24 +605,25 @@ export default function SupervisaoRVUView() {
           </div>
 
           <button
-            className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 font-medium transition-colors gap-2"
+            className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 font-medium transition-colors"
             onClick={aplicarFiltros}
             title={t('apply_filters')}
+            aria-label={t('apply_filters')}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 4h18l-7 8v5l-4 3v-8L3 4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </svg>
-            <span className="hidden sm:inline">{t('filter')}</span>
           </button>
 
           <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
           {selectedIds.size > 0 && (
             <button
-              className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 font-medium transition-colors gap-2"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 font-medium transition-colors"
               onClick={handleMassApprove}
               disabled={massLoading}
-              title="Aprovar itens selecionados"
+              title={t('supervision_mass_confirm', { count: selectedIds.size })}
+              aria-label={t('supervision_mass_confirm', { count: selectedIds.size })}
             >
               {massLoading ? (
                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -631,7 +632,6 @@ export default function SupervisaoRVUView() {
                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
-              <span>{t('approve')} ({selectedIds.size})</span>
             </button>
           )}
 

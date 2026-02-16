@@ -38,6 +38,7 @@
   "about_deploy": "Despliegue: hospedaje en la nube con build optimizado.",
   "about_help_title": "Ayuda y Soporte",
   "about_help": "Para dudas o sugerencias, contacte al soporte del proveedor del sistema.",
+  "about_version_title": "Versión",
 
   "companies_title": "Empresas",
   "companies_subtitle": "Registro y gestión de empresas.",
@@ -649,6 +650,8 @@
   "new_asset": "Nuevo Activo",
   "cronogram_menu_title": "Herramientas",
   "cronogram_menu_subtitle": "Gestionar cronogramas de revisión",
+  "cronogram_card_title": "Cronograma",
+  "cronogram_card_subtitle": "Gestionar cronogramas de revisión",
   "cronogramas_ativos": "Cronogramas Activos",
   "cronogramas_encerrados": "Cronogramas Cerrados",
   "simulator_menu_title": "Simulador de Depreciación",
