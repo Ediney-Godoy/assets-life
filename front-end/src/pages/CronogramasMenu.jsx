@@ -55,15 +55,15 @@ export default function CronogramasMenu() {
             type="button"
             onClick={() => navigate('/reviews/cronogramas/view')}
             className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-blue-50/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 hover:border-blue-200 dark:hover:border-blue-800"
-            aria-label="Cronogramas"
-            title="Cronogramas"
+            aria-label={t('cronogram_menu_title', 'Cronogramas')}
+            title={t('cronogram_menu_title', 'Cronogramas')}
           >
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
                 <Clock size={22} />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Cronogramas</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('cronogram_menu_title', 'Cronogramas')}</div>
                 <div className="text-sm text-slate-600 dark:text-slate-300">{t('cronogram_menu_subtitle', 'Gerenciar cronogramas de revisão')}</div>
               </div>
             </div>
@@ -75,17 +75,17 @@ export default function CronogramasMenu() {
             type="button"
             onClick={() => navigate('/simulador/depreciacao')}
             className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-lime-50/60 dark:bg-lime-900/20 border-lime-100 dark:border-lime-900/30 hover:border-lime-200 dark:hover:border-lime-800"
-            aria-label="Simulador de Depreciação"
-            title="Simulador de Depreciação"
+            aria-label={t('simulator_menu_title', 'Simulador de Depreciação')}
+            title={t('simulator_menu_title', 'Simulador de Depreciação')}
           >
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-lime-100 dark:bg-lime-900/40 text-lime-700 dark:text-lime-300">
                 <BarChart3 size={22} />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Simulador de Depreciação</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{t('simulator_menu_title', 'Simulador de Depreciação')}</div>
                 <div className="text-sm text-slate-600 dark:text-slate-300">
-                  Compare cenários de depreciação original x revisada.
+                  {t('simulator_menu_subtitle', 'Compare cenários de depreciação original x revisada.')}
                 </div>
               </div>
             </div>

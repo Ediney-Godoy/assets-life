@@ -29,7 +29,7 @@ export default function Sidebar() {
     { to: '/dashboard', label: tt('nav_dashboard', 'Dashboard'), icon: LayoutDashboard },
     { to: '/cadastros', label: tt('nav_registrations', 'Cadastros'), icon: SquareStack },
     { to: '/reviews', label: tt('nav_reviews', 'Revisões'), icon: ClipboardList },
-    { to: '/reviews/cronogramas', label: 'Ferramentas', icon: Clock },
+    { to: '/reviews/cronogramas', label: tt('nav_tools', 'Ferramentas'), icon: Clock },
     { to: '/reports', label: tt('nav_reports', 'Relatórios'), icon: BarChart3 },
     { to: '/notifications', label: tt('notifications', 'Notificações'), icon: Bell },
     { to: '/permissions', label: tt('nav_permissions', 'Permissões'), icon: Shield },

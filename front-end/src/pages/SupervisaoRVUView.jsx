@@ -159,7 +159,7 @@ export default function SupervisaoRVUView() {
         setHasResponses(false);
       }
     } catch (err) {
-      setError(err.message || 'Erro ao listar revisões');
+      setError(err.message || t('supervision_error_list'));
     } finally {
       setLoading(false);
     }
@@ -237,37 +237,37 @@ export default function SupervisaoRVUView() {
   const closeDrawer = () => { setDrawerItem(null); setShowComment(false); setShowRevert(false); setCommentText(''); setRevertReason(''); };
 
   const enviarComentario = async () => {
-    if (!commentText.trim()) { toast.error('Comentário obrigatório'); return; }
+    if (!commentText.trim()) { toast.error(t('supervision_comment_required')); return; }
     try {
       await comentarSupervisaoRVU({ ativo_id: drawerItem.id, supervisor_id: getUserId(), revisor_id: getRevisorId(drawerItem), comentario: commentText.trim(), periodo_id: filters.periodo_id || drawerItem.periodo_id });
-      toast.success('Comentário enviado');
+      toast.success(t('supervision_comment_sent'));
       setShowComment(false);
       aplicarFiltros();
     } catch (err) {
-      toast.error(err.message || 'Falha ao comentar');
+      toast.error(err.message || t('supervision_comment_error'));
     }
   };
 
   const confirmarReversao = async () => {
-    if (!revertReason.trim()) { toast.error('Justificativa obrigatória'); return; }
+    if (!revertReason.trim()) { toast.error(t('supervision_justification_required')); return; }
     try {
       await reverterSupervisaoRVU({ ativo_id: drawerItem.id, supervisor_id: getUserId(), revisor_id: getRevisorId(drawerItem), motivo_reversao: revertReason.trim(), periodo_id: filters.periodo_id || drawerItem.periodo_id });
-      toast.success('Revisão revertida');
+      toast.success(t('supervision_revert_success'));
       setShowRevert(false);
       aplicarFiltros();
     } catch (err) {
-      toast.error(err.message || 'Falha ao reverter');
+      toast.error(err.message || t('supervision_revert_error'));
     }
   };
 
   const confirmarAprovacao = async () => {
     try {
       await aprovarSupervisaoRVU({ ativo_id: drawerItem.id, supervisor_id: getUserId(), motivo: '', periodo_id: filters.periodo_id || drawerItem.periodo_id });
-      toast.success('Revisão aprovada');
+      toast.success(t('supervision_approve_success'));
       aplicarFiltros();
       closeDrawer();
     } catch (err) {
-      toast.error(err.message || 'Falha ao aprovar');
+      toast.error(err.message || t('supervision_approve_error'));
     }
   };
 
@@ -300,7 +300,7 @@ export default function SupervisaoRVUView() {
 
   const handleMassApprove = async () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Deseja aprovar ${selectedIds.size} itens selecionados?`)) return;
+    if (!window.confirm(t('supervision_mass_confirm', { count: selectedIds.size }))) return;
 
     setMassLoading(true);
     try {
@@ -309,16 +309,16 @@ export default function SupervisaoRVUView() {
         periodo_id: filters.periodo_id ? Number(filters.periodo_id) : undefined
       });
       if (res.ok) {
-        toast.success(`Aprovados: ${res.count}`);
+        toast.success(t('supervision_mass_success', { count: res.count }));
         if (res.errors && res.errors.length > 0) {
-          toast.error(`${res.errors.length} erros ocorreram`);
+          toast.error(t('supervision_mass_partial_error', { count: res.errors.length }));
           console.error('Erros:', res.errors);
         }
         setSelectedIds(new Set());
         aplicarFiltros();
       }
     } catch (err) {
-      toast.error(err.message || 'Erro na aprovação em massa');
+      toast.error(err.message || t('supervision_mass_error'));
     } finally {
       setMassLoading(false);
     }
@@ -400,16 +400,16 @@ export default function SupervisaoRVUView() {
     <div className="p-4">
       {hasResponses && (
         <div className="mb-3 px-3 py-2 rounded bg-blue-100 text-blue-900 border border-blue-300">
-          ✉️ Há respostas de revisores em itens deste período.
+          ✉️ {t('supervision_has_responses')}
         </div>
       )}
       {periodoEncerrado && (
         <div className="mb-3 px-3 py-2 rounded bg-yellow-100 text-yellow-900 border border-yellow-300">
-          ⚠️ Período de revisão encerrado. Alterações e reversões estão bloqueadas.
+          ⚠️ {t('supervision_period_closed')}
         </div>
       )}
       <div className="flex items-center justify-between mb-3">
-        <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Supervisão RVU</div>
+        <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('reviews_menu_supervision_title')}</div>
       </div>
 
       <div className="flex space-x-1 mb-4 border-b border-slate-200 dark:border-slate-800">
@@ -417,13 +417,13 @@ export default function SupervisaoRVUView() {
           className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === 'supervisao' ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'}`}
           onClick={() => setActiveTab('supervisao')}
         >
-          Relatório de Supervisão
+          {t('supervision_tab_report')}
         </button>
         <button
           className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === 'logs' ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'}`}
           onClick={() => setActiveTab('logs')}
         >
-          Relatório de Logs
+          {t('supervision_tab_logs')}
         </button>
       </div>
 
@@ -434,7 +434,7 @@ export default function SupervisaoRVUView() {
         <button
           className="absolute top-4 right-4 inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors z-10"
           onClick={() => setFiltersExpanded(!filtersExpanded)}
-          title={filtersExpanded ? "Ocultar filtros" : "Mostrar filtros"}
+          title={filtersExpanded ? t('filters_hide') : t('filters_show')}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             {filtersExpanded ? (
@@ -450,7 +450,7 @@ export default function SupervisaoRVUView() {
         {/* Linha Principal - Grid Layout Modernizado */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
           <div className="md:col-span-3">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Empresa</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('company_label')}</label>
             <select 
               className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
               value={filters.empresa_id} 
@@ -462,7 +462,7 @@ export default function SupervisaoRVUView() {
             </select>
           </div>
           <div className="md:col-span-3">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Período</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('period_label')}</label>
             <select 
               className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
               value={filters.periodo_id} 
@@ -475,7 +475,7 @@ export default function SupervisaoRVUView() {
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Responsável</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('supervision_responsible_label')}</label>
             <input 
               type="text" 
               className="input w-full h-10 bg-slate-100 text-slate-600 border-slate-200 cursor-not-allowed text-sm" 
@@ -486,15 +486,15 @@ export default function SupervisaoRVUView() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('status')}</label>
             <select className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
-              {['Todos','Revisado','Aprovado','Pendente','Revertido'].map((s) => <option key={s} value={s}>{s}</option>)}
+              {['Todos','Revisado','Aprovado','Pendente','Revertido'].map((s) => <option key={s} value={s}>{t(`review_status_${s.toLowerCase()}`)}</option>)}
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Revisor</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('reviewer_label')}</label>
             <select className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
-              <option value="">Todos</option>
+              <option value="">{t('all')}</option>
               {revisores.map((r) => <option key={r.id} value={r.id}>{r.nome_completo || r.name}</option>)}
             </select>
           </div>
@@ -504,7 +504,7 @@ export default function SupervisaoRVUView() {
         <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
              <div className="md:col-span-3">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Filtro Avançado</label>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('advanced_filter')}</label>
               <select 
                 className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
                 value={filterType} 
@@ -515,20 +515,20 @@ export default function SupervisaoRVUView() {
                   if (t !== 'ug') setFilters(f => ({ ...f, ug_id: '' }));
                 }}
               >
-                <option value="todos">Nenhum</option>
-                <option value="ug">Unidade Gerencial</option>
-                <option value="classe">Classe Contábil</option>
-                <option value="centro_custo">Centro de Custos</option>
-                <option value="valor">Valor Contábil</option>
+                <option value="todos">{t('filter_none')}</option>
+                <option value="ug">{t('filter_management_unit')}</option>
+                <option value="classe">{t('filter_accounting_class')}</option>
+                <option value="centro_custo">{t('filter_cost_center')}</option>
+                <option value="valor">{t('filter_book_value')}</option>
               </select>
             </div>
 
             <div className="md:col-span-4">
             {filterType === 'ug' && (
               <div className="animate-fade-in">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Selecione a UG</label>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('select_ug')}</label>
                 <select className="input w-full h-10" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
-                  <option value="">Todas</option>
+                  <option value="">{t('all')}</option>
                   {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
                 </select>
               </div>
@@ -536,13 +536,13 @@ export default function SupervisaoRVUView() {
 
             {filterType === 'classe' && (
               <div className="animate-fade-in">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Selecione a Classe</label>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('select_class')}</label>
                 <select 
                   className="input w-full h-10" 
                   value={dynamicFilters.classe}
                   onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
                 >
-                  <option value="">Todas</option>
+                  <option value="">{t('all')}</option>
                   {uniqueClasses.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -550,13 +550,13 @@ export default function SupervisaoRVUView() {
 
             {filterType === 'centro_custo' && (
               <div className="animate-fade-in">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Selecione o Centro de Custo</label>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('select_cost_center')}</label>
                 <select 
                   className="input w-full h-10" 
                   value={dynamicFilters.centro_custo}
                   onChange={(e) => setDynamicFilters(d => ({ ...d, centro_custo: e.target.value }))}
                 >
-                  <option value="">Todos</option>
+                  <option value="">{t('all')}</option>
                   {uniqueCCs.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -564,19 +564,19 @@ export default function SupervisaoRVUView() {
 
             {filterType === 'valor' && (
               <div className="animate-fade-in">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Intervalo de Valor</label>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('value_range')}</label>
                 <div className="flex gap-2">
                   <input 
                     type="number"
                     className="input w-full h-10" 
-                    placeholder="Min" 
+                    placeholder={t('min')}
                     value={dynamicFilters.valor_min}
                     onChange={(e) => setDynamicFilters(d => ({ ...d, valor_min: e.target.value }))}
                   />
                   <input 
                     type="number"
                     className="input w-full h-10" 
-                    placeholder="Max" 
+                    placeholder={t('max')}
                     value={dynamicFilters.valor_max}
                     onChange={(e) => setDynamicFilters(d => ({ ...d, valor_max: e.target.value }))}
                   />
@@ -597,7 +597,7 @@ export default function SupervisaoRVUView() {
             </div>
             <input
               className="input w-full h-10 pl-10 bg-white border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 transition-all shadow-sm"
-              placeholder="Busca rápida por descrição ou Nº do imobilizado..."
+              placeholder={t('quick_search_placeholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') aplicarFiltros(); }}
@@ -607,12 +607,12 @@ export default function SupervisaoRVUView() {
           <button
             className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 font-medium transition-colors gap-2"
             onClick={aplicarFiltros}
-            title="Aplicar Filtros"
+            title={t('apply_filters')}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 4h18l-7 8v5l-4 3v-8L3 4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </svg>
-            <span className="hidden sm:inline">Filtrar</span>
+            <span className="hidden sm:inline">{t('filter')}</span>
           </button>
 
           <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
@@ -631,14 +631,14 @@ export default function SupervisaoRVUView() {
                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
-              <span>Aprovar ({selectedIds.size})</span>
+              <span>{t('approve')} ({selectedIds.size})</span>
             </button>
           )}
 
           <button
             className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-green-600 hover:bg-green-50 hover:border-green-200 shadow-sm transition-colors"
             onClick={exportarExcel}
-            title="Exportar para Excel"
+            title={t('export_excel')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -688,7 +688,7 @@ export default function SupervisaoRVUView() {
                   onChange={toggleSelectAll}
                 />
               </th>
-              {['Nº Imobilizado','Descrição','Classe Contábil','Valor Contábil','Vida Útil Atual','Vida Útil Revisada','Δ Vida Útil (%)','Revisor','Condição Física','Justificativa','Data Revisão','Status','💬','Ações'].map((h) => (
+                  {[t('th_asset_number'),t('th_description'),t('th_class'),t('th_book_value'),t('th_current_life'),t('th_revised_life'),t('th_delta_life'),t('th_reviewer'),t('th_physical_condition'),t('th_justification'),t('th_review_date'),t('th_status'),'💬',t('th_actions')].map((h) => (
                 <th key={h} className="text-left p-2 font-medium text-slate-700 dark:text-slate-300">{h}</th>
               ))}
             </tr>
@@ -727,12 +727,12 @@ export default function SupervisaoRVUView() {
                   <td className="p-2">{formatDateBR(i.data_revisao)}</td>
                   <td className="p-2">{i.status === 'Aprovado' ? '✅ Aprovado' : i.status === 'Revertido' ? '🔄 Revertido' : (i.status || '')}</td>
                   <td className="p-2">{(i.comentarios_count ?? (i.ultimo_comentario ? 1 : 0))}</td>
-                  <td className="p-2"><button className="btn" onClick={() => openActions(i)} title="Abrir ações">⚙️</button></td>
+                  <td className="p-2"><button className="btn" onClick={() => openActions(i)} title={t('open_actions')}>⚙️</button></td>
                 </tr>
               );
             })}
             {filteredItems.length === 0 && (
-              <tr><td className="p-2 text-slate-600" colSpan={15}>Nenhum item encontrado.</td></tr>
+              <tr><td className="p-2 text-slate-600" colSpan={15}>{t('no_items_found')}</td></tr>
             )}
           </tbody>
         </table>
@@ -746,7 +746,7 @@ export default function SupervisaoRVUView() {
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
-                  {['Data','Usuário','Código Imobilizado','Descrição Imobilizado','Ação','Ativo ID','Vida Útil Original','Vida Útil Revisada','Motivo / Comentário','Status'].map((h) => (
+                  {[t('logs_date'),t('logs_user'),t('logs_asset_code'),t('logs_asset_description'),t('logs_action'),t('logs_asset_id'),t('logs_original_life'),t('logs_revised_life'),t('logs_reason'),t('logs_status')].map((h) => (
                     <th key={h} className="text-left p-2 font-medium text-slate-700 dark:text-slate-300">{h}</th>
                   ))}
                 </tr>
@@ -766,7 +766,7 @@ export default function SupervisaoRVUView() {
                     <td className="p-2">{h.status || ''}</td>
                   </tr>
                 ))}
-                {hist.length === 0 && <tr><td className="p-2 text-slate-600" colSpan={10}>Sem registros.</td></tr>}
+                {hist.length === 0 && <tr><td className="p-2 text-slate-600" colSpan={10}>{t('logs_empty')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -778,36 +778,36 @@ export default function SupervisaoRVUView() {
         <div className="fixed inset-0 bg-black/40 flex justify-end" onClick={closeDrawer}>
           <div className="w-full sm:w-[420px] h-full bg-white dark:bg-slate-950 p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-lg font-semibold">Ações da Revisão</div>
-              <button className="btn" onClick={closeDrawer}>Fechar</button>
+              <div className="text-lg font-semibold">{t('review_actions')}</div>
+              <button className="btn" onClick={closeDrawer}>{t('close')}</button>
             </div>
             <div className="space-y-2">
-              <button className="btn w-full" onClick={() => setShowComment(true)}>💬 Adicionar Comentário</button>
-              <button className="btn w-full" onClick={() => setShowRevert(true)} disabled={periodoEncerrado}>🔄 Reverter Revisão</button>
-              <button className="btn-primary w-full" onClick={confirmarAprovacao} disabled={periodoEncerrado}>✅ Aprovar Revisão</button>
-              <div className="text-xs text-slate-500">Última ação: {drawerItem.status}</div>
+              <button className="btn w-full" onClick={() => setShowComment(true)}>💬 {t('add_comment')}</button>
+              <button className="btn w-full" onClick={() => setShowRevert(true)} disabled={periodoEncerrado}>🔄 {t('revert_review')}</button>
+              <button className="btn-primary w-full" onClick={confirmarAprovacao} disabled={periodoEncerrado}>✅ {t('approve_review')}</button>
+              <div className="text-xs text-slate-500">{t('last_action')} {drawerItem.status}</div>
               {periodoEncerrado && (
-                <div className="mt-2 text-xs text-yellow-800">⚠️ Período encerrado: apenas comentários de acompanhamento.</div>
+                <div className="mt-2 text-xs text-yellow-800">⚠️ {t('period_closed_note')}</div>
               )}
             </div>
 
             {/* Modal Comentário */}
             {showComment && (
               <div className="mt-4 border-t border-slate-200 dark:border-slate-800 pt-3">
-                <div className="font-medium mb-2">Adicionar Comentário</div>
+                <div className="font-medium mb-2">{t('add_comment_title')}</div>
                 <div className="grid grid-cols-2 gap-2 mb-2 text-sm">
-                  <div>Revisor: {drawerItem.revisor || '-'}</div>
-                  <div>Data da Revisão: {formatDateBR(drawerItem.data_revisao)}</div>
-                  <div>Vida Útil Atual: {drawerItem.vida_util_atual}</div>
-                  <div>Vida Útil Revisada: {drawerItem.vida_util_revisada}</div>
+                  <div>{t('reviewer')}: {drawerItem.revisor || '-'}</div>
+                  <div>{t('review_date')}: {formatDateBR(drawerItem.data_revisao)}</div>
+                  <div>{t('current_life')}: {drawerItem.vida_util_atual}</div>
+                  <div>{t('revised_life')}: {drawerItem.vida_util_revisada}</div>
                 </div>
-                <textarea className="input h-28" value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder={periodoEncerrado ? "Comentário de acompanhamento" : "Comentário"} />
+                <textarea className="input h-28" value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder={periodoEncerrado ? t('followup_comment_placeholder') : t('comment_placeholder')} />
                 <div className="mt-2 flex gap-2">
-                  <button className="btn" onClick={() => setShowComment(false)}>Cancelar</button>
-                  <button className="btn-primary" onClick={enviarComentario}>Enviar Comentário</button>
+                  <button className="btn" onClick={() => setShowComment(false)}>{t('cancel')}</button>
+                  <button className="btn-primary" onClick={enviarComentario}>{t('send_comment')}</button>
                 </div>
                 <div className="mt-3">
-                  <div className="font-medium mb-1">Conversas</div>
+                  <div className="font-medium mb-1">{t('conversations')}</div>
                   <div className="space-y-2">
                     {(drawerItem?.comentarios || []).map((c) => (
                       <div key={c.id} className="p-2 rounded border border-slate-200 dark:border-slate-800">
@@ -815,14 +815,14 @@ export default function SupervisaoRVUView() {
                         <div className="text-sm">{c.comentario}</div>
                         {c.resposta && (
                           <div className="mt-1 pl-2 border-l-2 border-slate-300">
-                            <div className="text-xs text-slate-500">Resposta ({new Date(c.data_resposta).toLocaleString('pt-BR')} • {c.respondido_por})</div>
+                            <div className="text-xs text-slate-500">{t('reply')} ({new Date(c.data_resposta).toLocaleString('pt-BR')} • {c.respondido_por})</div>
                             <div className="text-sm">{c.resposta}</div>
                           </div>
                         )}
-                        <div className="text-xs mt-1">Status: {c.status} • Tipo: {c.tipo}</div>
+                        <div className="text-xs mt-1">{t('status')}: {c.status} • {t('type')}: {c.tipo}</div>
                       </div>
                     ))}
-                    {(drawerItem?.comentarios || []).length === 0 && <div className="text-xs text-slate-500">Sem comentários.</div>}
+                    {(drawerItem?.comentarios || []).length === 0 && <div className="text-xs text-slate-500">{t('no_comments')}</div>}
                   </div>
                 </div>
               </div>
@@ -831,15 +831,15 @@ export default function SupervisaoRVUView() {
             {/* Modal Reversão */}
             {showRevert && (
               <div className="mt-4 border-t border-slate-200 dark:border-slate-800 pt-3">
-                <div className="font-medium mb-2">Reverter Revisão</div>
+                <div className="font-medium mb-2">{t('revert_review_title')}</div>
                 <div className="grid grid-cols-2 gap-2 mb-2 text-sm">
-                  <div>Vida Útil Original: {drawerItem.vida_util_atual}</div>
-                  <div>Vida Útil Revisada: {drawerItem.vida_util_revisada}</div>
+                  <div>{t('original_life')}: {drawerItem.vida_util_atual}</div>
+                  <div>{t('revised_life')}: {drawerItem.vida_util_revisada}</div>
                 </div>
-                <textarea className="input h-28" value={revertReason} onChange={(e) => setRevertReason(e.target.value)} placeholder="Justificativa (obrigatória)" />
+                <textarea className="input h-28" value={revertReason} onChange={(e) => setRevertReason(e.target.value)} placeholder={t('justification_required')} />
                 <div className="mt-2 flex gap-2">
                   <button className="btn" onClick={() => setShowRevert(false)}>Cancelar</button>
-                  <button className="btn-danger" onClick={confirmarReversao}>Confirmar Reversão</button>
+                  <button className="btn-danger" onClick={confirmarReversao}>{t('confirm_reversion')}</button>
                 </div>
               </div>
             )}
@@ -847,11 +847,11 @@ export default function SupervisaoRVUView() {
         </div>
       )}
 
-      {loading && <div className="fixed inset-0 pointer-events-none"><div className="absolute top-4 right-4 px-3 py-2 bg-slate-900 text-white rounded">Carregando...</div></div>}
+      {loading && <div className="fixed inset-0 pointer-events-none"><div className="absolute top-4 right-4 px-3 py-2 bg-slate-900 text-white rounded">{t('loading')}</div></div>}
       {error && (items.length === 0) && (
         <div className="mt-2 text-red-600">
           {String(error).includes('Failed to fetch')
-            ? 'Falha de conexão com a API. Verifique se o backend está ativo (porta 8000) e se o token/permissões estão válidos.'
+            ? t('api_connection_failed')
             : error}
         </div>
       )}

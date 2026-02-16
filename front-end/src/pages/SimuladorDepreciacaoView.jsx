@@ -120,7 +120,7 @@ export default function SimuladorDepreciacaoView() {
           }
         }
       } catch (err) {
-        setError(err.message || 'Erro ao carregar dados da simulação');
+        setError(err.message || t('simulator_error_loading_base'));
       } finally {
         setLoadingBase(false);
       }
@@ -176,7 +176,7 @@ export default function SimuladorDepreciacaoView() {
       setSintetico(sinteticoData);
       setAviso(resp.aviso || '');
     } catch (err) {
-      setError(err.message || 'Falha ao executar simulação');
+      setError(err.message || t('simulator_error_run'));
       setAnalitico([]);
       setSintetico([]);
       setAviso('');
@@ -220,7 +220,7 @@ export default function SimuladorDepreciacaoView() {
       a.click();
       a.remove();
     } catch (err) {
-      setError(err.message || 'Falha ao exportar simulação');
+      setError(err.message || t('simulator_error_export'));
     } finally {
       setLoadingExport(false);
     }
@@ -228,54 +228,54 @@ export default function SimuladorDepreciacaoView() {
 
   const analyticColumns = useMemo(
     () => [
-      { key: 'numero_imobilizado', header: 'Imobilizado' },
-      { key: 'sub_numero', header: 'Sub. Nº' },
-      { key: 'data_incorporacao', header: 'Data de Incorporação', render: (v) => formatDateBR(v) },
-      { key: 'descricao', header: 'Descrição' },
+      { key: 'numero_imobilizado', header: t('simulator_analytic_col_asset') },
+      { key: 'sub_numero', header: t('simulator_analytic_col_subnumber') },
+      { key: 'data_incorporacao', header: t('simulator_analytic_col_incorporation_date'), render: (v) => formatDateBR(v) },
+      { key: 'descricao', header: t('simulator_analytic_col_description') },
       {
         key: 'classe',
-        header: 'Classe contábil',
+        header: t('simulator_analytic_col_class'),
         render: (_, r) => (r.classe_descricao ? `${r.classe} - ${r.classe_descricao}` : r.classe),
       },
       {
         key: 'vida_util_original',
-        header: 'Vida Útil (original)',
+        header: t('simulator_analytic_col_original_life'),
         render: (_, r) => `${r.vida_util_original_anos || 0}a ${r.vida_util_original_meses || 0}m`,
       },
-      { key: 'data_fim_original', header: 'Data Fim Depreciação (original)', render: (v) => formatDateBR(v) },
+      { key: 'data_fim_original', header: t('simulator_analytic_col_original_end_date'), render: (v) => formatDateBR(v) },
       {
         key: 'depreciacao_original_periodo',
-        header: 'Depreciação Original no Período',
+        header: t('simulator_analytic_col_original_depr_period'),
         render: (v) => formatCurrencyBRL(v),
       },
       {
         key: 'vida_util_revisada',
-        header: 'Nova Vida Útil',
+        header: t('simulator_analytic_col_revised_life'),
         render: (_, r) => `${r.vida_util_revisada_anos || 0}a ${r.vida_util_revisada_meses || 0}m`,
       },
-      { key: 'data_fim_revisada', header: 'Nova Data Fim Depreciação', render: (v) => formatDateBR(v) },
+      { key: 'data_fim_revisada', header: t('simulator_analytic_col_revised_end_date'), render: (v) => formatDateBR(v) },
       {
         key: 'depreciacao_revisada_periodo',
-        header: 'Nova Depreciação no Período',
+        header: t('simulator_analytic_col_revised_depr_period'),
         render: (v) => formatCurrencyBRL(v),
       },
       {
         key: 'diferenca_valor',
-        header: 'Diferença Depreciação (R$)',
+        header: t('simulator_analytic_col_diff_value'),
         render: (v) => formatCurrencyBRL(v),
       },
       {
         key: 'diferenca_percentual',
-        header: 'Diferença Depreciação (%)',
+        header: t('simulator_analytic_col_diff_percent'),
         render: (v) => `${Number(v || 0).toFixed(2)}%`,
       },
       {
         key: 'status_ajuste',
-        header: 'Ajuste',
-        render: (v) => v || 'Sem ajuste',
+        header: t('simulator_analytic_col_adjustment'),
+        render: (v) => v || t('simulator_no_adjustment'),
       },
     ],
-    []
+    [t]
   );
 
   const analyticRowsDecorated = useMemo(() => {
@@ -315,9 +315,9 @@ export default function SimuladorDepreciacaoView() {
     <section>
       <div className="mb-4 flex items-center justify-between px-4">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Simulador de Depreciação</h2>
+          <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('simulator_title')}</h2>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Simulação baseada nos dados da revisão. Nenhum dado contábil foi alterado.
+            {t('simulator_subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -328,7 +328,7 @@ export default function SimuladorDepreciacaoView() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium shadow-sm hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <BarChart3 size={16} />
-            {loadingSim ? 'Simulando…' : 'Simular'}
+            {loadingSim ? t('simulator_running') : t('simulator_run')}
           </button>
           <button
             type="button"
@@ -337,7 +337,7 @@ export default function SimuladorDepreciacaoView() {
             className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-blue-600 text-white text-xs font-medium shadow-sm hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <FileDown size={16} />
-            Excel
+            {t('simulator_export_excel')}
           </button>
           <button
             type="button"
@@ -346,7 +346,7 @@ export default function SimuladorDepreciacaoView() {
             className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-rose-600 text-white text-xs font-medium shadow-sm hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <FileText size={16} />
-            PDF
+            {t('simulator_export_pdf')}
           </button>
         </div>
       </div>
@@ -368,14 +368,14 @@ export default function SimuladorDepreciacaoView() {
         <div className="flex items-center justify-between mb-2 text-slate-600 text-sm">
           <div className="flex items-center gap-2">
             <Filter size={16} />
-            <span>Filtros da simulação</span>
+            <span>{t('simulator_filters_title')}</span>
           </div>
           <button
             type="button"
             onClick={() => setFiltersExpanded((v) => !v)}
             className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50"
           >
-            <span>{filtersExpanded ? 'Recolher' : 'Expandir'}</span>
+            <span>{filtersExpanded ? t('simulator_filters_collapse') : t('simulator_filters_expand')}</span>
             <ChevronDown
               size={14}
               className={`transition-transform ${filtersExpanded ? 'rotate-180' : ''}`}
@@ -390,7 +390,7 @@ export default function SimuladorDepreciacaoView() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4">
             <div className="md:col-span-3">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                Empresa
+                {t('simulator_company_label')}
               </label>
               <select
                 className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
@@ -398,7 +398,7 @@ export default function SimuladorDepreciacaoView() {
                 onChange={(e) => handleFilterChange('empresa_id', e.target.value)}
                 disabled={loadingBase}
               >
-                <option value="">Selecione</option>
+                <option value="">{t('select')}</option>
                 {(companies || []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nome || c.name}
@@ -408,7 +408,7 @@ export default function SimuladorDepreciacaoView() {
             </div>
             <div className="md:col-span-3">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                Período de revisão
+                {t('simulator_review_period_label')}
               </label>
               <select
                 className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
@@ -416,7 +416,7 @@ export default function SimuladorDepreciacaoView() {
                 onChange={(e) => handleFilterChange('periodo_id', e.target.value)}
                 disabled={loadingBase}
               >
-                <option value="">Selecione</option>
+                <option value="">{t('select')}</option>
                 {periodosVisiveis.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.descricao}
@@ -426,7 +426,7 @@ export default function SimuladorDepreciacaoView() {
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                Status da revisão
+                {t('simulator_review_status_label')}
               </label>
               <select
                 className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
@@ -434,14 +434,14 @@ export default function SimuladorDepreciacaoView() {
                 onChange={(e) => handleFilterChange('status_revisao', e.target.value)}
                 disabled={loadingBase}
               >
-                <option value="Todos">Todos</option>
-                <option value="Revisados">Revisados</option>
-                <option value="Não revisados">Não revisados</option>
+                <option value="Todos">{t('simulator_review_status_all')}</option>
+                <option value="Revisados">{t('simulator_review_status_reviewed')}</option>
+                <option value="Não revisados">{t('simulator_review_status_not_reviewed')}</option>
               </select>
             </div>
             <div className="md:col-span-3">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                Classe contábil
+                {t('simulator_class_label')}
               </label>
               <select
                 className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
@@ -449,7 +449,7 @@ export default function SimuladorDepreciacaoView() {
                 onChange={(e) => handleFilterChange('classe_id', e.target.value)}
                 disabled={loadingBase}
               >
-                <option value="">Todas</option>
+                <option value="">{t('simulator_class_all')}</option>
                 {(classes || []).map((c) => (
                   <option key={c.id || c.codigo} value={c.codigo}>
                     {c.codigo} - {c.descricao}
@@ -459,7 +459,7 @@ export default function SimuladorDepreciacaoView() {
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                Unidade Gerencial
+                {t('simulator_ug_label')}
               </label>
               <select
                 className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
@@ -467,7 +467,7 @@ export default function SimuladorDepreciacaoView() {
                 onChange={(e) => handleFilterChange('ug_id', e.target.value)}
                 disabled={loadingBase}
               >
-                <option value="">Todas</option>
+                <option value="">{t('simulator_ug_all')}</option>
                 {(ugs || []).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.nome || u.name}
@@ -477,7 +477,7 @@ export default function SimuladorDepreciacaoView() {
             </div>
             <div className="md:col-span-3">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                Centro de Custos
+                {t('simulator_cost_center_label')}
               </label>
               <select
                 className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
@@ -485,7 +485,7 @@ export default function SimuladorDepreciacaoView() {
                 onChange={(e) => handleFilterChange('centro_custo', e.target.value)}
                 disabled={loadingBase}
               >
-                <option value="">Todos</option>
+                <option value="">{t('simulator_cost_center_all')}</option>
                 {(costCenters || []).map((cc) => (
                   <option key={cc.id || cc.codigo} value={cc.codigo || cc.nome}>
                     {cc.codigo ? `${cc.codigo} - ${cc.nome}` : cc.nome}
@@ -499,7 +499,7 @@ export default function SimuladorDepreciacaoView() {
 
       <div className="px-4 space-y-4 pb-6">
         <div className="flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center">
+        <div className="flex items-center">
           <button
             type="button"
             onClick={() => setActiveTab('sintetico')}
@@ -509,7 +509,7 @@ export default function SimuladorDepreciacaoView() {
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            Simulação por classes
+            {t('simulator_tabs_classes')}
           </button>
           <button
             type="button"
@@ -520,15 +520,15 @@ export default function SimuladorDepreciacaoView() {
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            Visão analítica
+            {t('simulator_tabs_analytic')}
           </button>
           </div>
           <button
             type="button"
-            title="Por que a contagem do simulador pode ser menor que a do dashboard?"
+            title={t('simulator_info_button_title')}
             onClick={() => setShowInfo((v) => !v)}
             className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            aria-label="Informações sobre contagem"
+            aria-label={t('simulator_info_button_aria')}
           >
             <span className="text-[11px] font-semibold">i</span>
           </button>
@@ -536,16 +536,16 @@ export default function SimuladorDepreciacaoView() {
         {showInfo && (
           <div className="text-xs rounded-md border border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200 px-3 py-2">
             <p className="mb-1">
-              O simulador pode exibir menos itens que o dashboard porque aplica validações contábeis:
+              {t('simulator_info_intro')}
             </p>
             <ul className="list-disc ml-5 space-y-1">
-              <li>Ignora itens com valor de aquisição ≤ 0.</li>
-              <li>Ignora itens sem vida útil original válida (≤ 0 meses).</li>
-              <li>Ignora itens sem data de início de depreciação.</li>
-              <li>Respeita o filtro de status (Revisados/Não revisados).</li>
+              <li>{t('simulator_info_item_value')}</li>
+              <li>{t('simulator_info_item_life')}</li>
+              <li>{t('simulator_info_item_start_date')}</li>
+              <li>{t('simulator_info_item_status_filter')}</li>
             </ul>
             <p className="mt-2">
-              Já o dashboard contabiliza todos os itens do período, independentemente dessas validações.
+              {t('simulator_info_footer')}
             </p>
           </div>
         )}
@@ -554,11 +554,13 @@ export default function SimuladorDepreciacaoView() {
           <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Visão Sintética</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Consolidação por classe contábil.</p>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('simulator_synthetic_title')}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('simulator_synthetic_subtitle')}</p>
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                {(sintetico || []).length > 0 ? `${sintetico.length} linhas` : 'Nenhum dado consolidado'}
+                {(sintetico || []).length > 0
+                  ? t('simulator_synthetic_rows_count', { count: sintetico.length })
+                  : t('simulator_synthetic_no_data')}
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -566,22 +568,22 @@ export default function SimuladorDepreciacaoView() {
                 <thead className="bg-slate-50 dark:bg-slate-800">
                   <tr>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                      Classe contábil
+                      {t('simulator_synthetic_col_class')}
                     </th>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                      Quantidade de ativos
+                      {t('simulator_synthetic_col_assets')}
                     </th>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                      Depreciação original total
+                      {t('simulator_synthetic_col_original_depr')}
                     </th>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                      Depreciação simulada total
+                      {t('simulator_synthetic_col_simulated_depr')}
                     </th>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                      Diferença absoluta
+                      {t('simulator_synthetic_col_diff_abs')}
                     </th>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap">
-                      Diferença percentual
+                      {t('simulator_synthetic_col_diff_pct')}
                     </th>
                   </tr>
                 </thead>
@@ -592,7 +594,7 @@ export default function SimuladorDepreciacaoView() {
                         colSpan={6}
                         className="px-4 py-6 text-center text-slate-500 dark:text-slate-400 text-xs border-t border-slate-100 dark:border-slate-800"
                       >
-                        {loadingSim || loadingBase ? 'Carregando…' : 'Nenhum resultado consolidado.'}
+                        {loadingSim || loadingBase ? t('loading') : t('simulator_synthetic_no_results')}
                       </td>
                     </tr>
                   )}
@@ -605,7 +607,7 @@ export default function SimuladorDepreciacaoView() {
                             isTotal ? 'font-semibold' : ''
                           }`}
                         >
-                          {isTotal ? 'TOTAL GERAL' : row.classe}
+                          {isTotal ? t('simulator_synthetic_total_label') : row.classe}
                         </td>
                         <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
                           {row.quantidade_ativos}
@@ -635,13 +637,15 @@ export default function SimuladorDepreciacaoView() {
         <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[65vh] flex flex-col">
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Visão Analítica</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('simulator_analytic_title')}</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Detalhamento por ativo imobilizado.
+                {t('simulator_analytic_subtitle')}
               </p>
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              {analyticRowsDecorated.length > 0 ? `${analyticRowsDecorated.length} itens` : 'Nenhum item simulado'}
+              {analyticRowsDecorated.length > 0
+                ? t('simulator_analytic_items_count', { count: analyticRowsDecorated.length })
+                : t('simulator_analytic_no_items')}
             </div>
           </div>
           <div
@@ -671,7 +675,7 @@ export default function SimuladorDepreciacaoView() {
                       colSpan={analyticColumns.length}
                       className="px-4 py-8 text-center text-slate-500 dark:text-slate-400 text-xs"
                     >
-                      {loadingSim || loadingBase ? 'Carregando…' : 'Nenhum resultado para os filtros aplicados.'}
+                      {loadingSim || loadingBase ? t('loading') : t('simulator_analytic_no_results_for_filters')}
                     </td>
                   </tr>
                 )}
@@ -706,14 +710,14 @@ export default function SimuladorDepreciacaoView() {
             <div className="flex items-center gap-4">
               <span className="inline-flex items-center gap-1">
                 <span className="inline-block w-3 h-3 rounded-full bg-emerald-400" />
-                <span>Aumento de vida útil</span>
+                <span>{t('simulator_legend_increase')}</span>
               </span>
               <span className="inline-flex items-center gap-1">
                 <span className="inline-block w-3 h-3 rounded-full bg-rose-400" />
-                <span>Redução de vida útil</span>
+                <span>{t('simulator_legend_decrease')}</span>
               </span>
             </div>
-            <span>Ativos sem revisão aparecem como "Sem ajuste".</span>
+            <span>{t('simulator_legend_note')}</span>
           </div>
         </div>
         )}
