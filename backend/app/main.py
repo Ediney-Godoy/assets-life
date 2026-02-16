@@ -3317,8 +3317,26 @@ def upload_base(rev_id: int, file: UploadFile = File(...), db: Session = Depends
                     raise ValueError("Vida útil em branco: informe anos ou períodos")
 
                 def parse_decimal(x):
-                    x = (str(x).replace(".", "").replace(",", ".") if x is not None else "0")
-                    return Decimal(x or "0")
+                    # Handle numeric types from XLSX directly without string replacements
+                    if x is None:
+                        return Decimal("0")
+                    if isinstance(x, (int, float, Decimal)):
+                        return Decimal(str(x))
+                    s = str(x).strip()
+                    if s == "":
+                        return Decimal("0")
+                    # Remove currency symbols/spaces
+                    s = s.replace("R$", "").replace(" ", "")
+                    # If both separators appear, assume dot thousands and comma decimal (pt-BR)
+                    if "," in s and "." in s:
+                        s = s.replace(".", "").replace(",", ".")
+                    # If only comma appears, treat as decimal comma
+                    elif "," in s:
+                        s = s.replace(",", ".")
+                    # Else: only dots or plain digits; remove thousands commas if any
+                    else:
+                        s = s.replace(",", "")
+                    return Decimal(s or "0")
 
                 valor_aquisicao = parse_decimal(row.get("valor_aquisicao"))
                 depreciacao_acumulada = parse_decimal(row.get("depreciacao_acumulada"))
