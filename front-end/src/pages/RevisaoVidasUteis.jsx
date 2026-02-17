@@ -622,11 +622,16 @@ export default function RevisaoVidasUteis() {
         }
       }
 
+      if (!editForm.motivo) {
+        setError(t('error_reason_required') || 'Selecione um motivo para a revisão.');
+        return;
+      }
+
       const payload = {
         vida_util_revisada: editForm.incremento === 'Manter' ? null : mesesRevisados,
         condicao_fisica: editForm.condicao_fisica || null,
         incremento: editForm.incremento || 'Manter',
-        motivo: editForm.motivo || null,
+        motivo: editForm.motivo,
         nova_data_fim: editForm.incremento === 'Manter' ? undefined : (editForm.nova_data_fim || undefined),
         justificativa: editForm.justificativa || null,
       };
@@ -1024,7 +1029,7 @@ export default function RevisaoVidasUteis() {
               <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('justification_label')}</label>
               <textarea
                 value={editForm.justificativa}
-                onChange={(e) => setEditForm({ ...editForm, justificativa: e.target.value })}
+                readOnly
                 rows={3}
                 placeholder={t('justification_placeholder')}
                 disabled

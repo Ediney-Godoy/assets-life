@@ -189,6 +189,7 @@
   "review_status_aprovado": "Approved",
   "review_status_pendente": "Pending",
   "review_status_revertido": "Reverted",
+  "error_reason_required": "Select a reason for the review.",
   "supervision_error_list": "Failed to list reviews",
   "supervision_comment_required": "Comment is required",
   "supervision_comment_sent": "Comment sent",

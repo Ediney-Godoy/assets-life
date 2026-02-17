@@ -198,6 +198,7 @@
   "review_status_aprovado": "Aprovado",
   "review_status_pendente": "Pendente",
   "review_status_revertido": "Revertido",
+  "error_reason_required": "Selecione um motivo para a revisão.",
   "supervision_error_list": "Erro ao listar revisões",
   "supervision_comment_required": "Comentário obrigatório",
   "supervision_comment_sent": "Comentário enviado",

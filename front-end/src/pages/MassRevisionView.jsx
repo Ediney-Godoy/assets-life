@@ -18,14 +18,7 @@ export default function MassRevisionView() {
   const [resultSummary, setResultSummary] = React.useState(null);
   const [delegacoes, setDelegacoes] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState('pendentes'); // 'pendentes' | 'revisados'
-  const [collapsed, setCollapsed] = React.useState(() => {
-    try {
-      const v = localStorage.getItem('assetlife_mass_panel_collapsed');
-      if (v === '1') return true;
-      if (v === '0') return false;
-      return true;
-    } catch { return true; }
-  });
+  const [massDialogOpen, setMassDialogOpen] = React.useState(false);
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [previewRows, setPreviewRows] = React.useState([]);
   const currentUserId = React.useMemo(() => {
@@ -552,6 +545,10 @@ export default function MassRevisionView() {
       setError(t('mass_no_items_selected'));
       return;
     }
+    if (!form.motivo) {
+      setError(t('error_reason_required') || 'Selecione um motivo para a revisão em massa.');
+      return;
+    }
     setError('');
     buildPreview();
     setPreviewOpen(true);
@@ -700,20 +697,9 @@ export default function MassRevisionView() {
       </div>
 
       <div className="px-4">
-        <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-3">
-          {/* Botão flutuante para recolher/expandir o painel */}
-          <button
-            type="button"
-            onClick={() => setCollapsed((c) => { const n = !c; try { localStorage.setItem('assetlife_mass_panel_collapsed', n ? '1' : '0'); } catch {} return n; })}
-            className="absolute right-2 top-[60%] md:top-[58%] lg:top-[56%] z-10 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow hover:shadow-md transition"
-            title={collapsed ? t('expand_panel') : t('collapse_panel')}
-            aria-label={collapsed ? t('expand_panel') : t('collapse_panel')}
-          >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
-
-          {/* Container da Tabela (segue padrão de Revisão de Vidas Úteis) */}
-          <div className={`transition-all duration-300 min-w-0 ${collapsed ? 'lg:col-span-12' : 'lg:col-span-9'}`}>
+        <div className="min-w-0">
+          {/* Tabela principal */}
+          <div className="mb-3">
             {loading ? (
               <div className="p-4 text-slate-700 dark:text-slate-300">{t('loading_items')}</div>
             ) : (
@@ -729,208 +715,218 @@ export default function MassRevisionView() {
               />
             )}
           </div>
-
-          {/* Painel lateral de aplicação em massa (coluna ao lado em telas grandes; abaixo em telas pequenas) */}
+ 
+          {/* Botão para abrir popup de revisão em massa */}
           {activeTab === 'pendentes' && (
-            <div className={`transition-all duration-300 overflow-hidden ${collapsed ? 'hidden' : 'lg:col-span-3'}`}>
-              <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-4 border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('mass_panel_title')}</h3>
-                  <button type="button" onClick={() => setCollapsed(true)} title={t('collapse_panel')} aria-label={t('collapse_panel')} className="rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2">
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('physical_condition_label')}</label>
-                    <select
-                      value={form.condicao_fisica}
-                      onChange={(e) => setForm({ ...form, condicao_fisica: e.target.value })}
-                      disabled={isPeriodClosed}
-                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                    >
-                      <option value="">{t('select')}</option>
-                      <option value="Bom">{t('physical_condition_good')}</option>
-                      <option value="Regular">{t('physical_condition_regular')}</option>
-                      <option value="Ruim">{t('physical_condition_bad')}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('increment_label')}</label>
-                    <select
-                      value={form.incremento}
-                      onChange={(e) => {
-                        const novoInc = e.target.value;
-                        setForm((prev) => ({
-                          ...prev,
-                          incremento: novoInc,
-                          motivo: '',
-                          justificativa: novoInc === 'Manter' ? 'A vida útil está correta' : '',
-                          nova_vida_anos: novoInc === 'Manter' ? '' : prev.nova_vida_anos,
-                          nova_vida_meses: novoInc === 'Manter' ? '' : prev.nova_vida_meses,
-                          nova_data_fim: novoInc === 'Manter' ? '' : prev.nova_data_fim,
-                        }));
-                      }}
-                      disabled={isPeriodClosed}
-                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                    >
-                      <option value="Acréscimo">{t('increment_increase')}</option>
-                      <option value="Decréscimo">{t('increment_decrease')}</option>
-                      <option value="Manter">{t('increment_keep')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('new_life_years_label')}</label>
-                     <input
-                       type="number"
-                       min="0"
-                       value={form.nova_vida_anos}
-                       onChange={(e) => {
-                         const anos = e.target.value;
-                         const meses = Number(form.nova_vida_meses || 0);
-                         const refStart = (() => {
-                           const firstSel = Array.from(selected)[0];
-                           const it = firstSel ? items.find((x) => x.id === firstSel) : sorted[0];
-                           return it ? parseDate(it.data_inicio_depreciacao) : null;
-                         })();
-                         let novaFimCalc = form.nova_data_fim;
-                         if (refStart) {
-                           const total = Number(anos || 0) * 12 + meses;
-                           const d = addMonths(refStart, total);
-                           novaFimCalc = toISO(d);
-                         }
-                         setForm({ ...form, nova_vida_anos: anos, nova_data_fim: novaFimCalc });
-                       }}
-                       disabled={isPeriodClosed || form.incremento === 'Manter'}
-                       className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('new_life_months_label')}</label>
-                     <input
-                       type="number"
-                       min="0"
-                       max="11"
-                       value={form.nova_vida_meses}
-                       onChange={(e) => {
-                         const meses = e.target.value;
-                         const anos = Number(form.nova_vida_anos || 0);
-                         const refStart = (() => {
-                           const firstSel = Array.from(selected)[0];
-                           const it = firstSel ? items.find((x) => x.id === firstSel) : sorted[0];
-                           return it ? parseDate(it.data_inicio_depreciacao) : null;
-                         })();
-                         let novaFimCalc = form.nova_data_fim;
-                         if (refStart) {
-                           const total = anos * 12 + Number(meses || 0);
-                           const d = addMonths(refStart, total);
-                           novaFimCalc = toISO(d);
-                         }
-                         setForm({ ...form, nova_vida_meses: meses, nova_data_fim: novaFimCalc });
-                       }}
-                       disabled={form.incremento === 'Manter'}
-                       className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                     />
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('new_end_date_label')}</label>
-                   <input
-                     type="date"
-                     value={form.nova_data_fim}
-                     onChange={(e) => {
-                       const iso = e.target.value;
-                       // recalcular anos/meses usando a data início do primeiro selecionado (ou primeiro da lista)
-                       const refStart = (() => {
-                         const firstSel = Array.from(selected)[0];
-                         const it = firstSel ? items.find((x) => x.id === firstSel) : sorted[0];
-                         return it ? parseDate(it.data_inicio_depreciacao) : null;
-                       })();
-                       let anosStr = form.nova_vida_anos;
-                       let mesesStr = form.nova_vida_meses;
-                       if (refStart) {
-                         const end = parseDate(iso);
-                         const total = monthsDiff(refStart, end);
-                         const { anos, meses } = splitYearsMonths(total);
-                         anosStr = anos == null ? '' : String(anos);
-                         mesesStr = meses == null ? '' : String(meses);
-                       }
-                       setForm({ ...form, nova_data_fim: iso, nova_vida_anos: anosStr, nova_vida_meses: mesesStr });
-                     }}
-                     disabled={form.incremento === 'Manter'}
-                     className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                   />
-                </div>
-
-                <div className="mb-3">
-                  <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('reason_label')}</label>
-                  <select
-                    value={form.motivo}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const selectedText = e.target.options[e.target.selectedIndex]?.text || val;
-                      setForm((prev) => ({ ...prev, motivo: val, justificativa: selectedText }));
-                    }}
-                    className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                  >
-                    <option value="">{t('select_reason')}</option>
-                    {(form.incremento === 'Acréscimo' ? motivosAumento : form.incremento === 'Decréscimo' ? motivosReducao : motivosManter).map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mb-2">
-                  <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('justification_label')}</label>
-                  <textarea
-                    value={form.justificativa}
-                    onChange={(e) => setForm({ ...form, justificativa: e.target.value })}
-                    rows={3}
-                    placeholder={t('justification_placeholder')}
-                    disabled={isPeriodClosed}
-                    className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                  />
-                </div>
-                <div className="flex justify-end items-center gap-2">
-                  {isPeriodClosed && (
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                      Período Fechado - Somente Leitura
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleApply}
-                    disabled={isPeriodClosed || selected.size === 0}
-                    className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {t('apply_mass_revision')}
-                  </button>
-                </div>
-
-                {resultSummary && (
-                  <div className="mt-3 text-sm text-slate-700 dark:text-slate-300">
-                    <div className="font-semibold">{t('mass_results_title')}</div>
-                    <div>{t('mass_updated')}: {resultSummary.updated} / {resultSummary.total}</div>
-                    <div>{t('mass_skipped')}: {resultSummary.skipped}</div>
-                    {Array.isArray(resultSummary.errors) && resultSummary.errors.length > 0 && (
-                      <div>
-                        <div className="mt-2">{t('mass_errors')}:</div>
-                        <ul className="list-disc ml-5">
-                          {resultSummary.errors.map((e, idx) => <li key={idx}>{e}</li>)}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+            <div className="flex justify-end mb-2">
+              <button
+                type="button"
+                onClick={() => setMassDialogOpen(true)}
+                disabled={selected.size === 0 || isPeriodClosed}
+                className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('apply_mass_revision')}
+              </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Popup de Revisão em Massa (espelho da revisão individual) */}
+      {massDialogOpen && activeTab === 'pendentes' && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-30">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg w-full max-w-2xl p-4 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('mass_panel_title')}</h3>
+              <button
+                type="button"
+                onClick={() => setMassDialogOpen(false)}
+                className="px-2 py-1 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm"
+              >
+                {t('close', { defaultValue: 'Fechar' })}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('physical_condition_label')}</label>
+                <select
+                  value={form.condicao_fisica}
+                  onChange={(e) => setForm({ ...form, condicao_fisica: e.target.value })}
+                  disabled={isPeriodClosed}
+                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                >
+                  <option value="">{t('select')}</option>
+                  <option value="Bom">{t('physical_condition_good')}</option>
+                  <option value="Regular">{t('physical_condition_regular')}</option>
+                  <option value="Ruim">{t('physical_condition_bad')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('increment_label')}</label>
+                <select
+                  value={form.incremento}
+                  onChange={(e) => {
+                    const novoInc = e.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      incremento: novoInc,
+                      motivo: '',
+                      justificativa: novoInc === 'Manter' ? 'A vida útil está correta' : '',
+                      nova_vida_anos: novoInc === 'Manter' ? '' : prev.nova_vida_anos,
+                      nova_vida_meses: novoInc === 'Manter' ? '' : prev.nova_vida_meses,
+                      nova_data_fim: novoInc === 'Manter' ? '' : prev.nova_data_fim,
+                    }));
+                  }}
+                  disabled={isPeriodClosed}
+                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                >
+                  <option value="Acréscimo">{t('increment_increase')}</option>
+                  <option value="Decréscimo">{t('increment_decrease')}</option>
+                  <option value="Manter">{t('increment_keep')}</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('new_life_years_label')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.nova_vida_anos}
+                  onChange={(e) => {
+                    const anos = e.target.value;
+                    const meses = Number(form.nova_vida_meses || 0);
+                    const refStart = (() => {
+                      const firstSel = Array.from(selected)[0];
+                      const it = firstSel ? items.find((x) => x.id === firstSel) : sorted[0];
+                      return it ? parseDate(it.data_inicio_depreciacao) : null;
+                    })();
+                    let novaFimCalc = form.nova_data_fim;
+                    if (refStart) {
+                      const total = Number(anos || 0) * 12 + meses;
+                      const d = addMonths(refStart, total);
+                      novaFimCalc = toISO(d);
+                    }
+                    setForm({ ...form, nova_vida_anos: anos, nova_data_fim: novaFimCalc });
+                  }}
+                  disabled={isPeriodClosed || form.incremento === 'Manter'}
+                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('new_life_months_label')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="11"
+                  value={form.nova_vida_meses}
+                  onChange={(e) => {
+                    const meses = e.target.value;
+                    const anos = Number(form.nova_vida_anos || 0);
+                    const refStart = (() => {
+                      const firstSel = Array.from(selected)[0];
+                      const it = firstSel ? items.find((x) => x.id === firstSel) : sorted[0];
+                      return it ? parseDate(it.data_inicio_depreciacao) : null;
+                    })();
+                    let novaFimCalc = form.nova_data_fim;
+                    if (refStart) {
+                      const total = anos * 12 + Number(meses || 0);
+                      const d = addMonths(refStart, total);
+                      novaFimCalc = toISO(d);
+                    }
+                    setForm({ ...form, nova_vida_meses: meses, nova_data_fim: novaFimCalc });
+                  }}
+                  disabled={isPeriodClosed || form.incremento === 'Manter'}
+                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                />
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('new_end_date_label')}</label>
+              <input
+                type="date"
+                value={form.nova_data_fim}
+                onChange={(e) => {
+                  const iso = e.target.value;
+                  const refStart = (() => {
+                    const firstSel = Array.from(selected)[0];
+                    const it = firstSel ? items.find((x) => x.id === firstSel) : sorted[0];
+                    return it ? parseDate(it.data_inicio_depreciacao) : null;
+                  })();
+                  let anosStr = form.nova_vida_anos;
+                  let mesesStr = form.nova_vida_meses;
+                  if (refStart) {
+                    const end = parseDate(iso);
+                    const total = monthsDiff(refStart, end);
+                    const { anos, meses } = splitYearsMonths(total);
+                    anosStr = anos == null ? '' : String(anos);
+                    mesesStr = meses == null ? '' : String(meses);
+                  }
+                  setForm({ ...form, nova_data_fim: iso, nova_vida_anos: anosStr, nova_vida_meses: mesesStr });
+                }}
+                disabled={form.incremento === 'Manter' || isPeriodClosed}
+                className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('reason_label')}</label>
+              <select
+                value={form.motivo}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const selectedText = e.target.options[e.target.selectedIndex]?.text || val;
+                  setForm((prev) => ({ ...prev, motivo: val, justificativa: selectedText }));
+                }}
+                disabled={isPeriodClosed}
+                className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+              >
+                <option value="">{t('select_reason')}</option>
+                {(form.incremento === 'Acréscimo' ? motivosAumento : form.incremento === 'Decréscimo' ? motivosReducao : motivosManter).map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-2">
+              <label className="block text-sm text-slate-700 dark:text-slate-300 mb-1">{t('justification_label')}</label>
+              <textarea
+                value={form.justificativa}
+                rows={3}
+                placeholder={t('justification_placeholder')}
+                disabled
+                className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+              />
+            </div>
+
+            <div className="flex justify-end items-center gap-2 mt-3">
+              {isPeriodClosed && (
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  Período Fechado - Somente Leitura
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setMassDialogOpen(false)}
+                className="px-3 py-2 rounded border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm"
+              >
+                {t('cancel', { defaultValue: 'Cancelar' })}
+              </button>
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={isPeriodClosed || selected.size === 0}
+                className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('apply_mass_revision')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de prévia comparativa */}
       {previewOpen && (

@@ -345,7 +345,7 @@ export default function RelatoriosRVUView() {
           <div className="md:col-span-3">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('company_label')}</label>
             <select 
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:bg-white transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400 focus:dark:bg-slate-900" 
               value={filters.empresa_id} 
               onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}
               disabled={!!localStorage.getItem('assetlife_empresa')}
@@ -357,7 +357,7 @@ export default function RelatoriosRVUView() {
           <div className="md:col-span-3">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Período</label>
             <select 
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:bg-white transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400 focus:dark:bg-slate-900" 
               value={filters.periodo_id} 
               onChange={(e) => setFilters((f) => ({ ...f, periodo_id: e.target.value }))}
             >
@@ -369,7 +369,7 @@ export default function RelatoriosRVUView() {
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Responsável</label>
             <input 
               type="text" 
-              className="w-full h-10 px-3 rounded-md border bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed" 
+              className="w-full h-10 px-3 rounded-md border bg-slate-100 border-slate-200 text-slate-600 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300" 
               value={responsavelPeriodo} 
               readOnly 
               title="Responsável pelo Período"
@@ -378,7 +378,7 @@ export default function RelatoriosRVUView() {
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('status')}</label>
             <select 
-              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:bg-white transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400 focus:dark:bg-slate-900" 
               value={filters.status} 
               onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
             >
@@ -398,8 +398,8 @@ export default function RelatoriosRVUView() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end">
            <div className="md:col-span-3">
              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Filtro Avançado</label>
-             <select 
-               className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+            <select 
+              className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:bg-white transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400 focus:dark:bg-slate-900" 
                value={filterType} 
                onChange={(e) => {
                  const t = e.target.value;
@@ -418,8 +418,8 @@ export default function RelatoriosRVUView() {
 
            <div className="md:col-span-9">
              {filterType === 'ug' && (
-               <select 
-                 className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+              <select 
+                className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 text-slate-800 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" 
                  value={dynamicFilters.ug} 
                  onChange={(e) => setDynamicFilters(d => ({ ...d, ug: e.target.value }))}
                >
@@ -428,8 +428,8 @@ export default function RelatoriosRVUView() {
                </select>
              )}
              {filterType === 'classe' && (
-              <select 
-                className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+             <select 
+               className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 text-slate-800 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" 
                 value={dynamicFilters.classe} 
                 onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
               >
@@ -442,8 +442,8 @@ export default function RelatoriosRVUView() {
               </select>
             )}
              {filterType === 'centro_custo' && (
-               <select 
-                 className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+              <select 
+                className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 text-slate-800 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" 
                  value={dynamicFilters.centro_custo} 
                  onChange={(e) => setDynamicFilters(d => ({ ...d, centro_custo: e.target.value }))}
                >
@@ -452,8 +452,8 @@ export default function RelatoriosRVUView() {
                </select>
              )}
              {filterType === 'revisor' && (
-               <select 
-                 className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+              <select 
+                className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 text-slate-800 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" 
                  value={dynamicFilters.revisor} 
                  onChange={(e) => setDynamicFilters(d => ({ ...d, revisor: e.target.value }))}
                >
@@ -463,18 +463,18 @@ export default function RelatoriosRVUView() {
              )}
              {filterType === 'valor' && (
                <div className="flex items-center space-x-2">
-                 <input 
-                   type="number" 
-                   placeholder="Min" 
-                   className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                <input 
+                  type="number" 
+                  placeholder="Min" 
+                  className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 text-slate-800 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400" 
                    value={dynamicFilters.valor_min} 
                    onChange={(e) => setDynamicFilters(d => ({ ...d, valor_min: e.target.value }))} 
                  />
                  <span className="text-slate-400">-</span>
-                 <input 
-                   type="number" 
-                   placeholder="Max" 
-                   className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 transition-colors" 
+                <input 
+                  type="number" 
+                  placeholder="Max" 
+                  className="w-full h-10 px-3 rounded-md border bg-white border-slate-200 text-slate-800 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400" 
                    value={dynamicFilters.valor_max} 
                    onChange={(e) => setDynamicFilters(d => ({ ...d, valor_max: e.target.value }))} 
                  />
@@ -491,7 +491,7 @@ export default function RelatoriosRVUView() {
                 <input 
                   type="text" 
                   placeholder="Busca rápida por descrição ou Nº do imobilizado..." 
-                  className="w-full h-10 pl-10 pr-4 rounded-md border bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                  className="w-full h-10 pl-10 pr-4 rounded-md border bg-white border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
