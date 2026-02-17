@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Table from '../components/ui/Table';
 import Input from '../components/ui/Input';
@@ -582,6 +582,7 @@ export default function MassRevisionView() {
       setItems(data);
       clearSelection();
       setPreviewOpen(false);
+      setMassDialogOpen(false);
     } catch (err) {
       setError(String(err?.message || err));
     }
@@ -670,7 +671,7 @@ export default function MassRevisionView() {
         )}
         <Input label="" name="advQuery" placeholder={filterType === 'valor' ? t('exact_value_placeholder') : t('search_item_placeholder')} value={advancedQuery} onChange={(e) => setAdvancedQuery(e.target.value)} className={filterType === 'valor' ? 'w-32 md:w-40' : 'flex-1 min-w-0'} />
 
-        {/* Indicadores à direita como badges (estilo Delegações) */}
+        {/* Indicadores à direita como badges (estilo Delegações) + botão de revisão em massa */}
         <div className="ml-auto flex items-center gap-2">
           <span
             className="badge badge-primary"
@@ -678,11 +679,23 @@ export default function MassRevisionView() {
             aria-label={activeTab === 'pendentes' ? (t('to_review_count_tooltip') || 'A revisar / Delegados') : (t('reviewed_count_tooltip') || 'Revisados / Delegados')}
           >{activeTab === 'pendentes' ? `${availableCount}/${delegatedCount}` : `${reviewedCount}/${delegatedCount}`}</span>
           {activeTab === 'pendentes' && (
-            <span
-              className="badge badge-secondary"
-              title={t('selected_items_tooltip') || 'Selecionados'}
-              aria-label={t('selected_items_tooltip') || 'Selecionados'}
-            >{selected.size}</span>
+            <>
+              <span
+                className="badge badge-secondary"
+                title={t('selected_items_tooltip') || 'Selecionados'}
+                aria-label={t('selected_items_tooltip') || 'Selecionados'}
+              >{selected.size}</span>
+              <button
+                type="button"
+                onClick={() => setMassDialogOpen(true)}
+                disabled={selected.size === 0 || isPeriodClosed}
+                title={t('apply_mass_revision')}
+                aria-label={t('apply_mass_revision')}
+                className="ml-1 inline-flex items-center justify-center h-9 w-9 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                <SlidersHorizontal size={18} />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -715,20 +728,6 @@ export default function MassRevisionView() {
               />
             )}
           </div>
- 
-          {/* Botão para abrir popup de revisão em massa */}
-          {activeTab === 'pendentes' && (
-            <div className="flex justify-end mb-2">
-              <button
-                type="button"
-                onClick={() => setMassDialogOpen(true)}
-                disabled={selected.size === 0 || isPeriodClosed}
-                className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('apply_mass_revision')}
-              </button>
-            </div>
-          )}
         </div>
       </div>
 

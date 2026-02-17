@@ -148,6 +148,37 @@ def _vida_total_meses(it) -> int:
     revisada_total = getattr(it, 'vida_util_revisada', None) or 0
     return revisada_total or atual_total or 0
 
+def _vida_meses_atual(it) -> int:
+    total = getattr(it, 'vida_util_periodos', None) or 0
+    if total == 0 and (getattr(it, 'vida_util_anos', None) or 0) > 0:
+        total = (getattr(it, 'vida_util_anos', 0) or 0) * 12
+    return int(total or 0)
+
+def _vida_meses_revisada(it) -> int:
+    total = getattr(it, 'vida_util_revisada', None) or 0
+    if not total:
+        start = getattr(it, 'data_inicio_depreciacao', None)
+        end_rev = getattr(it, 'data_fim_revisada', None)
+        if start and end_rev:
+            total = _months_diff(start, end_rev)
+    return int(total or 0)
+
+def _format_life_ym(total_meses: int) -> str:
+    if total_meses is None or total_meses <= 0:
+        return "-"
+    anos = total_meses // 12
+    meses = total_meses % 12
+    return f"{anos}a{meses}m"
+
+def _format_money_br(value) -> str:
+    try:
+        num = float(value or 0)
+    except Exception:
+        return "0,00"
+    s = f"{num:,.2f}"
+    s = s.replace(",", "X").replace(".", ",").replace("X", ".")
+    return s
+
 def _data_fim(it) -> date | None:
     if getattr(it, 'data_fim_revisada', None):
         return getattr(it, 'data_fim_revisada')
@@ -449,7 +480,7 @@ def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int 
         db: Session = Depends(get_db)):
     try:
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.lib import colors
     except Exception:
@@ -473,7 +504,7 @@ def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int 
     items = q.all()
 
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
     styles = getSampleStyleSheet()
     story = []
     story.append(Paragraph("Laudo de Revisão de Vidas Úteis dos Ativos Imobilizados", styles['Title']))
@@ -484,46 +515,65 @@ def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int 
     if not items:
         story.append(Paragraph("Nenhum item encontrado com os filtros aplicados.", styles['Normal']))
     else:
-        # Cabeçalho
-        data = [['Nº Imob', 'Sub', 'Descrição', 'V. Contábil', 'V.U. Atual', 'V.U. Rev', 'Status']]
+        ajustados_por_classe = {}
+        mantidos_por_classe = {}
         for it in items:
-            # Cálculos (copiado do excel/resumo)
-            atual_total = (it.vida_util_periodos or 0)
-            if atual_total == 0 and (it.vida_util_anos or 0) > 0:
-                atual_total = (it.vida_util_anos or 0) * 12
-            atual_anos = (atual_total // 12) if atual_total is not None else 0
-            
-            revisada_total = it.vida_util_revisada or 0
-            revisada_anos = (revisada_total // 12) if revisada_total else 0
-            
-            desc = getattr(it, 'descricao', '') or ''
-            if len(desc) > 40: desc = desc[:37] + '...'
-            
-            row = [
-                str(getattr(it, 'numero_imobilizado', '')),
-                str(getattr(it, 'sub_numero', '')),
-                desc,
-                f"{float(getattr(it, 'valor_contabil', 0) or 0):.2f}",
-                f"{atual_anos} a",
-                f"{revisada_anos} a" if revisada_total else "-",
-                getattr(it, 'status', '') or ''
-            ]
-            data.append(row)
-        
-        t = Table(data, colWidths=[70, 40, 250, 80, 60, 60, 80])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ]))
-        story.append(t)
+            atual_meses = _vida_meses_atual(it)
+            revisada_meses = _vida_meses_revisada(it)
+            classe = getattr(it, 'classe', '') or ''
+            grupo = ajustados_por_classe if revisada_meses and revisada_meses != atual_meses else mantidos_por_classe
+            if classe not in grupo:
+                grupo[classe] = []
+            grupo[classe].append((it, atual_meses, revisada_meses))
 
-    doc.build(story)
+        def build_section(titulo, grupos):
+            if not grupos:
+                return
+            story.append(Paragraph(titulo, styles['Heading2']))
+            story.append(Spacer(1, 8))
+            for classe in sorted(grupos.keys(), key=lambda x: str(x or '')):
+                story.append(Paragraph(f"Classe {classe or '-'}", styles['Heading3']))
+                story.append(Spacer(1, 4))
+                data = [['Nº Imob', 'Sub', 'Descrição', 'V. Contábil', 'V.U. Atual', 'V.U. Ajustada', 'Status']]
+                for it, atual_meses, revisada_meses in grupos[classe]:
+                    desc = getattr(it, 'descricao', '') or ''
+                    if len(desc) > 40:
+                        desc = desc[:37] + '...'
+                    row = [
+                        str(getattr(it, 'numero_imobilizado', '')),
+                        str(getattr(it, 'sub_numero', '')),
+                        desc,
+                        _format_money_br(getattr(it, 'valor_contabil', 0)),
+                        _format_life_ym(atual_meses),
+                        _format_life_ym(revisada_meses) if revisada_meses else _format_life_ym(atual_meses),
+                        getattr(it, 'status', '') or ''
+                    ]
+                    data.append(row)
+                t = Table(data, colWidths=[60, 35, 210, 80, 70, 70, 70], repeatRows=1)
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                    ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ]))
+                story.append(t)
+                story.append(Spacer(1, 12))
+
+        build_section("Itens com vida útil ajustada", ajustados_por_classe)
+        build_section("Itens com vida útil mantida", mantidos_por_classe)
+
+    def add_page_number(canvas, doc):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 8)
+        width, height = doc.pagesize
+        canvas.drawRightString(width - 40, 20, f"Página {doc.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return Response(content=pdf_bytes, media_type='application/pdf')
