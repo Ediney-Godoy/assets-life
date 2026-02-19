@@ -671,7 +671,7 @@ export default function SimuladorDepreciacaoView() {
                   {analyticColumns.map((col) => (
                     <th
                       key={col.key}
-                      className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap"
+                      className="px-3 py-2 text-left text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide whitespace-nowrap sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 shadow-sm"
                     >
                       {col.header}
                     </th>
