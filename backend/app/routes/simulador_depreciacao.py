@@ -278,6 +278,7 @@ def _run_simulacao(
 
         dep_original_periodo = 0.0
         dep_revisada_periodo = 0.0
+        dep_ate_base = 0.0
 
         if end_original and end_original > effective_start:
             total_meses_original = _months_diff(start_original, end_original)
@@ -289,15 +290,21 @@ def _run_simulacao(
                     dep_mes = dep_mensal_original
                     if i == total_meses_original - 1:
                         dep_mes = round(saldo, 2)
+                    if base_start and periodo_data < base_start:
+                        dep_ate_base += dep_mes
                     if periodo_data >= effective_start and periodo_data <= periodo_fim:
                         dep_original_periodo += dep_mes
                     saldo = round(saldo - dep_mes, 2)
 
+        saldo_base = valor_aquisicao
+        if dep_ate_base > 0:
+            saldo_base = round(max(0.0, valor_aquisicao - dep_ate_base), 2)
+
         if end_revisada and end_revisada > effective_start:
             total_meses_revisada = _months_diff(base_start, end_revisada)
             if total_meses_revisada > 0:
-                dep_mensal_revisada = round(valor_aquisicao / total_meses_revisada, 2)
-                saldo_r = valor_aquisicao
+                dep_mensal_revisada = round(saldo_base / total_meses_revisada, 2)
+                saldo_r = saldo_base
                 for i in range(total_meses_revisada):
                     periodo_data = _add_months(base_start, i)
                     dep_mes = dep_mensal_revisada
@@ -319,6 +326,8 @@ def _run_simulacao(
         original_meses = original_total_meses % 12
 
         revised_total_meses = revised_total
+        if end_revisada and start_original:
+            revised_total_meses = _months_diff(start_original, end_revisada)
         revised_anos = revised_total_meses // 12
         revised_meses = revised_total_meses % 12
 
