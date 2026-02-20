@@ -452,7 +452,7 @@ export default function SupervisaoRVUView() {
           <div className="md:col-span-3">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('company_label')}</label>
             <select 
-              className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+              className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
               value={filters.empresa_id} 
               onChange={(e) => setFilters((f) => ({ ...f, empresa_id: e.target.value }))}
               disabled={companies.length === 1}
@@ -464,7 +464,7 @@ export default function SupervisaoRVUView() {
           <div className="md:col-span-3">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('period_label')}</label>
             <select 
-              className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+              className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
               value={filters.periodo_id} 
               onChange={(e) => setFilters((f) => ({ ...f, periodo_id: e.target.value }))}
             >
@@ -478,7 +478,7 @@ export default function SupervisaoRVUView() {
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('supervision_responsible_label')}</label>
             <input 
               type="text" 
-              className="input w-full h-10 bg-slate-100 text-slate-600 border-slate-200 cursor-not-allowed text-sm" 
+              className="input w-full h-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-not-allowed text-sm" 
               value={responsavelPeriodo} 
               readOnly 
               placeholder="-"
@@ -487,13 +487,13 @@ export default function SupervisaoRVUView() {
           </div>
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('status')}</label>
-            <select className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
+            <select className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
               {['Todos','Revisado','Aprovado','Pendente','Revertido'].map((s) => <option key={s} value={s}>{t(`review_status_${s.toLowerCase()}`)}</option>)}
             </select>
           </div>
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('reviewer_label')}</label>
-            <select className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
+            <select className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" value={filters.revisor_id} onChange={(e) => setFilters((f) => ({ ...f, revisor_id: e.target.value }))}>
               <option value="">{t('all')}</option>
               {revisores.map((r) => <option key={r.id} value={r.id}>{r.nome_completo || r.name}</option>)}
             </select>
@@ -506,7 +506,7 @@ export default function SupervisaoRVUView() {
              <div className="md:col-span-3">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('advanced_filter')}</label>
               <select 
-                className="input w-full h-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+                className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
                 value={filterType} 
                 onChange={(e) => {
                   const t = e.target.value;
@@ -527,7 +527,7 @@ export default function SupervisaoRVUView() {
             {filterType === 'ug' && (
               <div className="animate-fade-in">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('select_ug')}</label>
-                <select className="input w-full h-10" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
+                <select className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700" value={filters.ug_id} onChange={(e) => setFilters((f) => ({ ...f, ug_id: e.target.value }))}>
                   <option value="">{t('all')}</option>
                   {ugs.map((g) => <option key={g.id} value={g.id}>{g.codigo} - {g.nome}</option>)}
                 </select>
@@ -538,7 +538,7 @@ export default function SupervisaoRVUView() {
               <div className="animate-fade-in">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('select_class')}</label>
                 <select 
-                  className="input w-full h-10" 
+                  className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700" 
                   value={dynamicFilters.classe}
                   onChange={(e) => setDynamicFilters(d => ({ ...d, classe: e.target.value }))}
                 >
@@ -552,7 +552,7 @@ export default function SupervisaoRVUView() {
               <div className="animate-fade-in">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{t('select_cost_center')}</label>
                 <select 
-                  className="input w-full h-10" 
+                  className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700" 
                   value={dynamicFilters.centro_custo}
                   onChange={(e) => setDynamicFilters(d => ({ ...d, centro_custo: e.target.value }))}
                 >
@@ -568,14 +568,14 @@ export default function SupervisaoRVUView() {
                 <div className="flex gap-2">
                   <input 
                     type="number"
-                    className="input w-full h-10" 
+                    className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700" 
                     placeholder={t('min')}
                     value={dynamicFilters.valor_min}
                     onChange={(e) => setDynamicFilters(d => ({ ...d, valor_min: e.target.value }))}
                   />
                   <input 
                     type="number"
-                    className="input w-full h-10" 
+                    className="input w-full h-10 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700" 
                     placeholder={t('max')}
                     value={dynamicFilters.valor_max}
                     onChange={(e) => setDynamicFilters(d => ({ ...d, valor_max: e.target.value }))}

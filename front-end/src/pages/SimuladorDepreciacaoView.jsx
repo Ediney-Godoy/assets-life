@@ -403,7 +403,7 @@ export default function SimuladorDepreciacaoView() {
                 {t('simulator_company_label')}
               </label>
               <select
-                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
                 value={filters.empresa_id}
                 onChange={(e) => handleFilterChange('empresa_id', e.target.value)}
                 disabled={loadingBase}
@@ -421,7 +421,7 @@ export default function SimuladorDepreciacaoView() {
                 {t('simulator_review_period_label')}
               </label>
               <select
-                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
                 value={filters.periodo_id}
                 onChange={(e) => handleFilterChange('periodo_id', e.target.value)}
                 disabled={loadingBase}
@@ -439,7 +439,7 @@ export default function SimuladorDepreciacaoView() {
                 {t('simulator_review_status_label')}
               </label>
               <select
-                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
                 value={filters.status_revisao}
                 onChange={(e) => handleFilterChange('status_revisao', e.target.value)}
                 disabled={loadingBase}
@@ -454,7 +454,7 @@ export default function SimuladorDepreciacaoView() {
                 {t('simulator_class_label')}
               </label>
               <select
-                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
                 value={filters.classe_id}
                 onChange={(e) => handleFilterChange('classe_id', e.target.value)}
                 disabled={loadingBase}
@@ -472,7 +472,7 @@ export default function SimuladorDepreciacaoView() {
                 {t('simulator_ug_label')}
               </label>
               <select
-                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
                 value={filters.ug_id}
                 onChange={(e) => handleFilterChange('ug_id', e.target.value)}
                 disabled={loadingBase}
@@ -490,7 +490,7 @@ export default function SimuladorDepreciacaoView() {
                 {t('simulator_cost_center_label')}
               </label>
               <select
-                className="w-full h-10 px-3 rounded-md border bg-slate-50 border-slate-200 focus:bg-white transition-colors text-sm"
+                className="w-full h-10 px-3 rounded-md border bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
                 value={filters.centro_custo}
                 onChange={(e) => handleFilterChange('centro_custo', e.target.value)}
                 disabled={loadingBase}
