@@ -1,1 +1,0 @@
-DATABASE_URL=postgresql+psycopg2://assetlife_app:AssetLife2024!@localhost:5432/assets_life
