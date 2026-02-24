@@ -70,6 +70,7 @@ export default function RevisaoVidasUteis() {
   React.useEffect(() => {
     const loadItems = async () => {
       if (!periodoId) return;
+      console.log('[RevisaoVidasUteis] Loading items for period:', periodoId);
       setLoading(true);
       setError('');
       try {
@@ -77,9 +78,11 @@ export default function RevisaoVidasUteis() {
           getReviewItems(periodoId),
           getReviewDelegations(periodoId),
         ]);
+        console.log('[RevisaoVidasUteis] Loaded items:', data?.length, 'delegations:', ds?.length);
         setItems(data);
         setDelegacoes(Array.isArray(ds) ? ds : []);
       } catch (err) {
+        console.error('[RevisaoVidasUteis] Error loading items:', err);
         setError(String(err?.message || err));
         setDelegacoes([]);
       } finally {

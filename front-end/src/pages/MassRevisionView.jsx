@@ -84,13 +84,16 @@ export default function MassRevisionView() {
   React.useEffect(() => {
     const loadItems = async () => {
       if (!periodoId) return;
+      console.log('[MassRevisionView] Loading items for period:', periodoId);
       setLoading(true);
       setError('');
       try {
         const data = await getReviewItems(periodoId);
+        console.log('[MassRevisionView] Loaded items:', data?.length);
         setItems(data);
         setSelected(new Set());
       } catch (err) {
+        console.error('[MassRevisionView] Error loading items:', err);
         setError(String(err?.message || err));
       } finally {
         setLoading(false);

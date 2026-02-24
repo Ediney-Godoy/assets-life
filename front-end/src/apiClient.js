@@ -760,9 +760,15 @@ export async function uploadReviewBase(periodoId, file) {
   if (!periodoId || (Array.isArray(periodoId) && periodoId.length === 0)) {
     throw new Error('ID do período inválido ou não fornecido');
   }
-  console.log(`[getReviewItems] Fetching for period: ${periodoId}`);
-  // Carregamento pode ser pesado; aumentar timeout para evitar abort precoce
-  return request(`/revisoes/itens/${periodoId}`, { timeout: 60000 });
+  // Validação estrita para evitar URLs como /revisoes/itens/[object Object] ou /revisoes/itens/undefined
+  const pid = String(periodoId).trim();
+  if (!pid || pid === 'undefined' || pid === 'null') {
+     console.error('[getReviewItems] ID inválido:', periodoId);
+     throw new Error('ID do período inválido');
+  }
+
+  console.log(`[getReviewItems] Fetching for period: ${pid}`);
+  return request(`/revisoes/itens/${pid}`, { timeout: 60000 });
 }
 
 // Atualizar item de revisão (útil para ajustar vida útil, data fim e metadados)

@@ -78,6 +78,9 @@ def get_allowed_company_ids(db: Session, current_user: UsuarioModel) -> List[int
     return sorted(empresas_ids)
 
 def check_permission(db: Session, user: UsuarioModel, route: str):
+    if is_admin_user(db, user):
+        return
+
     # Check if transaction exists
     transacao = db.query(TransacaoModel).filter(TransacaoModel.rota == route).first()
     if not transacao:
