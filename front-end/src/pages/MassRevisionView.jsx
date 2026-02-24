@@ -260,8 +260,24 @@ export default function MassRevisionView() {
     const uid = currentUserId;
     if (!uid) return new Set();
     const list = Array.isArray(delegacoes) ? delegacoes : [];
-    return new Set(list.filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === String(uid)).map((d) => d.ativo_id));
-  }, [delegacoes, currentUserId]);
+    
+    // Filtra delegações para o usuário logado
+    const delegatedIds = new Set(
+      list
+        .filter((d) => String(d.revisor_id ?? d.revisorId ?? d.revisor) === String(uid))
+        .map((d) => d.ativo_id)
+    );
+
+    // FIX: Garantir que itens revertidos criados pelo usuário também apareçam, 
+    // mesmo se a delegação estiver perdida/inativa
+    (items || []).forEach(it => {
+      if (it.status === 'Revertido' && String(it.criado_por || '') === String(uid)) {
+        delegatedIds.add(it.id);
+      }
+    });
+
+    return delegatedIds;
+  }, [delegacoes, currentUserId, items]);
   // Mapas auxiliares para CC -> UG
   const ccByCodigo = React.useMemo(() => {
     const m = new Map();
@@ -647,9 +663,9 @@ export default function MassRevisionView() {
         <Select label="" name="filterType" value={filterType} onChange={(e) => setFilterType(e.target.value)} className="min-w-[150px] md:min-w-[160px]">
           <option value="ug">{t('filter_ug')}</option>
           <option value="cc">{t('filter_cc')}</option>
-          <option value="classe">{t('filter_class')}</option>
-          <option value="valor">{t('filter_value')}</option>
-          <option value="vencimento">{t('filter_due_18m') || 'Vencimento \u2264 18 meses'}</option>
+          <option value="classe">{t('filter_classe')}</option>
+          <option value="valor">{t('filter_valor')}</option>
+          <option value="vencimento">{t('filter_vencimento')}</option>
         </Select>
 
         {filterType === 'classe' && (
@@ -688,15 +704,15 @@ export default function MassRevisionView() {
         <div className="ml-auto flex items-center gap-2">
           <span
             className="badge badge-primary"
-            title={activeTab === 'pendentes' ? (t('to_review_count_tooltip') || 'A revisar / Delegados') : (t('reviewed_count_tooltip') || 'Revisados / Delegados')}
-            aria-label={activeTab === 'pendentes' ? (t('to_review_count_tooltip') || 'A revisar / Delegados') : (t('reviewed_count_tooltip') || 'Revisados / Delegados')}
+            title={activeTab === 'pendentes' ? t('to_review_count_tooltip') : t('reviewed_count_tooltip')}
+            aria-label={activeTab === 'pendentes' ? t('to_review_count_tooltip') : t('reviewed_count_tooltip')}
           >{activeTab === 'pendentes' ? `${availableCount}/${delegatedCount}` : `${reviewedCount}/${delegatedCount}`}</span>
           {activeTab === 'pendentes' && (
             <>
               <span
                 className="badge badge-secondary"
-                title={t('selected_items_tooltip') || 'Selecionados'}
-                aria-label={t('selected_items_tooltip') || 'Selecionados'}
+                title={t('selected_items_tooltip')}
+                aria-label={t('selected_items_tooltip')}
               >{selected.size}</span>
               <button
                 type="button"

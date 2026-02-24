@@ -260,8 +260,8 @@ export default function App() {
     pathname: tab.path,
     search: '',
     hash: '',
-    state: null,
-    key: tab.id
+    state: null
+    // Removido key: tab.id para evitar interpretações erradas pelo Router
   }), [renderRoutes]);
 
   return (

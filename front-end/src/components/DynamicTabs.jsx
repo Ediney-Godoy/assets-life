@@ -197,15 +197,23 @@ export default function DynamicTabs({ initialTabs, hideBody = false, renderTabCo
      {!hideBody && (
        <div className="border border-slate-300 dark:border-slate-700 rounded-b-md rounded-tr-md bg-white dark:bg-slate-900 h-full">
          {renderTabContent ? (
-           tabs.map((tab) => (
-             <div 
-               key={tab.id} 
-               style={{ display: tab.id === activeTabId ? 'block' : 'none', height: '100%' }}
-               className="h-full"
-             >
-               <TabPanel tab={tab} renderContent={renderTabContent} />
-             </div>
-           ))
+           tabs.map((tab) => {
+            const isActive = tab.id === activeTabId;
+            return (
+              <div
+                key={tab.id}
+                style={{ 
+                  display: isActive ? 'block' : 'none', 
+                  height: '100%',
+                  visibility: isActive ? 'visible' : 'hidden' // Reforço para garantir que não interfira no layout
+                }}
+                className="h-full"
+                aria-hidden={!isActive}
+              >
+                <TabPanel tab={tab} renderContent={renderTabContent} />
+              </div>
+            );
+          })
          ) : (
            activeTab?.content || (
              <div className="p-4 text-slate-600 dark:text-slate-300">Nenhuma aba ativa.</div>

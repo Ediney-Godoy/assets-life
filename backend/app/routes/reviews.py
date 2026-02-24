@@ -263,6 +263,7 @@ def listar_itens_revisao(
     
     # Filtro de delegação
     if not is_responsible:
+        # 1. Buscar delegações ativas
         delegations = db.query(RevisaoDelegacaoModel.ativo_id).filter(
             RevisaoDelegacaoModel.periodo_id == periodo_id,
             RevisaoDelegacaoModel.usuario_id == current_user.id,
@@ -270,11 +271,23 @@ def listar_itens_revisao(
         ).all()
         delegated_ids = [d[0] for d in delegations]
         
-        # Se não tem delegações e não é responsável, retorna vazio
-        if not delegated_ids:
+        # 2. Buscar itens revertidos pelo usuário (mesmo sem delegação ativa)
+        # Isso garante que itens devolvidos apareçam para quem devolveu
+        reverted_items = db.query(RevisaoItemModel.ativo_id).filter(
+            RevisaoItemModel.periodo_id == periodo_id,
+            RevisaoItemModel.revisor_id == current_user.id,
+            RevisaoItemModel.status == 'Revertido'
+        ).all()
+        reverted_ids = [r[0] for r in reverted_items]
+        
+        # Combinar IDs (set para remover duplicatas)
+        all_allowed_ids = list(set(delegated_ids + reverted_ids))
+        
+        # Se não tem delegações nem itens revertidos, retorna vazio
+        if not all_allowed_ids:
             return []
             
-        query = query.filter(RevisaoItemModel.ativo_id.in_(delegated_ids))
+        query = query.filter(RevisaoItemModel.ativo_id.in_(all_allowed_ids))
         
     results = query.all()
     
