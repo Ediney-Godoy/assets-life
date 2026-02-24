@@ -356,12 +356,16 @@ export default function RevisaoVidasUteis() {
   }, [delegacoes, currentUserId, items]);
 
   const filteredByTab = React.useMemo(() => {
-    const base = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
+    const base = myItemIds.size > 0
+      ? (items || []).filter((i) => myItemIds.has(i.id))
+      : (items || []);
     return base.filter((it) => (activeTab === 'revisados' ? isItemRevisado(it) : !isItemRevisado(it)));
   }, [items, activeTab, myItemIds]);
 
   const delegatedFilteredBase = React.useMemo(() => {
-    let list = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
+    let list = myItemIds.size > 0
+      ? (items || []).filter((i) => myItemIds.has(i.id))
+      : (items || []);
     const qLower = (advancedQuery || '').trim().toLowerCase();
     const qNum = parseDecimal(advancedQuery);
     list = list.filter((i) => {

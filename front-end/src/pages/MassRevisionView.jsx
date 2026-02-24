@@ -310,18 +310,28 @@ export default function MassRevisionView() {
   }, [items, ccByCodigo, ugById]);
 
   const delegatedCount = React.useMemo(() => {
-    return (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id)).length;
+    if (myItemIds.size > 0) {
+      return (items || []).filter((i) => myItemIds.has(i.id)).length;
+    }
+    return (items || []).length;
   }, [items, myItemIds]);
   const availableCount = React.useMemo(() => {
-    return (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id) && !isItemRevisado(i)).length;
+    if (myItemIds.size > 0) {
+      return (items || []).filter((i) => myItemIds.has(i.id) && !isItemRevisado(i)).length;
+    }
+    return (items || []).filter((i) => !isItemRevisado(i)).length;
   }, [items, myItemIds]);
   const reviewedCount = React.useMemo(() => {
-    return (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id) && isItemRevisado(i)).length;
+    if (myItemIds.size > 0) {
+      return (items || []).filter((i) => myItemIds.has(i.id) && isItemRevisado(i)).length;
+    }
+    return (items || []).filter((i) => isItemRevisado(i)).length;
   }, [items, myItemIds]);
 
   const filtered = React.useMemo(() => {
-    // Sempre restringe aos itens delegados ao usuário atual
-    let list = (items || []).filter((i) => myItemIds.size > 0 && myItemIds.has(i.id));
+    let list = myItemIds.size > 0
+      ? (items || []).filter((i) => myItemIds.has(i.id))
+      : (items || []);
 
     // Filtro por aba (pendentes vs revisados)
     list = list.filter((it) => (activeTab === 'revisados' ? isItemRevisado(it) : !isItemRevisado(it)));
