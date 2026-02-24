@@ -1,0 +1,25 @@
+# fly.toml para Fly.io
+# Configurado para evitar hibernação com min_machines = 1
+
+app = "assets-life-backend"
+primary_region = "gru"  # São Paulo
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8000"
+  PYTHONUNBUFFERED = "1"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false  # Evita parar máquinas
+  auto_start_machines = true
+  min_machines_running = 1    # Mantém pelo menos 1 máquina rodando
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+

@@ -1,0 +1,42 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# Node/React (Vite)
+front-end/node_modules/
+front-end/dist/
+front-end/.env
+front-end/.env.local
+front-end/.cache/
+front-end/.vite/
+front-end/.eslintcache
+
+# Logs
+**/*.log
+logs/
+npm-debug.log*
+
+# Python
+.venv/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/*.pyc
+**/__pycache__/
+**/*.pyc
+
+# Env files
+backend/.env
+front-end/.env
+KOYEB_ENV_VARS.md
+
+# Coverage
+coverage/
+
+.vercel
+node_modules
+*.md
+.gitignore.venv/

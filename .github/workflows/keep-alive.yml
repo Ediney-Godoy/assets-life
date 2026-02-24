@@ -1,0 +1,45 @@
+name: Keep Server Alive
+
+on:
+  schedule:
+    # Executa a cada 5 minutos
+    # Nota: GitHub Actions pode ter atraso de até 10-15 minutos em horários de pico
+    - cron: '*/5 * * * *'
+
+  workflow_dispatch:
+    # Permite execução manual do workflow
+
+jobs:
+  ping-server:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          echo "🏓 Fazendo ping no servidor backend..."
+
+          # URL do backend - configure em Settings > Secrets > Actions
+          # ou use a URL direta aqui
+          BACKEND_URL="${{ secrets.BACKEND_URL || 'https://seu-backend-url.com' }}"
+
+          # Faz requisição GET no endpoint /health
+          response=$(curl -s -w "\n%{http_code}" "$BACKEND_URL/health" || echo "000")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "📊 Status HTTP: $http_code"
+          echo "📦 Resposta: $body"
+
+          # Verifica se o servidor respondeu com sucesso (2xx)
+          if [[ "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+            echo "✅ Servidor está ativo e respondendo!"
+          else
+            echo "⚠️  Servidor retornou status $http_code"
+            # Não falha o job para não criar ruído nas notificações
+            # Se quiser receber alertas, mude para: exit 1
+          fi
+
+      - name: Timestamp
+        run: |
+          echo "⏰ Ping executado em: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
