@@ -752,19 +752,20 @@ export async function uploadReviewBase(periodoId, file) {
     return res.json();
   } catch (err) {
     clearTimeout(timeoutId);
-      throw err;
-    }
+    throw err;
   }
-  // Listar itens importados de um período específico
-  export async function getReviewItems(periodoId) {
+}
+
+// Listar itens importados de um período específico
+export async function getReviewItems(periodoId) {
   if (!periodoId || (Array.isArray(periodoId) && periodoId.length === 0)) {
     throw new Error('ID do período inválido ou não fornecido');
   }
   // Validação estrita para evitar URLs como /revisoes/itens/[object Object] ou /revisoes/itens/undefined
   const pid = String(periodoId).trim();
   if (!pid || pid === 'undefined' || pid === 'null') {
-     console.error('[getReviewItems] ID inválido:', periodoId);
-     throw new Error('ID do período inválido');
+    console.error('[getReviewItems] ID inválido:', periodoId);
+    throw new Error('ID do período inválido');
   }
 
   console.log(`[getReviewItems] Fetching for period: ${pid}`);
