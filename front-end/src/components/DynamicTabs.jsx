@@ -13,8 +13,21 @@ function Placeholder({ title = 'Bem-vindo', body = 'Selecione ou crie uma nova a
   );
 }
 
-// DynamicTabs: sistema de abas dinÃ¢micas inspirado em navegadores web
-export default function DynamicTabs({ initialTabs, hideBody = false }) {
+// Componente memoizado para o conteúdo da aba
+const TabPanel = React.memo(({ tab, renderContent }) => {
+  return renderContent(tab);
+}, (prevProps, nextProps) => {
+  // Só re-renderiza se o caminho da aba mudar ou a função de renderização mudar (ex: troca de idioma)
+  // Ignora mudanças em outras props que não afetam o conteúdo desta aba específica
+  return (
+    prevProps.tab.path === nextProps.tab.path &&
+    prevProps.tab.id === nextProps.tab.id &&
+    prevProps.renderContent === nextProps.renderContent
+  );
+});
+
+// DynamicTabs: sistema de abas dinâmicas inspirado em navegadores web
+export default function DynamicTabs({ initialTabs, hideBody = false, renderTabContent }) {
   // Estado das abas e aba ativa
   const [tabs, setTabs] = React.useState(() => {
     if (Array.isArray(initialTabs) && initialTabs.length > 0) return initialTabs;
@@ -25,6 +38,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
         title: 'Dashboard',
         content: <Placeholder title="Dashboard" body="Aba fixa de entrada." />,
         isClosable: false,
+        path: '/dashboard'
       },
     ];
   });
@@ -83,6 +97,8 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
     // ConteÃºdo da aba conforme o tipo
     let title = 'Nova Aba';
     let content = <Placeholder title="Nova Aba" body="ConteÃºdo genÃ©rico." />;
+    let path = '/dashboard';
+
     if (type === 'cadastro') {
       title = 'Cadastro';
       content = <Placeholder title="Cadastro" body="FormulÃ¡rio de cadastro (placeholder)." />;
@@ -96,10 +112,11 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
       );
     }
 
-    const newTab = { id, title, content, isClosable: true };
+    const newTab = { id, title, content, isClosable: true, path };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(id);
-  }, []);
+    navigate(path);
+  }, [navigate]);
 
   // Fechar aba especÃ­fica
   const handleCloseTab = React.useCallback((tabId) => {
@@ -178,9 +195,21 @@ export default function DynamicTabs({ initialTabs, hideBody = false }) {
 
       {/* Corpo da aba ativa */}
      {!hideBody && (
-       <div className="border border-slate-300 dark:border-slate-700 rounded-b-md rounded-tr-md bg-white dark:bg-slate-900">
-         {activeTab?.content || (
-           <div className="p-4 text-slate-600 dark:text-slate-300">Nenhuma aba ativa.</div>
+       <div className="border border-slate-300 dark:border-slate-700 rounded-b-md rounded-tr-md bg-white dark:bg-slate-900 h-full">
+         {renderTabContent ? (
+           tabs.map((tab) => (
+             <div 
+               key={tab.id} 
+               style={{ display: tab.id === activeTabId ? 'block' : 'none', height: '100%' }}
+               className="h-full"
+             >
+               <TabPanel tab={tab} renderContent={renderTabContent} />
+             </div>
+           ))
+         ) : (
+           activeTab?.content || (
+             <div className="p-4 text-slate-600 dark:text-slate-300">Nenhuma aba ativa.</div>
+           )
          )}
        </div>
      )}

@@ -189,7 +189,7 @@ export default function App() {
   }, []);
 
   const initialTabs = useMemo(() => [
-    { id: 'home', title: 'Home', content: null, isClosable: false },
+    { id: 'home', title: 'Home', content: null, isClosable: false, path: '/dashboard' },
   ], []);
 
   const authRoutes = ['/login', '/forgot-password', '/reset-password', '/first-access'];
@@ -201,9 +201,8 @@ export default function App() {
     navigate('/login', { replace: true });
   };
 
-  const routesElement = useMemo(() => (
-    <Routes>
-      {/* Auth routes */}
+  const routeChildren = useMemo(() => (
+    <>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -248,8 +247,22 @@ export default function App() {
       <Route path="/users" element={<RequireAuth><RequireCompany><UsersPage /></RequireCompany></RequireAuth>} />
       <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
       <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
-    </Routes>
+    </>
   ), [t]);
+
+  const renderRoutes = useCallback((locationArg) => (
+    <Routes location={locationArg}>
+      {routeChildren}
+    </Routes>
+  ), [routeChildren]);
+
+  const renderTabContent = useCallback((tab) => renderRoutes({
+    pathname: tab.path,
+    search: '',
+    hash: '',
+    state: null,
+    key: tab.id
+  }), [renderRoutes]);
 
   return (
     <ThemeProvider>
@@ -267,8 +280,14 @@ export default function App() {
           )}
           <main className="container-page scrollbar-stable">
             <ErrorBoundary>
-            {!isAuthRoute && <DynamicTabs initialTabs={initialTabs} hideBody />}
-            {routesElement}
+            {!isAuthRoute ? (
+              <DynamicTabs 
+                initialTabs={initialTabs} 
+                renderTabContent={renderTabContent} 
+              />
+            ) : (
+              renderRoutes()
+            )}
             </ErrorBoundary>
             <Toaster position="top-right" toastOptions={{
               style: { background: '#111827', color: '#F9FAFB' },
