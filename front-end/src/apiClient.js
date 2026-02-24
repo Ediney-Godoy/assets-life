@@ -334,6 +334,9 @@ async function request(path, options = {}) {
   }
   for (const base of bases) {
     const url = `${base}${path}`;
+    // FORCE DEBUG: Log full URL
+    console.log(`[API Request] Full URL: ${url}`);
+    
     debugLog('[apiClient] Tentando requisição para:', url);
     const controller = new AbortController();
     // Timeout padrão aumentado para 120s (cold start severo do backend)
@@ -754,6 +757,10 @@ export async function uploadReviewBase(periodoId, file) {
   }
   // Listar itens importados de um período específico
   export async function getReviewItems(periodoId) {
+  if (!periodoId || (Array.isArray(periodoId) && periodoId.length === 0)) {
+    throw new Error('ID do período inválido ou não fornecido');
+  }
+  console.log(`[getReviewItems] Fetching for period: ${periodoId}`);
   // Carregamento pode ser pesado; aumentar timeout para evitar abort precoce
   return request(`/revisoes/itens/${periodoId}`, { timeout: 60000 });
 }
@@ -771,6 +778,10 @@ export async function applyMassRevision(payload) {
 
 // Delegações de Revisão
 export async function getReviewDelegations(periodoId) {
+  if (!periodoId || (Array.isArray(periodoId) && periodoId.length === 0)) {
+    // Retornar vazio se não houver período, em vez de erro, para não quebrar a UI
+    return [];
+  }
   // Pode haver volume razoável; aumentar timeout
   return request(`/revisoes/delegacoes/${periodoId}`, { timeout: 60000 });
 }

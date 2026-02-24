@@ -70,6 +70,10 @@ print("Main: Creating tables...", flush=True)
 # SA_Base.metadata.create_all(bind=engine)
 print("Main: Tables created (SKIPPED)", flush=True)
 
+@app.get("/version")
+def get_version():
+    return {"version": "0.2.0"}
+
 # CORS de desenvolvimento: amplia suporte para localhost, 127.0.0.1 e IPs de rede
 # Inclui origens comuns de Vite e permite configurar um origin adicional via env FRONTEND_ORIGIN
 origins = [
@@ -185,22 +189,7 @@ async def _generic_exception_handler(request: Request, exc: Exception):
     headers["X-Error-Id"] = error_id
     return JSONResponse(status_code=500, content={"detail": "Erro interno", "error_id": error_id}, headers=headers)
 
-@app.options("/{path:path}")
-async def cors_preflight(request: Request, path: str):
-    origin = request.headers.get("origin")
-    headers_req = request.headers.get("access-control-request-headers", "*")
-    allow = origin and (origin in origins or origin_re.match(origin))
-    headers = {}
-    if allow:
-        headers = {
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": headers_req,
-            "Access-Control-Allow-Credentials": "true",
-            "Vary": "Origin",
-            "Access-Control-Max-Age": "3600",
-        }
-    return Response(status_code=200, headers=headers)
+
 
 # -----------------------------
 # Auth (JWT) e Segurança
