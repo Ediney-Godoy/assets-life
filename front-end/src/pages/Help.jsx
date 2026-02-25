@@ -7,13 +7,13 @@ export default function HelpPage() {
   const [activeTopic, setActiveTopic] = useState('companies');
 
   const topics = [
-    { id: 'companies', label: t('companies') || 'Cadastro de Empresas', icon: <Building2 size={18} /> },
-    { id: 'users', label: t('users') || 'Cadastro de Usuários', icon: <Users size={18} /> },
-    { id: 'ugs', label: t('ugs') || 'Cadastro de UGs', icon: <Layers size={18} /> },
-    { id: 'cronogramas', label: t('tab_cronograma') || 'Cronogramas', icon: <Calendar size={18} /> },
-    { id: 'reviews', label: t('tab_vidas_uteis') || 'Revisão de Vidas Úteis', icon: <ClipboardCheck size={18} /> },
-    { id: 'supervision', label: 'Supervisão RVU', icon: <ClipboardCheck size={18} /> },
-    { id: 'tips', label: t('help_tips_title') || 'Dicas Gerais', icon: <Info size={18} /> },
+    { id: 'companies', label: t('help_topic_companies', { defaultValue: 'Empresas' }), icon: <Building2 size={18} /> },
+    { id: 'users', label: t('help_topic_users', { defaultValue: 'Usuários' }), icon: <Users size={18} /> },
+    { id: 'ugs', label: t('help_topic_ugs', { defaultValue: 'UGs' }), icon: <Layers size={18} /> },
+    { id: 'cronogramas', label: t('help_topic_cronogramas', { defaultValue: 'Cronogramas' }), icon: <Calendar size={18} /> },
+    { id: 'reviews', label: t('help_topic_vidas_uteis', { defaultValue: 'Revisão de Vidas Úteis' }), icon: <ClipboardCheck size={18} /> },
+    { id: 'supervision', label: t('help_topic_supervisao_rvu', { defaultValue: 'Supervisão RVU' }), icon: <ClipboardCheck size={18} /> },
+    { id: 'tips', label: t('help_topic_tips', { defaultValue: 'Dicas Gerais' }), icon: <Info size={18} /> },
   ];
 
   const renderContent = () => {
@@ -23,7 +23,7 @@ export default function HelpPage() {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-2">
-                <Building2 className="text-blue-600 dark:text-blue-400" /> {t('companies') || 'Cadastro de Empresas'}
+                <Building2 className="text-blue-600 dark:text-blue-400" /> {t('help_topic_companies', { defaultValue: 'Empresas' })}
                 </h2>
                 <p className="text-slate-600 dark:text-slate-400 text-lg">
                 Gerencie as informações das organizações (Matrizes e Filiais) que utilizam o sistema.
@@ -143,7 +143,7 @@ export default function HelpPage() {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-2">
-                <Users className="text-blue-600 dark:text-blue-400" /> {t('users') || 'Cadastro de Usuários'}
+                <Users className="text-blue-600 dark:text-blue-400" /> {t('help_topic_users', { defaultValue: 'Usuários' })}
                 </h2>
                 <p className="text-slate-600 dark:text-slate-400 text-lg">
                 Gerencie os acessos ao sistema, vinculando colaboradores a perfis de usuário.
@@ -215,7 +215,7 @@ export default function HelpPage() {
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-2">
-                  <Layers className="text-blue-600 dark:text-blue-400" /> {t('ugs') || 'Cadastro de UGs'}
+                  <Layers className="text-blue-600 dark:text-blue-400" /> {t('help_topic_ugs', { defaultValue: 'UGs' })}
                   </h2>
                   <p className="text-slate-600 dark:text-slate-400 text-lg">
                   Estruture a hierarquia da organização através das Unidades Gerenciais.
@@ -504,7 +504,7 @@ export default function HelpPage() {
          return (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                  <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Info className="text-blue-600 dark:text-blue-400" /> {t('help_tips_title') || 'Dicas Gerais'}
+                    <Info className="text-blue-600 dark:text-blue-400" /> {t('help_topic_tips', { defaultValue: 'Dicas Gerais' })}
                  </h2>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
@@ -532,7 +532,7 @@ export default function HelpPage() {
       <aside className="w-full md:w-72 flex-none flex flex-col gap-2 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm h-full overflow-y-auto">
         <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4 px-2 flex items-center gap-2">
             <Menu size={20} />
-            {t('help_title') || 'Central de Ajuda'}
+            {t('help_title', { defaultValue: 'Central de Ajuda' })}
         </h2>
         <nav className="space-y-1">
           {topics.map((topic) => (
