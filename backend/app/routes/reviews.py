@@ -204,28 +204,27 @@ def update_periodo(
 class RevisaoItemResponse(BaseModel):
     id: int
     periodo_id: int
-    ativo_id: Optional[int] = None
-    # Campos do ativo para exibição
-    ativo_codigo: Optional[str] = None
-    ativo_descricao: Optional[str] = None
-    ativo_plaqueta: Optional[str] = None
-    ug_codigo: Optional[str] = None
-    
-    vida_util_atual_anos: Optional[float] = None
-    vida_util_atual_meses: Optional[float] = None
-    vida_util_nova_anos: Optional[float] = None
-    vida_util_nova_meses: Optional[float] = None
-    data_limite_atual: Optional[date] = None
-    data_limite_nova: Optional[date] = None
-    status: str
-    justificativa: Optional[str] = None
+    numero_imobilizado: str
+    sub_numero: str
+    descricao: str
+    data_inicio_depreciacao: date
+    data_fim_depreciacao: Optional[date] = None
+    valor_contabil: Optional[float] = None
+    centro_custo: Optional[str] = None
+    classe: Optional[str] = None
+    descricao_classe: Optional[str] = None
+    vida_util_anos: Optional[int] = None
+    vida_util_periodos: Optional[int] = None
+    vida_util_revisada: Optional[int] = None
+    data_fim_revisada: Optional[date] = None
     condicao_fisica: Optional[str] = None
-    motivo: Optional[str] = None
-    observacoes: Optional[str] = None
-    revisor_id: Optional[int] = None
-    criado_por: Optional[int] = None # Adicionado para compatibilidade frontend
-    alterado: Optional[bool] = False
-    
+    justificativa: Optional[str] = None
+    auxiliar2: Optional[str] = None
+    auxiliar3: Optional[str] = None
+    status: str
+    alterado: bool
+    criado_por: Optional[int] = None
+
     class Config:
         from_attributes = True
 
@@ -250,27 +249,7 @@ def listar_itens_revisao(
     # Verifica se usuário é responsável ou admin
     is_responsible = (periodo.responsavel_id == current_user.id) or is_admin_user(db, current_user)
     
-    # Query base com join para pegar dados do ativo usando numero/sub_numero e empresa
-    # Usando OUTER JOIN para garantir que o item seja listado mesmo se o cadastro do ativo tiver divergência
-    query = (
-        db.query(
-            RevisaoItemModel,
-            AssetModel.id.label("real_asset_id"),
-            AssetModel.numero.label("ativo_codigo"),
-            AssetModel.descricao.label("ativo_descricao"),
-            # AssetModel.plaqueta.label("ativo_plaqueta") # Campo plaqueta não existe no modelo Asset
-        )
-        .join(RevisaoPeriodoModel, RevisaoItemModel.periodo_id == RevisaoPeriodoModel.id)
-        .join(AssetModel, 
-            sa.and_(
-                RevisaoItemModel.numero_imobilizado == AssetModel.numero,
-                RevisaoItemModel.sub_numero == AssetModel.sub_numero,
-                AssetModel.empresa_id == RevisaoPeriodoModel.empresa_id
-            ),
-            isouter=True
-        )
-        .filter(RevisaoItemModel.periodo_id == periodo_id)
-    )
+    query = db.query(RevisaoItemModel).filter(RevisaoItemModel.periodo_id == periodo_id)
     
     # Filtro de delegação
     if not is_responsible:
@@ -298,35 +277,7 @@ def listar_itens_revisao(
             
         query = query.filter(RevisaoItemModel.id.in_(all_allowed_ids))
         
-    results = query.all()
-    
-    response = []
-    for item, real_asset_id, codigo, descricao in results:
-        item_dict = {
-            "id": item.id,
-            "periodo_id": item.periodo_id,
-            "ativo_id": real_asset_id, # ID real do ativo na tabela assets
-            "ativo_codigo": codigo if codigo else item.numero_imobilizado,
-            "ativo_descricao": descricao if descricao else item.descricao,
-            "ativo_plaqueta": None, # Campo plaqueta removido
-            "vida_util_atual_anos": item.vida_util_anos, # Corrigido: usar campo correto do modelo
-            "vida_util_atual_meses": item.vida_util_periodos, # Corrigido
-            "vida_util_nova_anos": getattr(item, 'vida_util_revisada', 0) / 12 if getattr(item, 'vida_util_revisada', None) else None, # Aproximação se necessário
-            "vida_util_nova_meses": getattr(item, 'vida_util_revisada', None),
-            "data_limite_atual": item.data_fim_depreciacao, # Mapping
-            "data_limite_nova": item.data_fim_revisada,
-            "status": item.status,
-            "justificativa": item.justificativa,
-            "condicao_fisica": item.condicao_fisica,
-            "motivo": getattr(item, 'auxiliar2', None), # Mapping provisório ou campo novo se existir
-            "observacoes": getattr(item, 'auxiliar3', None),
-            "revisor_id": getattr(item, 'criado_por', None), # Ajuste conforme modelo real
-            "criado_por": getattr(item, 'criado_por', None), # Adicionado
-            "alterado": item.alterado
-        }
-        response.append(RevisaoItemResponse(**item_dict))
-        
-    return response
+    return query.all()
 
 class RevisaoItemUpdate(BaseModel):
     vida_util_nova_anos: Optional[float] = None
@@ -413,39 +364,7 @@ def update_item_revisao(
     db.commit()
     db.refresh(item)
     
-    # Retornar response (reusing logic needed, but simplistic here)
-    # Fetch asset details
-    # Need to join with Periodo to get empresa_id
-    periodo_obj = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == periodo_id).first()
-    asset = db.query(AssetModel).filter(
-        AssetModel.numero == item.numero_imobilizado,
-        AssetModel.sub_numero == item.sub_numero,
-        AssetModel.empresa_id == periodo_obj.empresa_id
-    ).first()
-    
-    item_dict = {
-        "id": item.id,
-        "periodo_id": item.periodo_id,
-        "ativo_id": asset.id if asset else None,
-        "ativo_codigo": asset.numero if asset else None,
-        "ativo_descricao": asset.descricao if asset else None,
-        "ativo_plaqueta": None,
-        "vida_util_atual_anos": item.vida_util_anos,
-        "vida_util_atual_meses": item.vida_util_periodos,
-        "vida_util_nova_anos": item.vida_util_revisada / 12 if item.vida_util_revisada else None,
-        "vida_util_nova_meses": item.vida_util_revisada,
-        "data_limite_atual": item.data_fim_depreciacao,
-        "data_limite_nova": item.data_fim_revisada,
-        "status": item.status,
-        "justificativa": item.justificativa,
-        "condicao_fisica": item.condicao_fisica,
-        "motivo": item.auxiliar2,
-        "observacoes": item.observacoes,
-        "revisor_id": item.criado_por, # Mapped to criado_por as revisor_id does not exist on RevisaoItem
-        "criado_por": item.criado_por,
-        "alterado": item.alterado
-    }
-    return RevisaoItemResponse(**item_dict)
+    return item
 
 class MassRevisionPayload(BaseModel):
     ativos_ids: List[int]
