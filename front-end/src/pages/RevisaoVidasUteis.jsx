@@ -95,7 +95,7 @@ export default function RevisaoVidasUteis() {
   const getUserId = React.useCallback(() => { try { return JSON.parse(localStorage.getItem('assetlife_user') || 'null')?.id || null; } catch { return null; } }, []);
 
   const periodoSelecionado = React.useMemo(() => periodos.find((p) => p.id === periodoId) || null, [periodoId, periodos]);
-  const periodoEncerrado = periodoSelecionado?.status === 'Encerrado' || Boolean(periodoSelecionado?.data_fechamento);
+  const periodoEncerrado = ['Encerrado', 'Fechado'].includes(String(periodoSelecionado?.status || '')) || Boolean(periodoSelecionado?.data_fechamento);
 
   // Helpers para datas e ordenação por próximos 18 meses
   const parseDate = (str) => {
@@ -497,6 +497,10 @@ export default function RevisaoVidasUteis() {
   }, [editingItem, classesInfo]);
 
   const handleStartEdit = (row) => {
+    if (periodoEncerrado) {
+      setError(t('period_closed_note') || 'Período encerrado: alterações estão bloqueadas.');
+      return;
+    }
     setEditingItem(row);
     setEditForm({
       revisada_anos: row.vida_util_revisada != null ? Math.floor(Number(row.vida_util_revisada) / 12) : '',

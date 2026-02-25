@@ -312,6 +312,8 @@ def update_item_revisao(
         
     # Verificar permissão (similar ao list)
     periodo = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == periodo_id).first()
+    if periodo and (periodo.data_fechamento is not None or str(periodo.status or "").strip().lower() in {"fechado", "encerrado"}):
+        raise HTTPException(status_code=400, detail="Período encerrado. Revisões de itens estão bloqueadas.")
     allowed_companies = get_allowed_company_ids(db, current_user)
     if periodo.empresa_id not in allowed_companies:
         raise HTTPException(status_code=403, detail="Acesso negado")
@@ -389,6 +391,8 @@ def apply_mass_revision(
     periodo = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == payload.periodo_id).first()
     if not periodo:
         raise HTTPException(status_code=404, detail="Período não encontrado")
+    if periodo.data_fechamento is not None or str(periodo.status or "").strip().lower() in {"fechado", "encerrado"}:
+        raise HTTPException(status_code=400, detail="Período encerrado. Revisões em massa estão bloqueadas.")
         
     allowed_companies = get_allowed_company_ids(db, current_user)
     if periodo.empresa_id not in allowed_companies:

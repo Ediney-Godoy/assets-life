@@ -47,7 +47,7 @@ export default function MassRevisionView() {
   });
 
   const periodoSelecionado = React.useMemo(() => periodos.find((p) => p.id === periodoId) || null, [periodoId, periodos]);
-  const isPeriodClosed = Boolean(periodoSelecionado?.data_fechamento);
+  const isPeriodClosed = ['Encerrado', 'Fechado'].includes(String(periodoSelecionado?.status || '')) || Boolean(periodoSelecionado?.data_fechamento);
 
   React.useEffect(() => {
     const run = async () => {
