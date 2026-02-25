@@ -368,49 +368,49 @@ export default function HelpPage() {
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-2">
-                        <ClipboardCheck className="text-blue-600 dark:text-blue-400" /> {t('help_reviews_flow_title') || 'Fluxo de Revisão'}
+                        <ClipboardCheck className="text-blue-600 dark:text-blue-400" /> {t('help_reviews_flow_title', { defaultValue: 'Revisão de Vidas Úteis' })}
                     </h2>
                     <p className="text-slate-600 dark:text-slate-400 text-lg">
-                        {t('help_reviews_intro') || "O módulo de Revisões permite o gerenciamento completo do ciclo de vida útil dos ativos, desde a abertura do período até a aprovação final. Siga o guia abaixo para entender cada etapa."}
+                        {t('help_reviews_intro', { defaultValue: 'O módulo de Revisões permite o gerenciamento completo do ciclo de vida útil dos ativos, desde a abertura do período até a aprovação final. Siga o guia abaixo para entender cada etapa.' })}
                     </p>
                 </div>
                 
                 <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-950 shadow-sm">
                     <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-b border-slate-200 dark:border-slate-800 font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                        <FileText size={18} /> {t('help_reviews_flow_title') || 'Guia Detalhado'}
+                        <FileText size={18} /> {t('help_reviews_guide_title', { defaultValue: 'Guia detalhado' })}
                     </div>
                     
                     <div className="p-6 space-y-8">
                         {[
                             {
                                 id: 1,
-                                title: t('help_reviews_step1_title') || "1. Gestão de Períodos",
-                                desc: t('help_reviews_step1_desc') || "Tudo começa com a criação de um Período de Revisão.",
-                                details: t('help_reviews_step1_details') || "Defina datas e responsáveis."
+                                title: t('help_reviews_step1_title', { defaultValue: '1. Gestão de períodos' }),
+                                desc: t('help_reviews_step1_desc', { defaultValue: 'Tudo começa com a criação de um Período de Revisão.' }),
+                                details: t('help_reviews_step1_details', { defaultValue: 'Defina datas, empresa/UG (se aplicável) e o responsável pelo período.' })
                             },
                             {
                                 id: 2,
-                                title: t('help_reviews_step2_title') || "2. Importação da Base",
-                                desc: t('help_reviews_step2_desc') || "Carregue os ativos que serão revisados.",
-                                details: t('help_reviews_step2_details') || "Use CSV ou Excel no cadastro do período."
+                                title: t('help_reviews_step2_title', { defaultValue: '2. Importação da base' }),
+                                desc: t('help_reviews_step2_desc', { defaultValue: 'Carregue os ativos que serão revisados.' }),
+                                details: t('help_reviews_step2_details', { defaultValue: 'Importe a planilha/base do período e valide os campos antes de avançar.' })
                             },
                             {
                                 id: 3,
-                                title: t('help_reviews_step3_title') || "3. Delegação de Itens",
-                                desc: t('help_reviews_step3_desc') || "Distribua o trabalho para os revisores.",
-                                details: t('help_reviews_step3_details') || "Use filtros e atribua aos usuários."
+                                title: t('help_reviews_step3_title', { defaultValue: '3. Delegação de itens' }),
+                                desc: t('help_reviews_step3_desc', { defaultValue: 'Distribua o trabalho para os revisores.' }),
+                                details: t('help_reviews_step3_details', { defaultValue: 'Use filtros (UG/CC/classe/valor) e atribua itens aos usuários.' })
                             },
                             {
                                 id: 4,
-                                title: t('help_reviews_step4_title') || "4. Realizando a Revisão",
-                                desc: t('help_reviews_step4_desc') || "O trabalho técnico de análise.",
-                                details: t('help_reviews_step4_details') || "Ajuste vidas úteis e justifique."
+                                title: t('help_reviews_step4_title', { defaultValue: '4. Realizando a revisão' }),
+                                desc: t('help_reviews_step4_desc', { defaultValue: 'Execute o trabalho técnico de análise dos ativos.' }),
+                                details: t('help_reviews_step4_details', { defaultValue: 'Ajuste vida útil/data fim quando necessário, selecione o motivo e registre a justificativa.' })
                             },
                             {
                                 id: 5,
-                                title: t('help_reviews_step5_title') || "5. Supervisão e Aprovação",
-                                desc: t('help_reviews_step5_desc') || "Controle de qualidade.",
-                                details: t('help_reviews_step5_details') || "Aprovar ou rejeitar revisões."
+                                title: t('help_reviews_step5_title', { defaultValue: '5. Supervisão e aprovação' }),
+                                desc: t('help_reviews_step5_desc', { defaultValue: 'Etapa de controle de qualidade e fechamento.' }),
+                                details: t('help_reviews_step5_details', { defaultValue: 'O supervisor aprova/rejeita; após o fechamento do período, revisões ficam bloqueadas.' })
                             }
                         ].map((step) => (
                              <div key={step.id} className="flex gap-4">
@@ -508,9 +508,9 @@ export default function HelpPage() {
                  </h2>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
-                        t('help_tip_filters') || 'Use os filtros para encontrar itens rapidamente.',
-                        t('help_tip_shortcuts') || 'Use o painel lateral para navegar entre módulos.',
-                        t('help_tip_permissions') || 'Se não conseguir acessar algo, verifique suas permissões.'
+                        t('help_tip_filters', { defaultValue: 'Use os filtros para encontrar itens rapidamente.' }),
+                        t('help_tip_shortcuts', { defaultValue: 'Use o menu lateral para navegar entre módulos.' }),
+                        t('help_tip_permissions', { defaultValue: 'Se não conseguir acessar algo, verifique suas permissões.' })
                     ].map((tip, idx) => (
                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex gap-3">
                             <div className="mt-1 text-yellow-500 flex-none">💡</div>
@@ -522,7 +522,7 @@ export default function HelpPage() {
          );
 
       default:
-        return <div className="text-slate-500">Selecione um tópico.</div>;
+        return <div className="text-slate-500">{t('help_select_topic', { defaultValue: 'Selecione um tópico.' })}</div>;
     }
   };
 
