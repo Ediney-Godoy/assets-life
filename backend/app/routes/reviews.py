@@ -22,7 +22,7 @@ from ..models import (
     Company as CompanyModel,
     Asset as AssetModel
 )
-from ..dependencies import get_db, get_current_user, get_allowed_company_ids
+from ..dependencies import get_db, get_current_user, get_allowed_company_ids, is_admin_user
 
 router = APIRouter(
     prefix="/revisoes",
@@ -204,7 +204,7 @@ def update_periodo(
 class RevisaoItemResponse(BaseModel):
     id: int
     periodo_id: int
-    ativo_id: int
+    ativo_id: Optional[int] = None
     # Campos do ativo para exibição
     ativo_codigo: Optional[str] = None
     ativo_descricao: Optional[str] = None
@@ -223,6 +223,7 @@ class RevisaoItemResponse(BaseModel):
     motivo: Optional[str] = None
     observacoes: Optional[str] = None
     revisor_id: Optional[int] = None
+    criado_por: Optional[int] = None # Adicionado para compatibilidade frontend
     alterado: Optional[bool] = False
     
     class Config:
@@ -246,72 +247,81 @@ def listar_itens_revisao(
     if periodo.empresa_id not in allowed_companies:
         raise HTTPException(status_code=403, detail="Acesso negado")
     
-    # Verifica se usuário é responsável ou superuser
-    is_responsible = (periodo.responsavel_id == current_user.id) or current_user.is_superuser
+    # Verifica se usuário é responsável ou admin
+    is_responsible = (periodo.responsavel_id == current_user.id) or is_admin_user(db, current_user)
     
-    # Query base com join para pegar dados do ativo
+    # Query base com join para pegar dados do ativo usando numero/sub_numero e empresa
+    # Usando OUTER JOIN para garantir que o item seja listado mesmo se o cadastro do ativo tiver divergência
     query = (
         db.query(
             RevisaoItemModel,
-            AssetModel.codigo.label("ativo_codigo"),
+            AssetModel.id.label("real_asset_id"),
+            AssetModel.numero.label("ativo_codigo"),
             AssetModel.descricao.label("ativo_descricao"),
-            AssetModel.plaqueta.label("ativo_plaqueta")
+            # AssetModel.plaqueta.label("ativo_plaqueta") # Campo plaqueta não existe no modelo Asset
         )
-        .join(AssetModel, RevisaoItemModel.ativo_id == AssetModel.id)
+        .join(RevisaoPeriodoModel, RevisaoItemModel.periodo_id == RevisaoPeriodoModel.id)
+        .join(AssetModel, 
+            sa.and_(
+                RevisaoItemModel.numero_imobilizado == AssetModel.numero,
+                RevisaoItemModel.sub_numero == AssetModel.sub_numero,
+                AssetModel.empresa_id == RevisaoPeriodoModel.empresa_id
+            ),
+            isouter=True
+        )
         .filter(RevisaoItemModel.periodo_id == periodo_id)
     )
     
     # Filtro de delegação
     if not is_responsible:
-        # 1. Buscar delegações ativas
+        # 1. Buscar delegações ativas (ativo_id na delegação é o ID do RevisaoItem)
         delegations = db.query(RevisaoDelegacaoModel.ativo_id).filter(
             RevisaoDelegacaoModel.periodo_id == periodo_id,
-            RevisaoDelegacaoModel.usuario_id == current_user.id,
+            RevisaoDelegacaoModel.revisor_id == current_user.id,
             RevisaoDelegacaoModel.status == 'Ativo'
         ).all()
         delegated_ids = [d[0] for d in delegations]
         
-        # 2. Buscar itens revertidos pelo usuário (mesmo sem delegação ativa)
-        # Isso garante que itens devolvidos apareçam para quem devolveu
-        reverted_items = db.query(RevisaoItemModel.ativo_id).filter(
+        # 2. Buscar itens revertidos pelo usuário (criado_por armazena quem revisou/reverteu)
+        reverted_items = db.query(RevisaoItemModel.id).filter(
             RevisaoItemModel.periodo_id == periodo_id,
-            RevisaoItemModel.revisor_id == current_user.id,
+            RevisaoItemModel.criado_por == current_user.id,
             RevisaoItemModel.status == 'Revertido'
         ).all()
         reverted_ids = [r[0] for r in reverted_items]
         
-        # Combinar IDs (set para remover duplicatas)
+        # Combinar IDs
         all_allowed_ids = list(set(delegated_ids + reverted_ids))
         
-        # Se não tem delegações nem itens revertidos, retorna vazio
         if not all_allowed_ids:
             return []
             
-        query = query.filter(RevisaoItemModel.ativo_id.in_(all_allowed_ids))
+        query = query.filter(RevisaoItemModel.id.in_(all_allowed_ids))
         
     results = query.all()
     
     response = []
-    for item, codigo, descricao, plaqueta in results:
+    for item, real_asset_id, codigo, descricao in results:
         item_dict = {
             "id": item.id,
             "periodo_id": item.periodo_id,
-            "ativo_id": item.ativo_id,
-            "ativo_codigo": codigo,
-            "ativo_descricao": descricao,
-            "ativo_plaqueta": plaqueta,
-            "vida_util_atual_anos": item.vida_util_atual_anos,
-            "vida_util_atual_meses": item.vida_util_atual_meses,
-            "vida_util_nova_anos": item.vida_util_nova_anos,
-            "vida_util_nova_meses": item.vida_util_nova_meses,
-            "data_limite_atual": item.data_limite_atual,
-            "data_limite_nova": item.data_limite_nova,
+            "ativo_id": real_asset_id, # ID real do ativo na tabela assets
+            "ativo_codigo": codigo if codigo else item.numero_imobilizado,
+            "ativo_descricao": descricao if descricao else item.descricao,
+            "ativo_plaqueta": None, # Campo plaqueta removido
+            "vida_util_atual_anos": item.vida_util_anos, # Corrigido: usar campo correto do modelo
+            "vida_util_atual_meses": item.vida_util_periodos, # Corrigido
+            "vida_util_nova_anos": getattr(item, 'vida_util_revisada', 0) / 12 if getattr(item, 'vida_util_revisada', None) else None, # Aproximação se necessário
+            "vida_util_nova_meses": getattr(item, 'vida_util_revisada', None),
+            "data_limite_atual": item.data_fim_depreciacao, # Mapping
+            "data_limite_nova": item.data_fim_revisada,
             "status": item.status,
             "justificativa": item.justificativa,
             "condicao_fisica": item.condicao_fisica,
-            "motivo": item.motivo,
-            "observacoes": item.observacoes,
-            "revisor_id": item.revisor_id,
+            "motivo": getattr(item, 'auxiliar2', None), # Mapping provisório ou campo novo se existir
+            "observacoes": getattr(item, 'auxiliar3', None),
+            "revisor_id": getattr(item, 'criado_por', None), # Ajuste conforme modelo real
+            "criado_por": getattr(item, 'criado_por', None), # Adicionado
             "alterado": item.alterado
         }
         response.append(RevisaoItemResponse(**item_dict))
@@ -355,30 +365,36 @@ def update_item_revisao(
     if periodo.empresa_id not in allowed_companies:
         raise HTTPException(status_code=403, detail="Acesso negado")
         
-    is_responsible = (periodo.responsavel_id == current_user.id) or current_user.is_superuser
+    is_responsible = (periodo.responsavel_id == current_user.id) or is_admin_user(db, current_user)
     
     if not is_responsible:
         # Verificar delegação
         delegation = db.query(RevisaoDelegacaoModel).filter(
             RevisaoDelegacaoModel.periodo_id == periodo_id,
-            RevisaoDelegacaoModel.usuario_id == current_user.id,
-            RevisaoDelegacaoModel.ativo_id == item.ativo_id,
+            RevisaoDelegacaoModel.revisor_id == current_user.id,
+            RevisaoDelegacaoModel.ativo_id == item.id,
             RevisaoDelegacaoModel.status == 'Ativo'
         ).first()
-        if not delegation:
+        
+        # Verificar se é um item revertido pelo próprio usuário
+        is_reverted_by_user = (item.status == 'Revertido' and item.criado_por == current_user.id)
+        
+        if not delegation and not is_reverted_by_user:
             raise HTTPException(status_code=403, detail="Item não delegado a este usuário")
             
     # Atualizar campos
     if payload.vida_util_nova_anos is not None:
+        item.vida_util_revisada = int(payload.vida_util_nova_anos * 12) # Converter para meses
         item.vida_util_nova_anos = payload.vida_util_nova_anos
     if payload.vida_util_nova_meses is not None:
+        item.vida_util_revisada = payload.vida_util_nova_meses
         item.vida_util_nova_meses = payload.vida_util_nova_meses
     if payload.nova_data_fim is not None:
-        item.data_limite_nova = payload.nova_data_fim
+        item.data_fim_revisada = payload.nova_data_fim
     if payload.condicao_fisica is not None:
         item.condicao_fisica = payload.condicao_fisica
     if payload.motivo is not None:
-        item.motivo = payload.motivo
+        item.auxiliar2 = payload.motivo
     if payload.justificativa is not None:
         item.justificativa = payload.justificativa
     if payload.observacoes is not None:
@@ -388,8 +404,7 @@ def update_item_revisao(
         
     # Marcar como alterado e definir revisor
     item.alterado = True
-    item.revisor_id = current_user.id
-    item.data_revisao = datetime.now()
+    item.criado_por = current_user.id
     
     # Se status for 'Revisado', garantir que foi setado
     if item.status == 'Pendente' and (item.justificativa or item.condicao_fisica):
@@ -400,27 +415,34 @@ def update_item_revisao(
     
     # Retornar response (reusing logic needed, but simplistic here)
     # Fetch asset details
-    asset = db.query(AssetModel).filter(AssetModel.id == item.ativo_id).first()
+    # Need to join with Periodo to get empresa_id
+    periodo_obj = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == periodo_id).first()
+    asset = db.query(AssetModel).filter(
+        AssetModel.numero == item.numero_imobilizado,
+        AssetModel.sub_numero == item.sub_numero,
+        AssetModel.empresa_id == periodo_obj.empresa_id
+    ).first()
     
     item_dict = {
         "id": item.id,
         "periodo_id": item.periodo_id,
-        "ativo_id": item.ativo_id,
-        "ativo_codigo": asset.codigo if asset else None,
+        "ativo_id": asset.id if asset else None,
+        "ativo_codigo": asset.numero if asset else None,
         "ativo_descricao": asset.descricao if asset else None,
-        "ativo_plaqueta": asset.plaqueta if asset else None,
-        "vida_util_atual_anos": item.vida_util_atual_anos,
-        "vida_util_atual_meses": item.vida_util_atual_meses,
-        "vida_util_nova_anos": item.vida_util_nova_anos,
-        "vida_util_nova_meses": item.vida_util_nova_meses,
-        "data_limite_atual": item.data_limite_atual,
-        "data_limite_nova": item.data_limite_nova,
+        "ativo_plaqueta": None,
+        "vida_util_atual_anos": item.vida_util_anos,
+        "vida_util_atual_meses": item.vida_util_periodos,
+        "vida_util_nova_anos": item.vida_util_revisada / 12 if item.vida_util_revisada else None,
+        "vida_util_nova_meses": item.vida_util_revisada,
+        "data_limite_atual": item.data_fim_depreciacao,
+        "data_limite_nova": item.data_fim_revisada,
         "status": item.status,
         "justificativa": item.justificativa,
         "condicao_fisica": item.condicao_fisica,
-        "motivo": item.motivo,
+        "motivo": item.auxiliar2,
         "observacoes": item.observacoes,
-        "revisor_id": item.revisor_id,
+        "revisor_id": item.criado_por, # Mapped to criado_por as revisor_id does not exist on RevisaoItem
+        "criado_por": item.criado_por,
         "alterado": item.alterado
     }
     return RevisaoItemResponse(**item_dict)
@@ -454,45 +476,52 @@ def apply_mass_revision(
         raise HTTPException(status_code=403, detail="Acesso negado")
         
     # Verificar permissões (responsável ou delegado)
-    is_responsible = (periodo.responsavel_id == current_user.id) or current_user.is_superuser
+    is_responsible = (periodo.responsavel_id == current_user.id) or is_admin_user(db, current_user)
     
+    # Pre-fetch delegations if not responsible to avoid N+1 queries
+    delegated_item_ids = set()
+    if not is_responsible:
+        delegations = db.query(RevisaoDelegacaoModel.ativo_id).filter(
+            RevisaoDelegacaoModel.periodo_id == payload.periodo_id,
+            RevisaoDelegacaoModel.revisor_id == current_user.id,
+            RevisaoDelegacaoModel.status == 'Ativo'
+        ).all()
+        delegated_item_ids = {d[0] for d in delegations}
+
     # Buscar itens
     items = db.query(RevisaoItemModel).filter(
         RevisaoItemModel.periodo_id == payload.periodo_id,
-        RevisaoItemModel.ativo_id.in_(payload.ativos_ids)
+        RevisaoItemModel.id.in_(payload.ativos_ids)
     ).all()
     
     count = 0
     for item in items:
         # Check delegation if not responsible
         if not is_responsible:
-             delegation = db.query(RevisaoDelegacaoModel).filter(
-                RevisaoDelegacaoModel.periodo_id == payload.periodo_id,
-                RevisaoDelegacaoModel.usuario_id == current_user.id,
-                RevisaoDelegacaoModel.ativo_id == item.ativo_id,
-                RevisaoDelegacaoModel.status == 'Ativo'
-            ).first()
-             if not delegation:
+             is_delegated = item.id in delegated_item_ids
+             is_reverted_by_user = (item.status == 'Revertido' and item.criado_por == current_user.id)
+             
+             if not is_delegated and not is_reverted_by_user:
                  continue # Skip unauthorized items
         
         # Apply changes
         if payload.nova_vida_util_anos is not None:
-            item.vida_util_nova_anos = payload.nova_vida_util_anos
+            item.vida_util_revisada = int(payload.nova_vida_util_anos * 12) 
         if payload.nova_vida_util_meses is not None:
-            item.vida_util_nova_meses = payload.nova_vida_util_meses
+            item.vida_util_revisada = payload.nova_vida_util_meses
         if payload.nova_data_fim is not None:
-            item.data_limite_nova = payload.nova_data_fim
+            item.data_fim_revisada = payload.nova_data_fim
         if payload.condicao_fisica is not None:
             item.condicao_fisica = payload.condicao_fisica
         if payload.motivo is not None:
-            item.motivo = payload.motivo
+            item.auxiliar2 = payload.motivo
         if payload.justificativa is not None:
             item.justificativa = payload.justificativa
             
         item.alterado = True
-        item.revisor_id = current_user.id
+        item.criado_por = current_user.id
         item.status = 'Revisado'
-        item.data_revisao = datetime.now()
+        
         count += 1
         
     db.commit()
@@ -502,7 +531,7 @@ class DelegationResponse(BaseModel):
     id: int
     periodo_id: int
     ativo_id: int
-    usuario_id: int
+    revisor_id: int # Corrigido de usuario_id
     status: str
     data_atribuicao: datetime
     usuario_nome: Optional[str] = None
@@ -526,15 +555,16 @@ def list_delegations(
     if periodo.empresa_id not in allowed_companies:
         raise HTTPException(status_code=403, detail="Acesso negado")
         
-    # Buscar delegações com joins
+    # Buscar delegações com joins simplificados
     results = (
         db.query(
             RevisaoDelegacaoModel,
-            UsuarioModel.nome.label("usuario_nome"),
-            AssetModel.codigo.label("ativo_codigo")
+            UsuarioModel.nome_completo.label("usuario_nome"),
+            RevisaoItemModel.numero_imobilizado.label("ativo_codigo")
         )
-        .join(UsuarioModel, RevisaoDelegacaoModel.usuario_id == UsuarioModel.id)
-        .join(AssetModel, RevisaoDelegacaoModel.ativo_id == AssetModel.id)
+        .join(UsuarioModel, RevisaoDelegacaoModel.revisor_id == UsuarioModel.id) # Corrigido de usuario_id
+        .join(RevisaoItemModel, RevisaoDelegacaoModel.ativo_id == RevisaoItemModel.id)
+        # Removido joins desnecessários com RevisaoPeriodoModel e AssetModel
         .filter(RevisaoDelegacaoModel.periodo_id == periodo_id)
         .all()
     )
@@ -545,7 +575,7 @@ def list_delegations(
             "id": d.id,
             "periodo_id": d.periodo_id,
             "ativo_id": d.ativo_id,
-            "usuario_id": d.usuario_id,
+            "revisor_id": d.revisor_id,
             "status": d.status,
             "data_atribuicao": d.data_atribuicao,
             "usuario_nome": u_nome,
@@ -572,7 +602,7 @@ def create_delegation(
         
     # Validar permissão (apenas responsável ou admin pode delegar?)
     # Vamos assumir que sim por segurança
-    is_responsible = (periodo.responsavel_id == current_user.id) or current_user.is_superuser
+    is_responsible = (periodo.responsavel_id == current_user.id) or is_admin_user(db, current_user)
     if not is_responsible:
         raise HTTPException(status_code=403, detail="Apenas o responsável pelo período pode delegar revisões")
         
@@ -585,14 +615,15 @@ def create_delegation(
         ).first()
         
         if existing:
-            existing.usuario_id = payload.usuario_id
+            existing.revisor_id = payload.usuario_id
             existing.status = 'Ativo'
             existing.data_atribuicao = datetime.now()
         else:
             new_del = RevisaoDelegacaoModel(
                 periodo_id=payload.periodo_id,
                 ativo_id=ativo_id,
-                usuario_id=payload.usuario_id,
+                revisor_id=payload.usuario_id,
+                atribuido_por=current_user.id,
                 status='Ativo',
                 data_atribuicao=datetime.now()
             )
@@ -614,7 +645,7 @@ def delete_delegation(
         
     # Verificar permissão
     periodo = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == delegation.periodo_id).first()
-    is_responsible = (periodo.responsavel_id == current_user.id) or current_user.is_superuser
+    is_responsible = (periodo.responsavel_id == current_user.id) or is_admin_user(db, current_user)
     if not is_responsible:
         raise HTTPException(status_code=403, detail="Acesso negado")
         

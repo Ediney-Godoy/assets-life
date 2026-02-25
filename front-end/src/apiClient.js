@@ -425,10 +425,14 @@ async function request(path, options = {}) {
           const d = j && (j.detail || j.message || j.error);
           if (typeof d === 'string' && d.trim()) detail = d;
         } catch {}
-        const msg = errorId ? `HTTP ${res.status} (error_id=${errorId}): ${detail}` : `HTTP ${res.status}: ${detail}`;
+        const method = String(options.method || 'GET').toUpperCase();
+        const routeInfo = `${method} ${String(path || '')}`.trim();
+        const msg = errorId
+          ? `HTTP ${res.status} (${routeInfo}) (error_id=${errorId}): ${detail}`
+          : `HTTP ${res.status} (${routeInfo}): ${detail}`;
         lastErr = new Error(msg);
         if (errorId) lastErr.errorId = errorId;
-        continue;
+        throw lastErr;
       }
       // Marca base ativa caso ainda não esteja definida
       if (!ACTIVE_BASE) {
@@ -456,8 +460,8 @@ async function request(path, options = {}) {
       console.error('[apiClient] Erro na requisição:', err);
       console.error('[apiClient] Erro name:', err?.name);
       console.error('[apiClient] Erro message:', err?.message);
-      // Se for erro 4xx (cliente/negócio), não tentar próxima base
-      if (/HTTP 4\d\d/.test(String(err?.message || ''))) {
+      // Se for erro HTTP (4xx/5xx), não tentar próxima base
+      if (/HTTP [45]\d\d/.test(String(err?.message || ''))) {
         throw err;
       }
       // Tratamento amigável para abort por timeout
