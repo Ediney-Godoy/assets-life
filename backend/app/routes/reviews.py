@@ -228,7 +228,9 @@ class RevisaoItemResponse(BaseModel):
     class Config:
         from_attributes = True
 
-@router.get("/itens/{periodo_id}", response_model=List[RevisaoItemResponse])
+from fastapi.responses import JSONResponse
+
+@router.get("/itens/{periodo_id}")
 def listar_itens_revisao(
     periodo_id: int,
     db: Session = Depends(get_db),
@@ -237,6 +239,7 @@ def listar_itens_revisao(
     """
     Lista itens de um período de revisão.
     Filtra por delegações se o usuário não for responsável/admin.
+    Otimizado para grandes volumes de dados (retorna JSON direto).
     """
     periodo = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == periodo_id).first()
     if not periodo:
@@ -249,35 +252,83 @@ def listar_itens_revisao(
     # Verifica se usuário é responsável ou admin
     is_responsible = (periodo.responsavel_id == current_user.id) or is_admin_user(db, current_user)
     
-    query = db.query(RevisaoItemModel).filter(RevisaoItemModel.periodo_id == periodo_id)
+    # Query otimizada selecionando apenas colunas necessárias
+    query = db.query(
+        RevisaoItemModel.id,
+        RevisaoItemModel.periodo_id,
+        RevisaoItemModel.numero_imobilizado,
+        RevisaoItemModel.sub_numero,
+        RevisaoItemModel.descricao,
+        RevisaoItemModel.data_inicio_depreciacao,
+        RevisaoItemModel.data_fim_depreciacao,
+        RevisaoItemModel.valor_contabil,
+        RevisaoItemModel.centro_custo,
+        RevisaoItemModel.classe,
+        RevisaoItemModel.descricao_classe,
+        RevisaoItemModel.vida_util_anos,
+        RevisaoItemModel.vida_util_periodos,
+        RevisaoItemModel.vida_util_revisada,
+        RevisaoItemModel.data_fim_revisada,
+        RevisaoItemModel.condicao_fisica,
+        RevisaoItemModel.justificativa,
+        RevisaoItemModel.auxiliar2,
+        RevisaoItemModel.auxiliar3,
+        RevisaoItemModel.status,
+        RevisaoItemModel.alterado,
+        RevisaoItemModel.criado_por
+    ).filter(RevisaoItemModel.periodo_id == periodo_id)
     
-    # Filtro de delegação
+    # Filtro de delegação OTIMIZADO
     if not is_responsible:
-        # 1. Buscar delegações ativas (ativo_id na delegação é o ID do RevisaoItem)
-        delegations = db.query(RevisaoDelegacaoModel.ativo_id).filter(
+        # Subquery para delegações ativas do usuário
+        delegation_subquery = db.query(RevisaoDelegacaoModel.ativo_id).filter(
             RevisaoDelegacaoModel.periodo_id == periodo_id,
             RevisaoDelegacaoModel.revisor_id == current_user.id,
             RevisaoDelegacaoModel.status == 'Ativo'
-        ).all()
-        delegated_ids = [d[0] for d in delegations]
+        )
         
-        # 2. Buscar itens revertidos pelo usuário (criado_por armazena quem revisou/reverteu)
-        reverted_items = db.query(RevisaoItemModel.id).filter(
-            RevisaoItemModel.periodo_id == periodo_id,
-            RevisaoItemModel.criado_por == current_user.id,
-            RevisaoItemModel.status == 'Revertido'
-        ).all()
-        reverted_ids = [r[0] for r in reverted_items]
+        # Filtra itens que estão delegados OU foram revertidos pelo usuário
+        query = query.filter(
+            sa.or_(
+                RevisaoItemModel.id.in_(delegation_subquery),
+                sa.and_(
+                    RevisaoItemModel.status == 'Revertido',
+                    RevisaoItemModel.criado_por == current_user.id
+                )
+            )
+        )
         
-        # Combinar IDs
-        all_allowed_ids = list(set(delegated_ids + reverted_ids))
+    results = query.all()
+    
+    # Serialização manual para performance
+    data = []
+    for row in results:
+        data.append({
+            "id": row.id,
+            "periodo_id": row.periodo_id,
+            "numero_imobilizado": row.numero_imobilizado,
+            "sub_numero": row.sub_numero,
+            "descricao": row.descricao,
+            "data_inicio_depreciacao": row.data_inicio_depreciacao.isoformat() if row.data_inicio_depreciacao else None,
+            "data_fim_depreciacao": row.data_fim_depreciacao.isoformat() if row.data_fim_depreciacao else None,
+            "valor_contabil": float(row.valor_contabil) if row.valor_contabil is not None else 0.0,
+            "centro_custo": row.centro_custo,
+            "classe": row.classe,
+            "descricao_classe": row.descricao_classe,
+            "vida_util_anos": row.vida_util_anos,
+            "vida_util_periodos": row.vida_util_periodos,
+            "vida_util_revisada": row.vida_util_revisada,
+            "data_fim_revisada": row.data_fim_revisada.isoformat() if row.data_fim_revisada else None,
+            "condicao_fisica": row.condicao_fisica,
+            "justificativa": row.justificativa,
+            "auxiliar2": row.auxiliar2,
+            "auxiliar3": row.auxiliar3,
+            "status": row.status,
+            "alterado": row.alterado,
+            "criado_por": row.criado_por
+        })
         
-        if not all_allowed_ids:
-            return []
-            
-        query = query.filter(RevisaoItemModel.id.in_(all_allowed_ids))
-        
-    return query.all()
+    return JSONResponse(content=data)
 
 class RevisaoItemUpdate(BaseModel):
     vida_util_nova_anos: Optional[float] = None

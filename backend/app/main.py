@@ -1,6 +1,4 @@
-print("Main: Imports start", flush=True)
 from fastapi import FastAPI, HTTPException, Depends, Request, Header
-print("Main: FastAPI imported", flush=True)
 from fastapi.responses import JSONResponse
 import re
 import logging
@@ -44,31 +42,22 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
-print("Main: Importing routes...", flush=True)
 from .routes.relatorios_rvu import router as relatorios_rvu_router
 from .routes.supervisao_rvu import router as supervisao_rvu_router
 from .routes.assets import router as assets_router
 from .routes.reviews import router as reviews_router
 from .routes.simulador_depreciacao import router as simulador_depreciacao_router
-print("Main: Routes imported", flush=True)
+from .routes.auditoria import router as auditoria_router
 app = FastAPI(title="Asset Life API", version="0.2.0")
-print("Main: FastAPI app created", flush=True)
-print("Main: Including relatorios router...", flush=True)
 app.include_router(relatorios_rvu_router)
-print("Main: Including supervisao router...", flush=True)
 app.include_router(supervisao_rvu_router)
-print("Main: Including assets router...", flush=True)
 app.include_router(assets_router)
-print("Main: Including reviews router...", flush=True)
 app.include_router(reviews_router)
-print("Main: Including simulador depreciacao router...", flush=True)
 app.include_router(simulador_depreciacao_router)
-print("Main: Routers included", flush=True)
+app.include_router(auditoria_router)
 
-print("Main: Creating tables...", flush=True)
 # Create tables if they don't exist
 # SA_Base.metadata.create_all(bind=engine)
-print("Main: Tables created (SKIPPED)", flush=True)
 
 @app.get("/version")
 def get_version():
@@ -677,7 +666,7 @@ def list_auditoria_logs(
     if limit <= 0 or limit > 2000:
         limit = 500
 
-    allowed_routes = ["/permissions/logs", "/permissions", "/permissions/groups"]
+    allowed_routes = ["/permissions/logs", "/permissions", "/permissions/groups", "/auditoria/logs"]
     has_perm = False
     for route in allowed_routes:
         try:
