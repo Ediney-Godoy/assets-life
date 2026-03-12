@@ -41,6 +41,9 @@ class RevisaoPeriodoResponse(BaseModel):
     status: str
     data_abertura: date
     data_fechamento_prevista: date
+    data_inicio_nova_vida_util: Optional[date] = None
+    data_fechamento: Optional[date] = None
+    observacoes: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -101,7 +104,10 @@ def listar_periodos(
             "responsavel_id": periodo.responsavel_id,
             "status": periodo.status,
             "data_abertura": periodo.data_abertura,
-            "data_fechamento_prevista": periodo.data_fechamento_prevista
+            "data_fechamento_prevista": periodo.data_fechamento_prevista,
+            "data_inicio_nova_vida_util": periodo.data_inicio_nova_vida_util,
+            "data_fechamento": periodo.data_fechamento,
+            "observacoes": periodo.observacoes,
         }
         response.append(RevisaoPeriodoResponse(**p_dict))
             
@@ -111,6 +117,9 @@ class RevisaoPeriodoUpdate(BaseModel):
     status: Optional[str] = None
     descricao: Optional[str] = None
     observacoes: Optional[str] = None
+    data_inicio_nova_vida_util: Optional[date] = None
+    data_abertura: Optional[date] = None
+    data_fechamento_prevista: Optional[date] = None
 
 @router.put("/periodos/{periodo_id}", response_model=RevisaoPeriodoResponse)
 def update_periodo(
@@ -138,6 +147,15 @@ def update_periodo(
         
     if payload.observacoes is not None:
         periodo.observacoes = payload.observacoes
+
+    if payload.data_inicio_nova_vida_util is not None:
+        periodo.data_inicio_nova_vida_util = payload.data_inicio_nova_vida_util
+
+    if payload.data_abertura is not None:
+        periodo.data_abertura = payload.data_abertura
+
+    if payload.data_fechamento_prevista is not None:
+        periodo.data_fechamento_prevista = payload.data_fechamento_prevista
         
     if payload.status is not None:
         if payload.status == 'Fechado':
@@ -195,7 +213,10 @@ def update_periodo(
         "responsavel_id": periodo.responsavel_id,
         "status": periodo.status,
         "data_abertura": periodo.data_abertura,
-        "data_fechamento_prevista": periodo.data_fechamento_prevista
+        "data_fechamento_prevista": periodo.data_fechamento_prevista,
+        "data_inicio_nova_vida_util": periodo.data_inicio_nova_vida_util,
+        "data_fechamento": periodo.data_fechamento,
+        "observacoes": periodo.observacoes,
     }
     return RevisaoPeriodoResponse(**p_dict)
 
