@@ -695,6 +695,10 @@ export async function closeReviewPeriod(id) {
   return request(`/revisoes/fechar/${id}`, { method: 'POST' });
 }
 
+export async function reopenReviewPeriod(id) {
+  return request(`/revisoes/periodos/${id}/reabrir`, { method: 'POST' });
+}
+
 // Upload de base (.csv/.xlsx) para um período específico
 export async function uploadReviewBase(periodoId, file) {
   const base = await resolveBase();
@@ -838,6 +842,10 @@ export async function createCronogramaTarefa(cronogramaId, payload) {
 
 export async function updateCronogramaTarefa(cronogramaId, tarefaId, payload) {
   return request(`/cronogramas/${cronogramaId}/tarefas/${tarefaId}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function updateCronogramaTarefasOrdem(cronogramaId, ids) {
+  return request(`/cronogramas/${cronogramaId}/tarefas/ordem`, { method: 'PUT', body: JSON.stringify({ ids }) });
 }
 
 export async function getCronogramaResumo(cronogramaId) {

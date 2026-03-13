@@ -7,7 +7,7 @@ import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import ActionToolbar from '../components/ActionToolbar';
 // import Table from '../components/ui/Table'; // Custom table implementation used
-import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download, Lock, CalendarPlus } from 'lucide-react';
+import { ChevronUp, ChevronDown, Eye, FileText, ClipboardList, Upload, Trash, Plus, Download, Lock, Unlock, CalendarPlus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 import { 
@@ -16,9 +16,11 @@ import {
   getCronogramas,
   createCronograma,
   updateCronograma,
+  reopenReviewPeriod,
   getCronogramaTarefas,
   createCronogramaTarefa,
   updateCronogramaTarefa,
+  updateCronogramaTarefasOrdem,
   getCronogramaResumo,
   listCronogramaTarefaEvidencias,
   uploadCronogramaTarefaEvidencia,
@@ -88,6 +90,23 @@ export default function CronogramaRevisao() {
     }
   };
 
+  const handleReopenPeriodoECronograma = async () => {
+    if (!periodoId) return;
+    if (!window.confirm('Deseja reabrir o período e o cronograma para novos testes?')) return;
+    try {
+      await reopenReviewPeriod(Number(periodoId));
+      toast.success('Período e cronograma reabertos com sucesso');
+      await loadBase();
+      setActiveTab('active');
+      setPeriodoId('');
+      setCronogramaId('');
+      setTarefas([]);
+      setResumo(null);
+    } catch (err) {
+      toast.error(err?.message || 'Erro ao reabrir período');
+    }
+  };
+
 
   React.useEffect(() => {
     try {
@@ -147,35 +166,25 @@ export default function CronogramaRevisao() {
 
   React.useEffect(() => { loadCronogramas(); }, [loadCronogramas]);
 
-  const orderKey = React.useMemo(() => (cronogramaId ? `assetlife_cronograma_order_${cronogramaId}` : ''), [cronogramaId]);
-
-  const applyOrder = React.useCallback((list) => {
-    try {
-      const raw = orderKey ? localStorage.getItem(orderKey) : null;
-      const arr = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(arr) && arr.length > 0) {
-        const pos = new Map(arr.map((id, idx) => [Number(id), idx]));
-        const withPos = list.map((it) => ({ it, p: pos.has(Number(it.id)) ? pos.get(Number(it.id)) : Infinity }));
-        withPos.sort((a, b) => (a.p - b.p) || (a.it.id - b.it.id));
-        return withPos.map((x) => x.it);
-      }
-    } catch {}
-    return list;
-  }, [orderKey]);
+  const sortTasks = React.useCallback((list) => {
+    const arr = Array.isArray(list) ? list.slice() : [];
+    arr.sort((a, b) => ((Number(a?.ordem || 0) - Number(b?.ordem || 0)) || (Number(a?.id || 0) - Number(b?.id || 0))));
+    return arr;
+  }, []);
 
   const loadTarefas = React.useCallback(() => {
     if (!cronogramaId) { setTarefas([]); setResumo(null); return; }
     setLoading(true);
     Promise.all([getCronogramaTarefas(Number(cronogramaId)), getCronogramaResumo(Number(cronogramaId))])
       .then(([ts, rs]) => { 
-        setTarefas(applyOrder(ts || [])); 
+        setTarefas(sortTasks(ts || [])); 
         setResumo(rs || null); 
       })
       .catch((err) => {
         toast.error(err.message || t('error_loading_tasks'));
       })
       .finally(() => setLoading(false));
-  }, [cronogramaId, applyOrder, t]);
+  }, [cronogramaId, sortTasks, t]);
 
   React.useEffect(() => { loadTarefas(); }, [loadTarefas]);
 
@@ -470,7 +479,7 @@ export default function CronogramaRevisao() {
   const canMoveUp = selectedIndex > 0;
   const canMoveDown = selectedIndex >= 0 && selectedIndex < tarefas.length - 1;
 
-  const moveSelected = (dir) => {
+  const moveSelected = async (dir) => {
     if (selectedIndex < 0) return;
     const swapIdx = dir === 'up' ? selectedIndex - 1 : selectedIndex + 1;
     if (swapIdx < 0 || swapIdx >= tarefas.length) return;
@@ -481,8 +490,11 @@ export default function CronogramaRevisao() {
     setTarefas(next);
     try {
       const ids = next.map((t) => t.id);
-      if (orderKey) localStorage.setItem(orderKey, JSON.stringify(ids));
-    } catch {}
+      await updateCronogramaTarefasOrdem(Number(cronogramaId), ids);
+    } catch (err) {
+      toast.error(err?.message || t('error_saving'));
+      await loadTarefas();
+    }
   };
 
   // --- New Gantt Logic ---
@@ -618,6 +630,9 @@ export default function CronogramaRevisao() {
           <Button variant="secondary" title="Mover para cima" aria-label="Mover para cima" onClick={() => moveSelected('up')} disabled={!canMoveUp || !isEditable} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronUp size={18} /></Button>
           <Button variant="secondary" title="Mover para baixo" aria-label="Mover para baixo" onClick={() => moveSelected('down')} disabled={!canMoveDown || !isEditable} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center"><ChevronDown size={18} /></Button>
           <Button variant="secondary" title="Encerrar Cronograma" aria-label="Encerrar Cronograma" onClick={handleCloseCronograma} disabled={!cronogramaId || !isEditable} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center text-red-600 hover:text-red-700 hover:bg-red-50"><Lock size={18} /></Button>
+          {canEdit && activeTab === 'closed' && (
+            <Button variant="secondary" title="Reabrir Período/Cronograma" aria-label="Reabrir Período/Cronograma" onClick={handleReopenPeriodoECronograma} disabled={!periodoId} className="p-1 h-8 w-8 sm:h-9 sm:w-9 justify-center text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Unlock size={18} /></Button>
+          )}
         </div>
       </div>
 

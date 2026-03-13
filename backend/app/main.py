@@ -863,6 +863,7 @@ class CronogramaUpdate(BaseModel):
 class CronogramaTarefa(BaseModel):
     id: int
     cronograma_id: int
+    ordem: int = 0
     tipo: str
     nome: str
     descricao: Optional[str] = None
@@ -897,6 +898,9 @@ class CronogramaTarefaUpdate(BaseModel):
     status: Optional[str] = None
     progresso_percentual: Optional[int] = None
     dependente_tarefa_id: Optional[int] = None
+
+class CronogramaTarefasOrdemUpdate(BaseModel):
+    ids: List[int]
 
 class CronogramaResumo(BaseModel):
     total_tarefas: int
@@ -1012,24 +1016,32 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
         ])
 
         has_tipo = False
+        has_ordem = False
         try:
             insp = sa.inspect(engine)
             cols = [c["name"] for c in insp.get_columns("cronogramas_tarefas")]
             has_tipo = "tipo" in cols
+            has_ordem = "ordem" in cols
         except Exception:
             has_tipo = False
+            has_ordem = False
             
         try:
+            ordem_atual = 0
             for task in tasks_to_create:
-                tipo = task.get("tipo", "Tarefa")
+                tipo_raw = task.get("tipo", "Tarefa")
+                tipo_lower = (tipo_raw or "").strip().lower()
+                tipo = "Título" if tipo_lower in {"título", "titulo"} else ("Tarefa" if tipo_lower == "tarefa" else (tipo_raw or "Tarefa"))
                 nome = task.get("nome")
                 desc = task.get("desc")
                 resp_id = task.get("responsavel_id") # Pode ser None
                 prog = task.get("progresso_percentual", 0)
+                ordem_atual += 1
 
                 if has_tipo:
                     t = CronogramaTarefaModel(
                         cronograma_id=c.id,
+                        ordem=ordem_atual if has_ordem else 0,
                         tipo=tipo,
                         nome=nome,
                         descricao=desc,
@@ -1043,17 +1055,41 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
                 else:
                     # Fallback for when 'tipo' column is missing: prepend Título to name if needed
                     final_nome = f"[TÍTULO] {nome}" if tipo == "Título" else nome
-                    db.execute(sa.text(
-                        """
-                        INSERT INTO cronogramas_tarefas (
-                            cronograma_id, nome, descricao, data_inicio, data_fim,
-                            responsavel_id, status, progresso_percentual, dependente_tarefa_id
-                        ) VALUES (
-                            :cronograma_id, :nome, :descricao, :data_inicio, :data_fim,
-                            :responsavel_id, :status, :progresso_percentual, :dependente_tarefa_id
-                        )
-                        """
-                    ), {
+                    if has_ordem:
+                        db.execute(sa.text(
+                            """
+                            INSERT INTO cronogramas_tarefas (
+                                cronograma_id, ordem, nome, descricao, data_inicio, data_fim,
+                                responsavel_id, status, progresso_percentual, dependente_tarefa_id
+                            ) VALUES (
+                                :cronograma_id, :ordem, :nome, :descricao, :data_inicio, :data_fim,
+                                :responsavel_id, :status, :progresso_percentual, :dependente_tarefa_id
+                            )
+                            """
+                        ), {
+                            "cronograma_id": c.id,
+                            "ordem": ordem_atual,
+                            "nome": final_nome,
+                            "descricao": desc,
+                            "data_inicio": inicio,
+                            "data_fim": fim_prev,
+                            "responsavel_id": resp_id,
+                            "status": "Pendente",
+                            "progresso_percentual": prog,
+                            "dependente_tarefa_id": None,
+                        })
+                    else:
+                        db.execute(sa.text(
+                            """
+                            INSERT INTO cronogramas_tarefas (
+                                cronograma_id, nome, descricao, data_inicio, data_fim,
+                                responsavel_id, status, progresso_percentual, dependente_tarefa_id
+                            ) VALUES (
+                                :cronograma_id, :nome, :descricao, :data_inicio, :data_fim,
+                                :responsavel_id, :status, :progresso_percentual, :dependente_tarefa_id
+                            )
+                            """
+                        ), {
                         "cronograma_id": c.id,
                         "nome": final_nome,
                         "descricao": desc,
@@ -1063,7 +1099,7 @@ def create_cronograma(payload: CronogramaCreate, template: bool = True, db: Sess
                         "status": "Pendente",
                         "progresso_percentual": prog,
                         "dependente_tarefa_id": None,
-                    })
+                        })
             db.commit()
         except Exception:
             db.rollback()
@@ -1243,7 +1279,28 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
 
         # ORM Fetch to ensure all fields (including 'tipo') are retrieved correctly
         try:
-            tasks = db.query(CronogramaTarefaModel).filter(CronogramaTarefaModel.cronograma_id == cronograma_id).order_by(CronogramaTarefaModel.id).all()
+            has_ordem = False
+            try:
+                insp = sa.inspect(engine)
+                cols = [c["name"] for c in insp.get_columns("cronogramas_tarefas")]
+                has_ordem = "ordem" in cols
+            except Exception:
+                has_ordem = False
+
+            if has_ordem:
+                tasks = (
+                    db.query(CronogramaTarefaModel)
+                    .filter(CronogramaTarefaModel.cronograma_id == cronograma_id)
+                    .order_by(CronogramaTarefaModel.ordem, CronogramaTarefaModel.id)
+                    .all()
+                )
+            else:
+                tasks = (
+                    db.query(CronogramaTarefaModel)
+                    .filter(CronogramaTarefaModel.cronograma_id == cronograma_id)
+                    .order_by(CronogramaTarefaModel.id)
+                    .all()
+                )
             log(f"ORM fetch success, count: {len(tasks)}")
             # Debug log types
             for t in tasks:
@@ -1297,7 +1354,7 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 t.tipo = "Tarefa"
             
             # Normalize 'Título' casing just in case
-            if str(t.tipo).lower() == 'título':
+            if str(t.tipo).strip().lower() in {'título', 'titulo'}:
                 t.tipo = "Título"
             elif str(t.tipo).lower() == 'tarefa':
                 t.tipo = "Tarefa"
@@ -1314,16 +1371,78 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         print(f"Critical error in list_cronograma_tarefas: {e}")
         raise HTTPException(status_code=500, detail=f"Erro interno ao listar tarefas: {str(e)}")
 
+@app.put("/cronogramas/{cronograma_id}/tarefas/ordem")
+def update_cronograma_tarefas_ordem(cronograma_id: int, payload: CronogramaTarefasOrdemUpdate, db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
+    check_permission(db, current_user, "/reviews/cronogramas/edit")
+    c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+
+    try:
+        insp = sa.inspect(engine)
+        cols = [col["name"] for col in insp.get_columns("cronogramas_tarefas")]
+        if "ordem" not in cols:
+            raise HTTPException(status_code=400, detail="Ordenação de tarefas indisponível")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=400, detail="Ordenação de tarefas indisponível")
+
+    ids = [int(x) for x in (payload.ids or []) if str(x).strip().isdigit()]
+    if not ids:
+        return {"ok": True}
+
+    try:
+        existing_ids = db.query(CronogramaTarefaModel.id).filter(
+            CronogramaTarefaModel.cronograma_id == cronograma_id,
+            CronogramaTarefaModel.id.in_(ids),
+        ).all()
+        existing_set = {int(x[0]) for x in existing_ids}
+        ordered_ids = [tid for tid in ids if tid in existing_set]
+        if not ordered_ids:
+            return {"ok": True}
+
+        for idx, tid in enumerate(ordered_ids, start=1):
+            db.query(CronogramaTarefaModel).filter(
+                CronogramaTarefaModel.cronograma_id == cronograma_id,
+                CronogramaTarefaModel.id == tid,
+            ).update({"ordem": idx})
+        db.commit()
+        return {"ok": True}
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Falha ao atualizar ordem das tarefas")
+
 @app.post("/cronogramas/{cronograma_id}/tarefas", response_model=CronogramaTarefa)
 def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate, db: Session = Depends(get_db), current_user: UsuarioModel = Depends(get_current_user)):
     check_permission(db, current_user, "/reviews/cronogramas/edit")
     c = db.query(CronogramaModel).filter(CronogramaModel.id == cronograma_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Cronograma não encontrado")
+    tipo_raw = payload.tipo or "Tarefa"
+    tipo_lower = (tipo_raw or "").strip().lower()
+    tipo = "Título" if tipo_lower in {"título", "titulo"} else ("Tarefa" if tipo_lower == "tarefa" else (tipo_raw or "Tarefa"))
+    has_ordem = False
+    try:
+        insp = sa.inspect(engine)
+        cols = [c["name"] for c in insp.get_columns("cronogramas_tarefas")]
+        has_ordem = "ordem" in cols
+    except Exception:
+        has_ordem = False
+
+    ordem = 0
+    if has_ordem:
+        ordem = (
+            db.query(sa.func.coalesce(sa.func.max(CronogramaTarefaModel.ordem), 0))
+            .filter(CronogramaTarefaModel.cronograma_id == cronograma_id)
+            .scalar()
+            or 0
+        ) + 1
     try:
         t = CronogramaTarefaModel(
             cronograma_id=cronograma_id,
-            tipo=payload.tipo or "Tarefa",
+            ordem=ordem if has_ordem else 0,
+            tipo=tipo,
             nome=payload.nome,
             descricao=payload.descricao,
             data_inicio=payload.data_inicio,
@@ -1341,36 +1460,78 @@ def create_cronograma_tarefa(cronograma_id: int, payload: CronogramaTarefaCreate
         db.rollback()
         # Fallback quando coluna 'tipo' não existe
         try:
-            db.execute(sa.text(
-                """
-                INSERT INTO cronogramas_tarefas (
-                    cronograma_id, nome, descricao, data_inicio, data_fim,
-                    responsavel_id, status, progresso_percentual, dependente_tarefa_id
-                ) VALUES (
-                    :cronograma_id, :nome, :descricao, :data_inicio, :data_fim,
-                    :responsavel_id, :status, :progresso_percentual, :dependente_tarefa_id
-                )
-                RETURNING id
-                """
-            ), {
-                "cronograma_id": cronograma_id,
-                "nome": payload.nome,
-                "descricao": payload.descricao,
-                "data_inicio": payload.data_inicio,
-                "data_fim": payload.data_fim,
-                "responsavel_id": payload.responsavel_id,
-                "status": payload.status,
-                "progresso_percentual": payload.progresso_percentual or 0,
-                "dependente_tarefa_id": payload.dependente_tarefa_id,
-            })
+            final_nome = f"[TÍTULO] {payload.nome}" if tipo == "Título" else payload.nome
+            if has_ordem:
+                db.execute(sa.text(
+                    """
+                    INSERT INTO cronogramas_tarefas (
+                        cronograma_id, ordem, nome, descricao, data_inicio, data_fim,
+                        responsavel_id, status, progresso_percentual, dependente_tarefa_id
+                    ) VALUES (
+                        :cronograma_id, :ordem, :nome, :descricao, :data_inicio, :data_fim,
+                        :responsavel_id, :status, :progresso_percentual, :dependente_tarefa_id
+                    )
+                    RETURNING id
+                    """
+                ), {
+                    "cronograma_id": cronograma_id,
+                    "ordem": ordem,
+                    "nome": final_nome,
+                    "descricao": payload.descricao,
+                    "data_inicio": payload.data_inicio,
+                    "data_fim": payload.data_fim,
+                    "responsavel_id": payload.responsavel_id,
+                    "status": payload.status,
+                    "progresso_percentual": payload.progresso_percentual or 0,
+                    "dependente_tarefa_id": payload.dependente_tarefa_id,
+                })
+            else:
+                db.execute(sa.text(
+                    """
+                    INSERT INTO cronogramas_tarefas (
+                        cronograma_id, nome, descricao, data_inicio, data_fim,
+                        responsavel_id, status, progresso_percentual, dependente_tarefa_id
+                    ) VALUES (
+                        :cronograma_id, :nome, :descricao, :data_inicio, :data_fim,
+                        :responsavel_id, :status, :progresso_percentual, :dependente_tarefa_id
+                    )
+                    RETURNING id
+                    """
+                ), {
+                    "cronograma_id": cronograma_id,
+                    "nome": final_nome,
+                    "descricao": payload.descricao,
+                    "data_inicio": payload.data_inicio,
+                    "data_fim": payload.data_fim,
+                    "responsavel_id": payload.responsavel_id,
+                    "status": payload.status,
+                    "progresso_percentual": payload.progresso_percentual or 0,
+                    "dependente_tarefa_id": payload.dependente_tarefa_id,
+                })
             db.commit()
             # Recupera a tarefa criada para retorno coerente
             created = db.execute(sa.text("SELECT * FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id DESC LIMIT 1"), {"cid": cronograma_id}).mappings().first()
             if not created:
                 raise HTTPException(status_code=400, detail="Falha ao criar tarefa")
-            # Monta resposta mínima, com 'tipo' como 'Tarefa' por compatibilidade
+            tipo_raw_created = created.get("tipo")
+            if tipo_raw_created is not None and str(tipo_raw_created).strip() != "":
+                tipo_lower_created = str(tipo_raw_created).strip().lower()
+                tipo_norm = "Título" if tipo_lower_created in {"título", "titulo"} else ("Tarefa" if tipo_lower_created == "tarefa" else (str(tipo_raw_created).strip() or "Tarefa"))
+            else:
+                tipo_norm = "Título" if str(created.get("nome") or "").strip().upper().startswith("[TÍTULO]") else "Tarefa"
+
+            nome_created = created.get("nome")
+            if tipo_norm == "Título" and isinstance(nome_created, str):
+                nome_strip = nome_created.strip()
+                if nome_strip.upper().startswith("[TÍTULO]"):
+                    nome_created = nome_strip[len("[TÍTULO]"):].strip()
+
             return CronogramaTarefa(
-                id=created["id"], cronograma_id=created["cronograma_id"], tipo="Tarefa", nome=created["nome"],
+                id=created["id"],
+                cronograma_id=created["cronograma_id"],
+                ordem=int(created.get("ordem") or 0),
+                tipo=tipo_norm,
+                nome=nome_created,
                 descricao=created.get("descricao"), data_inicio=created.get("data_inicio"), data_fim=created.get("data_fim"),
                 responsavel_id=created.get("responsavel_id"), status=created.get("status"),
                 progresso_percentual=created.get("progresso_percentual") or 0,
@@ -1390,6 +1551,12 @@ def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: Cronog
         if not t:
             raise HTTPException(status_code=404, detail="Tarefa não encontrada")
         data = payload.dict(exclude_unset=True)
+        if "tipo" in data and data["tipo"] is not None:
+            tipo_lower = str(data["tipo"]).strip().lower()
+            if tipo_lower in {"título", "titulo"}:
+                data["tipo"] = "Título"
+            elif tipo_lower == "tarefa":
+                data["tipo"] = "Tarefa"
         for k, v in data.items():
             setattr(t, k, v)
             # Explicit debug for tipo
@@ -1429,12 +1596,27 @@ def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: Cronog
         # Fetch updated
         try:
             # Explicitly select tipo to verify
+            has_ordem = False
+            try:
+                insp = sa.inspect(engine)
+                cols_list = [c["name"] for c in insp.get_columns("cronogramas_tarefas")]
+                has_ordem = "ordem" in cols_list
+            except Exception:
+                has_ordem = False
+
             cols = "id, cronograma_id, tipo, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
+            if has_ordem:
+                cols = "id, cronograma_id, ordem, tipo, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
             row = db.execute(sa.text(f"SELECT {cols} FROM cronogramas_tarefas WHERE id=:id"), {"id": tarefa_id}).mappings().first()
             if not row:
                  raise HTTPException(status_code=404, detail="Tarefa não encontrada")
             print(f"Fetched updated row (raw): tipo={row.get('tipo')}")
-            return CronogramaTarefa(tipo=row.get("tipo") or "Tarefa", **row)
+            row_dict = dict(row)
+            ordem = int(row_dict.pop("ordem", 0) or 0)
+            tipo_raw = row_dict.get("tipo") or "Tarefa"
+            tipo_lower = str(tipo_raw).strip().lower()
+            tipo_norm = "Título" if tipo_lower in {"título", "titulo"} else ("Tarefa" if tipo_lower == "tarefa" else (tipo_raw or "Tarefa"))
+            return CronogramaTarefa(ordem=ordem, tipo=tipo_norm, **row_dict)
         except Exception as ex:
             print(f"Error fetching updated row: {ex}")
             raise HTTPException(status_code=500, detail="Erro ao recuperar tarefa atualizada")

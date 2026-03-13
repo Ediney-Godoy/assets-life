@@ -196,6 +196,8 @@ def update_periodo(
         periodo.status = payload.status
         if payload.status == 'Fechado':
             periodo.data_fechamento = date.today()
+        elif payload.status == 'Aberto':
+            periodo.data_fechamento = None
             
     db.commit()
     db.refresh(periodo)
@@ -203,6 +205,52 @@ def update_periodo(
     # Montar resposta (similar ao list)
     emp_nome = db.query(CompanyModel.name).filter(CompanyModel.id == periodo.empresa_id).scalar()
     
+    p_dict = {
+        "id": periodo.id,
+        "codigo": periodo.codigo,
+        "descricao": periodo.descricao,
+        "empresa_id": periodo.empresa_id,
+        "empresa_nome": emp_nome,
+        "ug_id": periodo.ug_id,
+        "responsavel_id": periodo.responsavel_id,
+        "status": periodo.status,
+        "data_abertura": periodo.data_abertura,
+        "data_fechamento_prevista": periodo.data_fechamento_prevista,
+        "data_inicio_nova_vida_util": periodo.data_inicio_nova_vida_util,
+        "data_fechamento": periodo.data_fechamento,
+        "observacoes": periodo.observacoes,
+    }
+    return RevisaoPeriodoResponse(**p_dict)
+
+@router.post("/periodos/{periodo_id}/reabrir", response_model=RevisaoPeriodoResponse)
+def reabrir_periodo(
+    periodo_id: int,
+    db: Session = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user)
+):
+    periodo = db.query(RevisaoPeriodoModel).filter(RevisaoPeriodoModel.id == periodo_id).first()
+    if not periodo:
+        raise HTTPException(status_code=404, detail="Período não encontrado")
+
+    allowed_companies = get_allowed_company_ids(db, current_user)
+    if periodo.empresa_id not in allowed_companies:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    is_responsible = (periodo.responsavel_id == current_user.id) or is_admin_user(db, current_user)
+    if not is_responsible:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    try:
+        periodo.status = "Aberto"
+        periodo.data_fechamento = None
+        db.query(CronogramaModel).filter(CronogramaModel.periodo_id == periodo_id).update({"status": "Aberto"})
+        db.commit()
+        db.refresh(periodo)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Falha ao reabrir período")
+
+    emp_nome = db.query(CompanyModel.name).filter(CompanyModel.id == periodo.empresa_id).scalar()
     p_dict = {
         "id": periodo.id,
         "codigo": periodo.codigo,

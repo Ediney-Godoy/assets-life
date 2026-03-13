@@ -227,6 +227,7 @@ class CronogramaTarefa(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     cronograma_id = Column(Integer, ForeignKey("cronogramas.id"), nullable=False, index=True)
+    ordem = Column(Integer, nullable=False, default=0)
     tipo = Column(String(20), nullable=False, default="Tarefa")
     nome = Column(String(150), nullable=False)
     descricao = Column(Text, nullable=True)
