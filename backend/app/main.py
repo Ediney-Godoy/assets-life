@@ -1277,67 +1277,88 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
         except Exception as e_stats:
             log(f"Error calculating stats or syncing revisors: {e_stats}")
 
-        # ORM Fetch to ensure all fields (including 'tipo') are retrieved correctly
+        has_ordem = False
         try:
+            insp = sa.inspect(engine)
+            cols = [c["name"] for c in insp.get_columns("cronogramas_tarefas")]
+            has_ordem = "ordem" in cols
+        except Exception:
             has_ordem = False
-            try:
-                insp = sa.inspect(engine)
-                cols = [c["name"] for c in insp.get_columns("cronogramas_tarefas")]
-                has_ordem = "ordem" in cols
-            except Exception:
-                has_ordem = False
 
-            if has_ordem:
+        tasks = []
+        tasks_raw = []
+        if has_ordem:
+            try:
                 tasks = (
                     db.query(CronogramaTarefaModel)
                     .filter(CronogramaTarefaModel.cronograma_id == cronograma_id)
                     .order_by(CronogramaTarefaModel.ordem, CronogramaTarefaModel.id)
                     .all()
                 )
-            else:
-                tasks = (
-                    db.query(CronogramaTarefaModel)
-                    .filter(CronogramaTarefaModel.cronograma_id == cronograma_id)
-                    .order_by(CronogramaTarefaModel.id)
-                    .all()
-                )
-            log(f"ORM fetch success, count: {len(tasks)}")
-            # Debug log types
-            for t in tasks:
-                if t.tipo == 'Título':
-                     log(f"Task {t.id} is Título")
-                elif not t.tipo:
-                     log(f"Task {t.id} has empty/null tipo: '{t.tipo}'")
-        except Exception as e:
-            log(f"ORM fetch failed: {e}")
-            raise HTTPException(status_code=500, detail=f"Erro ao buscar tarefas: {str(e)}")
+                log(f"ORM fetch success, count: {len(tasks)}")
+            except Exception as e:
+                log(f"ORM fetch failed: {e}")
+                raise HTTPException(status_code=500, detail=f"Erro ao buscar tarefas: {str(e)}")
+        else:
+            cols_select = "id, cronograma_id, tipo, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
+            tasks_raw = db.execute(
+                sa.text(f"SELECT {cols_select} FROM cronogramas_tarefas WHERE cronograma_id = :cid ORDER BY id"),
+                {"cid": cronograma_id},
+            ).mappings().all()
+            log(f"RAW fetch success, count: {len(tasks_raw)}")
 
         now = date.today()
         
         # 1. Apply DB updates (Progress & Completion)
         updates_made = False
-        for t in tasks:
-            is_revision_task = t.nome.startswith("Revisão de Vidas úteis")
-            rid = t.responsavel_id
-            
-            if is_revision_task and rid and rid in stats_map:
-                s = stats_map[rid]
-                if s['total'] > 0:
-                    progresso = int(round((s['revisados'] / s['total']) * 100))
-                    
-                    # Update progress if changed
-                    if progresso != t.progresso_percentual:
-                        t.progresso_percentual = progresso
-                        updates_made = True
-                    
-                    # Auto-complete logic
-                    if progresso == 100:
-                        if t.status != "Concluída":
-                            t.status = "Concluída"
+        if tasks_raw:
+            for row in tasks_raw:
+                nome = row.get("nome") or ""
+                is_revision_task = str(nome).startswith("Revisão de Vidas úteis")
+                rid = row.get("responsavel_id")
+                if is_revision_task and rid and rid in stats_map:
+                    s = stats_map[rid]
+                    if s["total"] > 0:
+                        progresso = int(round((s["revisados"] / s["total"]) * 100))
+                        current_prog = int(row.get("progresso_percentual") or 0)
+                        current_status = row.get("status") or "Pendente"
+
+                        next_status = current_status
+                        if progresso == 100:
+                            next_status = "Concluída"
+                        elif progresso < 100 and current_status == "Concluída":
+                            next_status = "Em Andamento"
+
+                        if progresso != current_prog or next_status != current_status:
+                            db.execute(
+                                sa.text(
+                                    """
+                                    UPDATE cronogramas_tarefas
+                                    SET progresso_percentual = :prog, status = :st
+                                    WHERE id = :id AND cronograma_id = :cid
+                                    """
+                                ),
+                                {"prog": progresso, "st": next_status, "id": row["id"], "cid": cronograma_id},
+                            )
                             updates_made = True
-                    elif progresso < 100 and t.status == "Concluída":
-                        t.status = "Em Andamento"
-                        updates_made = True
+        else:
+            for t in tasks:
+                is_revision_task = t.nome.startswith("Revisão de Vidas úteis")
+                rid = t.responsavel_id
+                if is_revision_task and rid and rid in stats_map:
+                    s = stats_map[rid]
+                    if s['total'] > 0:
+                        progresso = int(round((s['revisados'] / s['total']) * 100))
+                        if progresso != t.progresso_percentual:
+                            t.progresso_percentual = progresso
+                            updates_made = True
+                        if progresso == 100:
+                            if t.status != "Concluída":
+                                t.status = "Concluída"
+                                updates_made = True
+                        elif progresso < 100 and t.status == "Concluída":
+                            t.status = "Em Andamento"
+                            updates_made = True
         
         if updates_made:
             try:
@@ -1347,19 +1368,40 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 db.rollback()
 
         # 2. Apply Transient updates (Atrasada) & Ensure 'tipo'
+        if tasks_raw:
+            norm = []
+            for row in tasks_raw:
+                row_dict = dict(row)
+                ordem_val = int(row_dict.pop("ordem", 0) or 0)
+                tipo_raw = row_dict.get("tipo") or ""
+                tipo_lower = str(tipo_raw).strip().lower()
+                tipo_norm = "Título" if tipo_lower in {"título", "titulo"} else ("Tarefa" if tipo_lower == "tarefa" else (str(tipo_raw).strip() or "Tarefa"))
+
+                nome_val = row_dict.get("nome")
+                if tipo_norm == "Título" and isinstance(nome_val, str):
+                    nome_strip = nome_val.strip()
+                    if nome_strip.upper().startswith("[TÍTULO]"):
+                        row_dict["nome"] = nome_strip[len("[TÍTULO]"):].strip()
+
+                if not row_dict.get("tipo") or str(row_dict.get("tipo")).strip() == "":
+                    row_dict["tipo"] = tipo_norm
+
+                data_fim_val = row_dict.get("data_fim")
+                status_val = row_dict.get("status") or "Pendente"
+                if data_fim_val and data_fim_val < now and status_val != "Concluída":
+                    row_dict["status"] = "Atrasada"
+
+                norm.append(CronogramaTarefa(ordem=ordem_val, tipo=tipo_norm, **row_dict))
+            return norm
+
         for t in tasks:
-            # Ensure 'tipo' is present and has a valid value
             if not t.tipo or str(t.tipo).strip() == "":
                 log(f"Overriding empty/null tipo for task {t.id} to 'Tarefa'")
                 t.tipo = "Tarefa"
-            
-            # Normalize 'Título' casing just in case
             if str(t.tipo).strip().lower() in {'título', 'titulo'}:
                 t.tipo = "Título"
             elif str(t.tipo).lower() == 'tarefa':
                 t.tipo = "Tarefa"
-
-            # Check for delay
             if t.data_fim and t.data_fim < now and t.status != "Concluída":
                 t.status = "Atrasada"
 
