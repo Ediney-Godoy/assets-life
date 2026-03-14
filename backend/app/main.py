@@ -1383,8 +1383,7 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                     if nome_strip.upper().startswith("[TÍTULO]"):
                         row_dict["nome"] = nome_strip[len("[TÍTULO]"):].strip()
 
-                if not row_dict.get("tipo") or str(row_dict.get("tipo")).strip() == "":
-                    row_dict["tipo"] = tipo_norm
+                row_dict.pop("tipo", None)
 
                 data_fim_val = row_dict.get("data_fim")
                 status_val = row_dict.get("status") or "Pendente"
