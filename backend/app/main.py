@@ -1657,6 +1657,14 @@ def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: Cronog
             tipo_raw = row_dict.get("tipo") or "Tarefa"
             tipo_lower = str(tipo_raw).strip().lower()
             tipo_norm = "Título" if tipo_lower in {"título", "titulo"} else ("Tarefa" if tipo_lower == "tarefa" else (tipo_raw or "Tarefa"))
+            nome_val = row_dict.get("nome")
+            if tipo_norm == "Título" and isinstance(nome_val, str):
+                nome_strip = nome_val.strip()
+                if nome_strip.upper().startswith("[TÍTULO]"):
+                    row_dict["nome"] = nome_strip[len("[TÍTULO]"):].strip()
+
+            row_dict.pop("tipo", None)
+
             return CronogramaTarefa(ordem=ordem, tipo=tipo_norm, **row_dict)
         except Exception as ex:
             print(f"Error fetching updated row: {ex}")
