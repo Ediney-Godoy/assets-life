@@ -837,24 +837,24 @@ export default function CronogramaRevisao() {
                     <Input label={t('task_name')} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
                 </div>
                 
-                <div className="md:col-span-4">
+                <div className="md:col-span-6">
                     <Select label={t('task_responsible')} value={form.responsavel_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}>
                     <option value="">{t('select')}</option>
                     {users.map((u) => (<option key={u.id} value={u.id}>{u.nome_completo}</option>))}
                     </Select>
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-3">
                     <Input label={t('task_start')} type="date" value={form.data_inicio} onChange={(e) => setForm((f) => ({ ...f, data_inicio: e.target.value }))} />
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-3">
                     <Input label={t('task_end')} type="date" value={form.data_fim} onChange={(e) => setForm((f) => ({ ...f, data_fim: e.target.value }))} />
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-6">
                     <Select label={t('task_status')} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
                     {['Pendente','Em Andamento','Concluída','Atrasada'].map((s) => (<option key={s} value={s}>{getStatusLabel(s)}</option>))}
                     </Select>
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-6">
                     <Input label={`${t('task_progress')} (%)`} type="number" min={0} max={100} value={form.progresso_percentual} onChange={(e) => setForm((f) => ({ ...f, progresso_percentual: e.target.value }))} />
                 </div>
               </div>

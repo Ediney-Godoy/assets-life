@@ -1609,7 +1609,7 @@ def update_cronograma_tarefa(cronograma_id: int, tarefa_id: int, payload: Cronog
         print(f"Task updated. Current tipo in DB object: {t.tipo}")
         return t
     except (sa.exc.ProgrammingError, sa.exc.DBAPIError) as e:
-        log(f"Error updating task {tarefa_id}: {e}")
+        logging.getLogger("uvicorn.error").exception("Error updating task %s (ORM failed): %s", tarefa_id, e)
         print(f"Error updating task {tarefa_id} (ORM failed): {e}")
         db.rollback()
         # Fallback raw SQL update due to missing columns (e.g. tipo)
