@@ -742,6 +742,7 @@ class Company(BaseModel):
     division: Optional[str] = None
     state_registration: Optional[str] = None
     status: str
+    data_adocao_ifrs: Optional[date] = None
 
     class Config:
         from_attributes = True  # pydantic v2 orm_mode
@@ -760,6 +761,7 @@ class CompanyCreate(BaseModel):
     division: Optional[str] = None
     state_registration: Optional[str] = None
     status: str
+    data_adocao_ifrs: Optional[date] = None
 
 class CompanyUpdate(BaseModel):
     name: Optional[str] = None
@@ -775,6 +777,7 @@ class CompanyUpdate(BaseModel):
     division: Optional[str] = None
     state_registration: Optional[str] = None
     status: Optional[str] = None
+    data_adocao_ifrs: Optional[date] = None
 
 # Companies CRUD (DB)
 @app.get("/companies", response_model=List[Company])

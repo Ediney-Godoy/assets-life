@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Date
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -20,6 +20,7 @@ class Company(Base):
     division = Column(String(255), nullable=True)
     state_registration = Column(String(64), nullable=True)
     status = Column(String(32), nullable=False)  # Ativo | Inativo
+    data_adocao_ifrs = Column(Date, nullable=True)
 
 from sqlalchemy import Date, Text, ForeignKey, Enum as SAEnum, DateTime, func, Numeric, Boolean
 from sqlalchemy.orm import relationship

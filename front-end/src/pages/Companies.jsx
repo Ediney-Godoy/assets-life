@@ -34,6 +34,7 @@ export default function CompaniesPage() {
     division: '',
     state_registration: '',
     status: 'Ativo',
+    data_adocao_ifrs: '',
   });
 
   const load = React.useCallback(() => {
@@ -52,6 +53,7 @@ export default function CompaniesPage() {
     setForm({
       name: '', cnpj: '', branch_type: 'Matriz', street: '', district: '', city: '', state: '',
       cep: '', phone: '', email: '', division: '', state_registration: '', status: 'Ativo',
+      data_adocao_ifrs: '',
     });
     setErrors({});
   };
@@ -76,11 +78,12 @@ export default function CompaniesPage() {
       const v = validate();
       setErrors(v);
       if (Object.keys(v).length) { toast.error(t('required_fields')); return; }
+      const payload = { ...form, data_adocao_ifrs: form.data_adocao_ifrs || null };
       if (editingId) {
-        await updateCompany(editingId, form);
+        await updateCompany(editingId, payload);
         toast.success(t('updated_successfully'));
       } else {
-        await createCompany(form);
+        await createCompany(payload);
         toast.success(t('created_successfully'));
       }
       resetForm();
@@ -98,6 +101,7 @@ export default function CompaniesPage() {
       name: c.name || '', cnpj: c.cnpj || '', branch_type: c.branch_type || 'Matriz', street: c.street || '',
       district: c.district || '', city: c.city || '', state: c.state || '', cep: c.cep || '', phone: c.phone || '',
       email: c.email || '', division: c.division || '', state_registration: c.state_registration || '', status: c.status || 'Ativo',
+      data_adocao_ifrs: c.data_adocao_ifrs || '',
     });
     setErrors({});
   };
@@ -168,6 +172,7 @@ export default function CompaniesPage() {
               </Select>
               <Input label={t('division')} name="division" value={form.division} onChange={onChange} />
               <Input label={t('state_registration')} name="state_registration" value={form.state_registration} onChange={onChange} />
+              <Input label={t('ifrs_adoption_date') || 'Data de adoção IFRS'} name="data_adocao_ifrs" type="date" value={form.data_adocao_ifrs} onChange={onChange} />
             </div>
           </TabPanel>
 
