@@ -31,7 +31,7 @@ function deltaVidaUtil(aAtual, mAtual, aNova, mNova) {
 }
 
 export default function RelatoriosRVUView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [filters, setFilters] = useState({ empresa_id: '', periodo_id: '', periodo_inicio: '', periodo_fim: '', status: 'Todos' });
   const [dynamicFilters, setDynamicFilters] = useState({ centro_custo: '', valor_min: '', valor_max: '', ug: '', classe: '', revisor: '' });
   const [filterType, setFilterType] = useState('todos');
@@ -234,7 +234,7 @@ export default function RelatoriosRVUView() {
     { key: 'data_fim_revisada', header: t('col_revised_end_date'), render: (v) => formatDateBR(v) },
     { key: 'revisor', header: t('reviewer_label') },
     { key: 'status', header: t('status') },
-  ]), []);
+  ]), [i18n.language, t]);
 
   const uniqueCCs = useMemo(() => {
     const vals = Array.from(new Set(rows.map((i) => i.centro_custo).filter(Boolean)));

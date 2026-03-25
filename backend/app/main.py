@@ -220,25 +220,37 @@ def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)
     key = identifier.lower()
     la = login_attempts.get(key)
     now = datetime.utcnow()
-    if la and la.get("blocked_until") and la["blocked_until"] > now:
-        raise HTTPException(status_code=403, detail="Usuário temporariamente bloqueado. Tente novamente mais tarde.")
-
-    # Identificar por email ou nome de usuário
-    if "@" in identifier:
-        user = db.query(UsuarioModel).filter(UsuarioModel.email == identifier).first()
-    else:
-        user = db.query(UsuarioModel).filter(UsuarioModel.nome_usuario == identifier).first()
-
     client_ip = request.client.host if request.client else None
+    is_local_ip = False
+    try:
+        if client_ip:
+            s = str(client_ip)
+            is_local_ip = s == "127.0.0.1" or s == "::1" or s.startswith("192.168.") or s.startswith("10.") or s.startswith("172.")
+    except Exception:
+        is_local_ip = False
+    if la and la.get("blocked_until") and la["blocked_until"] > now:
+        if is_local_ip:
+            la["count"] = 0
+            la["blocked_until"] = None
+            login_attempts[key] = la
+        else:
+            raise HTTPException(status_code=403, detail="Usuário temporariamente bloqueado. Tente novamente mais tarde.")
+
+    # Identificar por email ou nome de usuário (case-insensitive)
+    if "@" in identifier:
+        user = db.query(UsuarioModel).filter(sa.func.lower(UsuarioModel.email) == key).first()
+    else:
+        user = db.query(UsuarioModel).filter(sa.func.lower(UsuarioModel.nome_usuario) == key).first()
 
     if not user or not bcrypt.checkpw(payload.senha.encode("utf-8"), (user.senha_hash or "").encode("utf-8")):
         # Atualizar tentativas
         if not la:
             la = {"count": 0, "blocked_until": None}
-        la["count"] = la.get("count", 0) + 1
-        if la["count"] >= 3:
-            la["blocked_until"] = now + timedelta(minutes=15)
-        login_attempts[key] = la
+        if not is_local_ip:
+            la["count"] = la.get("count", 0) + 1
+            if la["count"] >= 3:
+                la["blocked_until"] = now + timedelta(minutes=15)
+            login_attempts[key] = la
 
         # Auditoria (falha)
         try:
@@ -415,7 +427,7 @@ def auth_me_permissions(current_user: UsuarioModel = Depends(get_current_user), 
 
  # (get_db moved above to avoid NameError during Depends evaluation)
 
-# @app.on_event("startup")
+@app.on_event("startup")
 def on_startup():
     # Ensure tables exist for development environments
     if ALLOW_DDL:
@@ -429,6 +441,7 @@ def on_startup():
         try:
             with engine.connect() as conn:
                 conn.execute(sa.text("ALTER TABLE cronogramas_tarefas ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'Tarefa'"))
+                conn.execute(sa.text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS data_adocao_ifrs DATE"))
                 conn.execute(sa.text(
                     """
                     CREATE TABLE IF NOT EXISTS cronogramas_tarefas_evidencias (
@@ -454,6 +467,7 @@ def on_startup():
     try:
         with engine.connect() as conn:
             conn.execute(sa.text("ALTER TABLE cronogramas_tarefas ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'Tarefa'"))
+            conn.execute(sa.text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS data_adocao_ifrs DATE"))
             conn.execute(sa.text(
                 """
                 CREATE TABLE IF NOT EXISTS cronogramas_tarefas_evidencias (
@@ -535,7 +549,11 @@ def on_startup():
     try:
         print("Main: Ensuring admin user...", flush=True)
         db = SessionLocal()
-        exists = db.query(UsuarioModel.id).limit(1).first()
+        admin_username = os.getenv("DEFAULT_ADMIN_USERNAME", "admin")
+        admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@local")
+        exists = db.query(UsuarioModel.id).filter(
+            (UsuarioModel.nome_usuario == admin_username) | (UsuarioModel.email == admin_email)
+        ).first()
         if not exists:
             pwd = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
             senha_hash = bcrypt.hashpw(pwd.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -545,13 +563,52 @@ def on_startup():
             u = UsuarioModel(
                 codigo=codigo,
                 nome_completo="Administrador",
-                email=os.getenv("DEFAULT_ADMIN_EMAIL", "admin@local"),
+                email=admin_email,
                 senha_hash=senha_hash,
                 cpf=os.getenv("DEFAULT_ADMIN_CPF", "00000000000"),
-                nome_usuario=os.getenv("DEFAULT_ADMIN_USERNAME", "admin"),
+                nome_usuario=admin_username,
                 status="Ativo",
             )
             db.add(u)
+            db.commit()
+        admin_user = db.query(UsuarioModel).filter(
+            (sa.func.lower(UsuarioModel.nome_usuario) == admin_username.lower())
+            | (sa.func.lower(UsuarioModel.email) == admin_email.lower())
+        ).first()
+        if admin_user:
+            admin_group = db.query(GrupoPermissaoModel).filter(sa.func.lower(GrupoPermissaoModel.nome).like("%admin%")).first()
+            if not admin_group:
+                admin_group = GrupoPermissaoModel(nome="Administradores", descricao="Acesso total")
+                db.add(admin_group)
+                db.flush()
+
+            if not db.query(GrupoUsuarioModel).filter(
+                GrupoUsuarioModel.grupo_id == admin_group.id,
+                GrupoUsuarioModel.usuario_id == admin_user.id,
+            ).first():
+                db.add(GrupoUsuarioModel(grupo_id=admin_group.id, usuario_id=admin_user.id))
+
+            trans_ids = [row[0] for row in db.query(TransacaoModel.id).order_by(TransacaoModel.id).all()]
+            existing_trans = {
+                row[0]
+                for row in db.query(GrupoTransacaoModel.transacao_id).filter(GrupoTransacaoModel.grupo_id == admin_group.id).all()
+            }
+            for tid in trans_ids:
+                if tid not in existing_trans:
+                    db.add(GrupoTransacaoModel(grupo_id=admin_group.id, transacao_id=tid))
+
+            company_ids = [row[0] for row in db.query(CompanyModel.id).order_by(CompanyModel.id).all()]
+            existing_companies = {
+                row[0]
+                for row in db.query(GrupoEmpresaModel.empresa_id).filter(GrupoEmpresaModel.grupo_id == admin_group.id).all()
+            }
+            for cid in company_ids:
+                if cid not in existing_companies:
+                    db.add(GrupoEmpresaModel(grupo_id=admin_group.id, empresa_id=cid))
+
+            if admin_user.empresa_id is None and company_ids:
+                admin_user.empresa_id = company_ids[0]
+
             db.commit()
     except Exception as e:
         import traceback

@@ -233,6 +233,7 @@ def _data_fim(it) -> date | None:
 
 @router.get('/resumo')
 def resumo(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int | None = None, revisor_id: int | None = None,
+           periodo_id: int | None = None,
            periodo_inicio: date | None = None, periodo_fim: date | None = None, status: str | None = None,
            current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):
     allowed = get_allowed_company_ids(db, current_user)
@@ -243,12 +244,45 @@ def resumo(empresa_id: int | None = None, ug_id: int | None = None, classe_id: i
         'ug_id': ug_id,
         'classe_id': classe_id,
         'revisor_id': revisor_id,
+        'periodo_id': periodo_id,
         'periodo_inicio': periodo_inicio,
         'periodo_fim': periodo_fim,
         'status': status,
     }
     q = _filters_query(db, params, allowed)
     items = q.all()
+    item_ids = [getattr(it, 'id', None) for it in items if getattr(it, 'id', None) is not None]
+    periodo_ids = {getattr(it, 'periodo_id', None) for it in items if getattr(it, 'periodo_id', None) is not None}
+
+    created_by_ids = {it.criado_por for it in items if getattr(it, 'criado_por', None)}
+    deleg_map: dict[tuple[int, int], int] = {}
+    if item_ids and periodo_ids:
+        deleg_q = db.query(
+            RevisaoDelegacaoModel.ativo_id,
+            RevisaoDelegacaoModel.periodo_id,
+            RevisaoDelegacaoModel.revisor_id,
+        ).filter(
+            RevisaoDelegacaoModel.status == 'Ativo',
+            RevisaoDelegacaoModel.ativo_id.in_(item_ids),
+            RevisaoDelegacaoModel.periodo_id.in_(list(periodo_ids)),
+        )
+        for ativo_id, pid, rid in deleg_q.all():
+            if ativo_id is None or pid is None or rid is None:
+                continue
+            key = (int(ativo_id), int(pid))
+            if key not in deleg_map:
+                deleg_map[key] = int(rid)
+
+    reviewer_ids = set(deleg_map.values())
+    user_ids = set(created_by_ids) | reviewer_ids
+    users_map: dict[int, str] = {}
+    if user_ids:
+        users = db.query(UsuarioModel).filter(UsuarioModel.id.in_(list(user_ids))).all()
+        for u in users:
+            name = getattr(u, 'nome_completo', None) or getattr(u, 'name', None) or getattr(u, 'username', None) or getattr(u, 'email', None)
+            if name:
+                users_map[int(u.id)] = str(name)
+
     data = []
     for it in items:
         # Conversões e cálculos de vida útil esperados pelo frontend
@@ -260,14 +294,14 @@ def resumo(empresa_id: int | None = None, ug_id: int | None = None, classe_id: i
         revisada_total = it.vida_util_revisada or 0
         revisada_anos = (revisada_total // 12) if revisada_total else 0
         revisada_meses = (revisada_total % 12) if revisada_total else 0
-        # Revisor (best-effort): usa criado_por se existir
-        revisor_nome = None
-        try:
-            if it.criado_por:
-                u = db.query(UsuarioModel).filter(UsuarioModel.id == it.criado_por).first()
-                revisor_nome = getattr(u, 'nome_completo', None) if u else None
-        except Exception:
-            revisor_nome = None
+        created_by = getattr(it, 'criado_por', None)
+        revisor_nome = users_map.get(int(created_by)) if created_by else None
+        if not revisor_nome:
+            rid = deleg_map.get((int(it.id), int(it.periodo_id))) if getattr(it, 'id', None) is not None and getattr(it, 'periodo_id', None) is not None else None
+            if rid:
+                revisor_nome = users_map.get(int(rid))
+
+        fim_revisado = _data_fim(it)
         data.append({
             'numero_imobilizado': getattr(it, 'numero_imobilizado', None),
             'sub_numero': getattr(it, 'sub_numero', None),
@@ -282,7 +316,7 @@ def resumo(empresa_id: int | None = None, ug_id: int | None = None, classe_id: i
             'vida_util_revisada_meses': revisada_meses,
             'data_inicio': getattr(it, 'data_inicio_depreciacao', None),
             'data_fim_atual': getattr(it, 'data_fim_depreciacao', None),
-            'data_fim_revisada': getattr(it, 'data_fim_revisada', None),
+            'data_fim_revisada': fim_revisado,
             'revisor': revisor_nome,
             'status': getattr(it, 'status', None),
         })

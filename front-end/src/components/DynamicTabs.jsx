@@ -52,7 +52,7 @@ export default function DynamicTabs({ initialTabs, hideBody = false, renderTabCo
   const getTitleFromPath = React.useCallback((path) => {
     const map = {
       '/dashboard': t('nav_dashboard') || 'Dashboard',
-      '/cadastros': t('nav_registrations') || 'Cadastros',
+      '/cadastros': t('nav_registrations') || 'Controles Internos',
       '/companies': 'Empresas',
       '/employees': 'Colaboradores',
       '/ugs': 'Unidades Gerenciais',

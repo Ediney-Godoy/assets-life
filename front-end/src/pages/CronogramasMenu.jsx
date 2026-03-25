@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Clock, BarChart3, UserCheck } from 'lucide-react';
+import { Clock, BarChart3, UserCheck, History } from 'lucide-react';
 import { authMePermissions } from '../apiClient';
 
 export default function CronogramasMenu() {
@@ -40,6 +40,8 @@ export default function CronogramasMenu() {
     if (path === '/reviews/cronogramas' && allowed.has('/reviews/cronogramas')) return true;
     if (path === '/simulador/depreciacao' && allowed.has('/simulador/depreciacao')) return true;
     if (path === '/supervisao/rvu' && allowed.has('/supervisao/rvu')) return true;
+    // acesso à página de Ativos (para abrir a Linha do Tempo por ativo)
+    if (path === '/assets' && allowed.has('/assets')) return true;
 
     return false;
   };
@@ -90,6 +92,30 @@ export default function CronogramasMenu() {
                 <div className="font-semibold text-slate-900 dark:text-slate-100">{t('simulator_menu_title', 'Simulador de Depreciação')}</div>
                 <div className="text-sm text-slate-600 dark:text-slate-300">
                   {t('simulator_menu_subtitle', 'Compare cenários de depreciação original x revisada.')}
+                </div>
+              </div>
+            </div>
+          </button>
+        )}
+
+        {(
+          <button
+            type="button"
+            onClick={() => navigate('/linha-do-tempo')}
+            className="group text-left w-full rounded-xl shadow-card border p-4 hover:shadow-md transition-colors bg-amber-50/60 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 hover:border-amber-200 dark:hover:border-amber-800"
+            aria-label={t('timeline_menu_title', 'Linha do Tempo')}
+            title={t('timeline_menu_title', 'Linha do Tempo')}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                <History size={22} />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">
+                  {t('timeline_menu_title', 'Linha do Tempo')}
+                </div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">
+                  {t('timeline_menu_subtitle', 'Veja a linha do tempo de vida útil por ativo')}
                 </div>
               </div>
             </div>

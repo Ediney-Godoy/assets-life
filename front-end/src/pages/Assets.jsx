@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus, History } from 'lucide-react';
 import { 
   getClassesContabeis, 
   getManagementUnits, 
   getCostCenters,
   getAssets,
+  getAssetLinhaDoTempoRVU,
   createAsset,
   updateAsset,
   deleteAsset
@@ -17,6 +18,10 @@ export default function AssetsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timeline, setTimeline] = useState(null);
+  const [timelineAsset, setTimelineAsset] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -110,6 +115,29 @@ export default function AssetsPage() {
       console.error('Error deleting asset:', error);
       toast.error(t('error_deleting') || 'Erro ao excluir ativo');
     }
+  };
+
+  const openTimeline = async (asset) => {
+    try {
+      setTimelineAsset(asset);
+      setShowTimeline(true);
+      setTimelineLoading(true);
+      setTimeline(null);
+      const data = await getAssetLinhaDoTempoRVU(asset.id);
+      setTimeline(data);
+    } catch (error) {
+      console.error('Error loading timeline:', error);
+      toast.error(t('error_loading_data') || 'Erro ao carregar dados');
+      setShowTimeline(false);
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
+
+  const closeTimeline = () => {
+    setShowTimeline(false);
+    setTimeline(null);
+    setTimelineAsset(null);
   };
 
   const openNewModal = () => {
@@ -217,6 +245,13 @@ export default function AssetsPage() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <button
+                        onClick={() => openTimeline(item)}
+                        className="p-1 text-slate-700 hover:bg-slate-100 rounded dark:text-slate-200 dark:hover:bg-slate-700/60 transition-colors"
+                        title={t('timeline') || 'Linha do tempo'}
+                      >
+                        <History size={16} />
+                      </button>
+                      <button
                         onClick={() => handleEdit(item)}
                         className="p-1 text-blue-600 hover:bg-blue-50 rounded dark:hover:bg-blue-900/20 transition-colors"
                         title={t('edit') || 'Editar'}
@@ -238,6 +273,82 @@ export default function AssetsPage() {
           </table>
         )}
       </div>
+
+      {showTimeline && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center gap-3">
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white truncate">
+                  {t('timeline') || 'Linha do tempo'}
+                </h2>
+                <div className="text-sm text-slate-600 dark:text-slate-300 truncate">
+                  {timelineAsset ? `${timelineAsset.numero} • ${timelineAsset.descricao}` : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeTimeline}
+                className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {timelineLoading && (
+                <div className="text-slate-500">{t('backend_checking') || 'Carregando...'}</div>
+              )}
+
+              {!timelineLoading && timeline && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                      <div className="text-xs text-slate-500">{t('incorporation_date') || 'Data de incorporação'}</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">
+                        {timeline.asset?.data_incorporacao ? String(timeline.asset.data_incorporacao).slice(0, 10) : '—'}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                      <div className="text-xs text-slate-500">{t('ifrs_adoption_date') || 'Data de adoção IFRS'}</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">
+                        {timeline.empresa?.data_adocao_ifrs ? String(timeline.empresa.data_adocao_ifrs).slice(0, 10) : '—'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <table className="w-full text-left text-sm text-slate-700 dark:text-slate-200">
+                      <thead className="bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 uppercase font-medium">
+                        <tr>
+                          <th className="px-3 py-2">{t('year') || 'Ano'}</th>
+                          <th className="px-3 py-2">{t('phase') || 'Fase'}</th>
+                          <th className="px-3 py-2">{t('change') || 'Incremento'}</th>
+                          <th className="px-3 py-2">{t('source') || 'Origem'}</th>
+                          <th className="px-3 py-2">{t('review_end_date') || 'Data fim revisada'}</th>
+                          <th className="px-3 py-2">{t('useful_life_months') || 'Vida útil (m)'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(timeline.linha_do_tempo || []).map((row) => (
+                          <tr key={row.ano} className="border-t border-slate-100 dark:border-slate-700">
+                            <td className="px-3 py-2">{row.ano}</td>
+                            <td className="px-3 py-2">{row.fase === 'pre_ifrs' ? (t('pre_ifrs') || 'Pré-IFRS') : (t('post_ifrs') || 'Pós-IFRS')}</td>
+                            <td className="px-3 py-2">{row.incremento}</td>
+                            <td className="px-3 py-2">{row.origem === 'revisoes_itens' ? (t('revisions') || 'Revisões') : (t('assumed') || 'Assumido')}</td>
+                            <td className="px-3 py-2">{row.data_fim_revisada ? String(row.data_fim_revisada).slice(0, 10) : '—'}</td>
+                            <td className="px-3 py-2">{row.vida_util_revisada_meses ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (

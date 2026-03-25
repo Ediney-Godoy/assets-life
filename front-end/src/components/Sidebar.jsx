@@ -27,7 +27,7 @@ export default function Sidebar() {
 
   const menu = [
     { to: '/dashboard', label: tt('nav_dashboard', 'Dashboard'), icon: LayoutDashboard },
-    { to: '/cadastros', label: tt('nav_registrations', 'Cadastros'), icon: SquareStack },
+    { to: '/cadastros', label: tt('nav_registrations', 'Controles Internos'), icon: SquareStack },
     { to: '/reviews', label: tt('nav_reviews', 'Revisões'), icon: ClipboardList },
     { to: '/reviews/cronogramas', label: tt('nav_tools', 'Ferramentas'), icon: Clock },
     { to: '/reports', label: tt('nav_reports', 'Relatórios'), icon: BarChart3 },

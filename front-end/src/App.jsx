@@ -50,6 +50,7 @@ import PermissionsPage from './pages/Permissions';
 import AssetSpeciesPage from './pages/AssetSpecies';
 import ClassesContabeisPage from './pages/ClassesContabeis';
 import AssetsPage from './pages/Assets';
+import LinhaDoTempoPage from './pages/LinhaDoTempo';
 import ContasContabeisPage from './pages/ContasContabeis';
 import ReportUsefulLifePage from './pages/ReportUsefulLife';
 import ReportsMenu from './pages/ReportsMenu';
@@ -224,6 +225,7 @@ export default function App() {
       <Route path="/ugs" element={<RequireAuth><ManagementUnitsPage /></RequireAuth>} />
       <Route path="/tabs-demo" element={<RequireAuth><TabsDemo /></RequireAuth>} />
       <Route path="/assets" element={<RequireAuth><RequireCompany><AssetsPage /></RequireCompany></RequireAuth>} />
+      <Route path="/linha-do-tempo" element={<RequireAuth><RequireCompany><LinhaDoTempoPage /></RequireCompany></RequireAuth>} />
       <Route path="/asset-species" element={<RequireAuth><AssetSpeciesPage /></RequireAuth>} />
       <Route path="/classes-contabeis" element={<RequireAuth><RequireCompany><ClassesContabeisPage /></RequireCompany></RequireAuth>} />
       <Route path="/contas-contabeis" element={<RequireAuth><RequireCompany><ContasContabeisPage /></RequireCompany></RequireAuth>} />

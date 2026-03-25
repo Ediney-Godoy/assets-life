@@ -101,6 +101,10 @@ if (typeof window !== 'undefined') {
       ACTIVE_BASE = null;
       debugLog('[apiClient] Cache limpo! ACTIVE_BASE resetado.');
     }
+    else if (!IS_HTTPS && cachedBase && /:8001$/i.test(String(cachedBase))) {
+      delete window.__ASSETS_API_BASE;
+      ACTIVE_BASE = null;
+    }
     // Restaura ACTIVE_BASE do cache apenas se não foi limpo e não é URL antiga
     else if (cachedBase && !OLD_URLS.map(normalizeBaseUrl).includes(cachedBase)) {
       ACTIVE_BASE = cachedBase;
@@ -137,7 +141,6 @@ const BASE_CANDIDATES = (() => {
   if (IS_HTTPS) list.push(...DEFAULT_KOYEB_BASES);
   // Em desenvolvimento (HTTP), permitir fallback ao host local
   if (!IS_HTTPS && HOST_BASE) list.push(HOST_BASE);
-  if (!IS_HTTPS && HOST_BASE_ALT_PORT) list.push(HOST_BASE_ALT_PORT);
   const uniq = [];
   const seen = new Set();
   for (const b of list.filter(Boolean)) {
@@ -153,7 +156,19 @@ const SAFE_CANDIDATES = IS_HTTPS
 // Tenta resolver a URL base da API
 // Retorna a URL base ativa ou lança erro
 async function resolveBase() {
-  if (ACTIVE_BASE) return ACTIVE_BASE;
+  if (ACTIVE_BASE) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`${ACTIVE_BASE}/version`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+      clearTimeout(timeoutId);
+      if (res.ok) return ACTIVE_BASE;
+    } catch {}
+    try {
+      if (typeof window !== 'undefined') delete window.__ASSETS_API_BASE;
+    } catch {}
+    ACTIVE_BASE = null;
+  }
 
   // Detecta se estamos usando uma URL de produção (Koyeb, Render, etc.)
   // para evitar health check rigoroso que falha em cold starts
@@ -545,6 +560,16 @@ export async function getAssets(params = {}) {
 
 export async function getAsset(id) {
   return request(`/assets/${id}`);
+}
+
+export async function getAssetLinhaDoTempoRVU(id, params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  return request(`/assets/${id}/linha-do-tempo-rvu${q ? `?${q}` : ''}`, { timeout: 30000 });
+}
+
+export async function getLinhaDoTempoRVUPorNumero(params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+  return request(`/assets/linha-do-tempo-rvu${q ? `?${q}` : ''}`, { timeout: 30000 });
 }
 
 export async function createAsset(payload) {
