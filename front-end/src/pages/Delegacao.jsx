@@ -309,7 +309,7 @@ export default function DelegacaoPage() {
       list = list.filter((d) =>
         (d.numero_imobilizado || '').toLowerCase().includes(q) ||
         (d.descricao || '').toLowerCase().includes(q) ||
-        (d.revisor_nome || '').toLowerCase().includes(q)
+        (d.revisor_nome || d.usuario_nome || '').toLowerCase().includes(q)
       );
     }
     return list;
@@ -943,7 +943,7 @@ export default function DelegacaoPage() {
                           <td className="px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d?.sub_numero ?? itemById.get(d.ativo_id)?.sub_numero}</td>
                           <td className="px-3 py-2.5 truncate max-w-[250px]" style={{ color: 'var(--text-secondary)' }} title={d.descricao}>{d.descricao}</td>
                           <td className="hidden lg:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d?.classe ?? itemById.get(d.ativo_id)?.classe}</td>
-                          <td className="hidden xl:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d.revisor_nome || d.revisor_id}</td>
+                          <td className="hidden xl:table-cell px-3 py-2.5" style={{ color: 'var(--text-secondary)' }}>{d.revisor_nome || d.usuario_nome || d.revisor_id}</td>
                           <td className="px-3 py-2.5 text-right tabular-nums font-medium" style={{ color: 'var(--text-primary)' }}>
                             {Number(itemById.get(d.ativo_id)?.valor_contabil ?? d.valor_contabil ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>

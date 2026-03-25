@@ -20,8 +20,16 @@ export default function DashboardPage({ registrationsOnly }) {
   const [metrics, setMetrics] = React.useState({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
   const [chartData, setChartData] = React.useState([]);
   const [incrementChartData, setIncrementChartData] = React.useState([]);
+  const [increaseReasonsChartData, setIncreaseReasonsChartData] = React.useState([]);
+  const [decreaseReasonsChartData, setDecreaseReasonsChartData] = React.useState([]);
+  const [keepReasonsChartData, setKeepReasonsChartData] = React.useState([]);
   const [rotationIndex, setRotationIndex] = React.useState(0);
   const [filterPanelOpen, setFilterPanelOpen] = React.useState(false);
+
+  const chartSequence = React.useMemo(
+    () => ['assignments', 'evolution', 'adjusted', 'increment', 'reasons_increase', 'reasons_decrease', 'reasons_keep'],
+    [],
+  );
 
   React.useEffect(() => {
     if (registrationsOnly) return;
@@ -137,7 +145,14 @@ export default function DashboardPage({ registrationsOnly }) {
             // Conta delegações considerando todos os itens (principais e incorporações), consistente com os outros gráficos
             const isValid = allReviewItems.some((it) => it.id === d.ativo_id);
             if (isValid) {
-              const name = d.revisor_nome || `ID ${d.revisor_id}`;
+              const name =
+                d.revisor_nome ||
+                d.usuario_nome ||
+                d.revisor_name ||
+                d.reviewer_name ||
+                d?.revisor?.nome_completo ||
+                d?.revisor?.full_name ||
+                `ID ${d.revisor_id}`;
               byUser[name] = (byUser[name] || 0) + 1;
             }
           });
@@ -179,22 +194,81 @@ export default function DashboardPage({ registrationsOnly }) {
           } else {
             setIncrementChartData([]);
           }
+
+          const reasonCountsIncrease = {};
+          const reasonCountsDecrease = {};
+          const reasonCountsKeep = {};
+          const incrementLabels = new Set([
+            'Acréscimo',
+            'Decréscimo',
+            'Manter',
+            'Aumentar',
+            'Diminuir',
+            t('increment_increase'),
+            t('increment_decrease'),
+            t('increment_keep'),
+          ]);
+          reviewedList.forEach((item) => {
+            if (!item.alterado && !String(item.justificativa || '').trim() && !String(item.condicao_fisica || '').trim()) {
+              return;
+            }
+
+            let reason = String(item.motivo ?? item.auxiliar2 ?? item.justificativa ?? '').trim() || 'Sem motivo';
+            if (incrementLabels.has(reason)) {
+              reason = String(item.justificativa ?? '').trim() || 'Sem motivo';
+            }
+
+            let bucket = 'keep';
+            if (item.alterado && item.data_fim_revisada && item.data_inicio_depreciacao && item.data_fim_depreciacao) {
+              const start = new Date(item.data_inicio_depreciacao);
+              const endOriginal = new Date(item.data_fim_depreciacao);
+              const endRevised = new Date(item.data_fim_revisada);
+              const getMonths = (d1, d2) => (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+              const originalMonths = getMonths(start, endOriginal);
+              const revisedMonths = getMonths(start, endRevised);
+              if (revisedMonths > originalMonths) bucket = 'inc';
+              else if (revisedMonths < originalMonths) bucket = 'dec';
+              else bucket = 'keep';
+            }
+
+            if (bucket === 'inc') reasonCountsIncrease[reason] = (reasonCountsIncrease[reason] || 0) + 1;
+            else if (bucket === 'dec') reasonCountsDecrease[reason] = (reasonCountsDecrease[reason] || 0) + 1;
+            else reasonCountsKeep[reason] = (reasonCountsKeep[reason] || 0) + 1;
+          });
+
+          const toPercentSeries = (obj) => {
+            const entries = Object.entries(obj);
+            const totalCount = entries.reduce((sum, [, count]) => sum + (Number(count) || 0), 0);
+            return entries
+              .map(([name, count]) => {
+                const pct = totalCount > 0 ? ((Number(count) || 0) / totalCount) * 100 : 0;
+                return { name, y: Number(pct.toFixed(1)) };
+              })
+              .sort((a, b) => (b.y || 0) - (a.y || 0));
+          };
+
+          setIncreaseReasonsChartData(toPercentSeries(reasonCountsIncrease));
+          setDecreaseReasonsChartData(toPercentSeries(reasonCountsDecrease));
+          setKeepReasonsChartData(toPercentSeries(reasonCountsKeep));
       } catch (err) {
         console.error(err);
         setChartData([]);
           setIncrementChartData([]);
+          setIncreaseReasonsChartData([]);
+          setDecreaseReasonsChartData([]);
+          setKeepReasonsChartData([]);
           setMetrics({ totalItems: 0, assignedItems: 0, reviewedItems: 0, reviewedPct: 0, fullyDepreciated: 0, adjustedItems: 0 });
       }
     };
     init();
-  }, [registrationsOnly, companyId, selectedPeriodId]);
+  }, [registrationsOnly, companyId, selectedPeriodId, t]);
 
   React.useEffect(() => {
     const id = setInterval(() => {
-      setRotationIndex((i) => (i + 1) % 3);
-    }, 15000);
+      setRotationIndex((i) => (i + 1) % chartSequence.length);
+    }, 20000);
     return () => clearInterval(id);
-  }, []);
+  }, [chartSequence.length]);
 
   const cards = [
     { title: t('companies_title'), subtitle: t('companies_subtitle'), icon: Building2, action: () => navigate('/companies') },
@@ -232,13 +306,57 @@ export default function DashboardPage({ registrationsOnly }) {
   }, [metrics, t]);
 
   const renderRotatingChart = (slotOffset = 0) => {
-    const sequence = ['assignments', 'evolution', 'adjusted', 'increment'];
-    const idx = (rotationIndex + slotOffset) % sequence.length;
-    const type = sequence[idx];
+    const idx = (rotationIndex + slotOffset) % chartSequence.length;
+    const type = chartSequence[idx];
 
     if (type === 'assignments') {
       return chartData.length > 0 ? (
         <BarChart data={chartData} title={t('dashboard_chart_title')} horizontal={true} />
+      ) : (
+        <div className="card h-full flex items-center justify-center p-4">
+          <div style={{ color: 'var(--text-tertiary)' }}>{t('dashboard_no_data')}</div>
+        </div>
+      );
+    }
+    if (type === 'reasons_increase') {
+      return increaseReasonsChartData.length > 0 ? (
+        <BarChart
+          data={increaseReasonsChartData}
+          title={`Motivos - ${t('increment_increase')}`}
+          horizontal={true}
+          valueIsPercent={true}
+          percentDecimals={1}
+        />
+      ) : (
+        <div className="card h-full flex items-center justify-center p-4">
+          <div style={{ color: 'var(--text-tertiary)' }}>{t('dashboard_no_data')}</div>
+        </div>
+      );
+    }
+    if (type === 'reasons_decrease') {
+      return decreaseReasonsChartData.length > 0 ? (
+        <BarChart
+          data={decreaseReasonsChartData}
+          title={`Motivos - ${t('increment_decrease')}`}
+          horizontal={true}
+          valueIsPercent={true}
+          percentDecimals={1}
+        />
+      ) : (
+        <div className="card h-full flex items-center justify-center p-4">
+          <div style={{ color: 'var(--text-tertiary)' }}>{t('dashboard_no_data')}</div>
+        </div>
+      );
+    }
+    if (type === 'reasons_keep') {
+      return keepReasonsChartData.length > 0 ? (
+        <BarChart
+          data={keepReasonsChartData}
+          title={`Motivos - ${t('increment_keep')}`}
+          horizontal={true}
+          valueIsPercent={true}
+          percentDecimals={1}
+        />
       ) : (
         <div className="card h-full flex items-center justify-center p-4">
           <div style={{ color: 'var(--text-tertiary)' }}>{t('dashboard_no_data')}</div>

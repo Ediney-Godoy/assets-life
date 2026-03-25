@@ -347,6 +347,8 @@ def listar(
             'revisor_id': getattr(it, 'criado_por', None),
             'condicao_fisica': getattr(it, 'condicao_fisica', None),
             'justificativa': getattr(it, 'justificativa', None),
+            'motivo': getattr(it, 'auxiliar2', None),
+            'incremento': getattr(it, 'auxiliar3', None),
             'data_revisao': getattr(it, 'criado_em', None),
             'status': getattr(it, 'status', None),
             'periodo_id': getattr(it, 'periodo_id', None),

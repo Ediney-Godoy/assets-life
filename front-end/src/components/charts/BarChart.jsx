@@ -9,7 +9,14 @@ import HighchartsReact from 'highcharts-react-official';
  *  - title: string (optional)
  *  - horizontal: boolean (optional) - se true, cria barras horizontais
  */
-export default function BarChart({ data = [], title = 'Gráfico de Barras', horizontal = false, showPercent = false }) {
+export default function BarChart({
+  data = [],
+  title = 'Gráfico de Barras',
+  horizontal = false,
+  showPercent = false,
+  valueIsPercent = false,
+  percentDecimals = 1,
+}) {
   const [isDark, setIsDark] = React.useState(false);
 
   React.useEffect(() => {
@@ -53,17 +60,26 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
     },
     yAxis: {
       title: {
-        text: 'Quantidade',
+        text: valueIsPercent ? '%' : 'Quantidade',
         style: { color: labelColor },
       },
       labels: {
         style: { color: labelColor },
+        formatter: valueIsPercent
+          ? function () {
+              const v = Number(this.value) || 0;
+              return `${v}%`;
+            }
+          : undefined,
       },
       gridLineColor: gridColor,
     },
     tooltip: {
       pointFormatter: function() {
         const y = Number(this.y) || 0;
+        if (valueIsPercent) {
+          return `<b>${y.toFixed(percentDecimals)}%</b>`;
+        }
         if (showPercent && total > 0) {
           const pct = (y / total) * 100;
           return `<b>${y}</b> (${pct.toFixed(1)}%)`;
@@ -83,6 +99,9 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
           enabled: true,
           formatter: function () {
             const y = Number(this.y) || 0;
+            if (valueIsPercent) {
+              return `${y.toFixed(percentDecimals)}%`;
+            }
             if (showPercent && total > 0) {
               const pct = (y / total) * 100;
               return `${y} (${pct.toFixed(1)}%)`;
@@ -99,6 +118,9 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
           enabled: true,
           formatter: function () {
             const y = Number(this.y) || 0;
+            if (valueIsPercent) {
+              return `${y.toFixed(percentDecimals)}%`;
+            }
             if (showPercent && total > 0) {
               const pct = (y / total) * 100;
               return `${y} (${pct.toFixed(1)}%)`;
@@ -115,7 +137,7 @@ export default function BarChart({ data = [], title = 'Gráfico de Barras', hori
     ],
     series: [
       {
-        name: 'Quantidade',
+        name: valueIsPercent ? 'Percentual' : 'Quantidade',
         data: data.map(item => item.y),
       },
     ],
