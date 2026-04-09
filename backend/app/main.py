@@ -512,6 +512,7 @@ def _normalize_int_list(value) -> list[int]:
 def _send_notification_impl(payload: NotificationSendRequest, current_user: UsuarioModel, db: Session):
     _require_notifications_send(db, current_user)
 
+    error_id = str(uuid.uuid4())
     title = (payload.titulo or payload.title or "").strip() or "Notificação"
     message = (payload.mensagem or payload.message or "").strip()
     notify_all = bool(payload.notificar_todos if payload.notificar_todos is not None else payload.notify_all)
@@ -524,6 +525,20 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
     to_emails_raw = payload.to_emails or payload.toEmails or []
     cc_emails = [str(e).strip().lower() for e in (cc_emails_raw or []) if str(e).strip()]
     to_emails = [str(e).strip().lower() for e in (to_emails_raw or []) if str(e).strip()]
+    try:
+        logging.getLogger("uvicorn.error").info(
+            "notifications_send_received error_id=%s notify_all=%s send_email=%s company_ids=%s user_ids=%s cc_user_ids=%s cc_emails=%s to_emails=%s",
+            error_id,
+            1 if notify_all else 0,
+            1 if send_email else 0,
+            len(company_ids),
+            len(user_ids),
+            len(cc_user_ids),
+            len(cc_emails),
+            len(to_emails),
+        )
+    except Exception:
+        pass
 
     allowed_company_ids = set(get_allowed_company_ids(db, current_user))
     if company_ids:
@@ -546,7 +561,7 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
     recipients_ids.discard(int(getattr(current_user, "id", 0) or 0))
 
     if not recipients_ids and not cc_emails and not to_emails:
-        raise HTTPException(status_code=400, detail="Nenhum destinatário selecionado")
+        raise HTTPException(status_code=400, detail=f"Nenhum destinatário selecionado (error_id={error_id})")
 
     notif_id = str(uuid.uuid4())
     email_sent = 0
@@ -568,7 +583,7 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
         for e in to_emails:
             recipient_emails.add(e)
         if not recipient_emails:
-            raise HTTPException(status_code=400, detail="Nenhum destinatário com e-mail válido")
+            raise HTTPException(status_code=400, detail=f"Nenhum destinatário com e-mail válido (error_id={error_id})")
 
         body = (
             f"{title}\n\n{message}\n\n"
