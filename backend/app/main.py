@@ -327,18 +327,25 @@ def _send_email(to: str, subject: str, body: str):
     msg["Subject"] = subject
     msg.set_content(body)
     try:
+        refused = None
         if SMTP_USE_SSL:
             with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
                 if SMTP_USER:
                     server.login(SMTP_USER, SMTP_PASSWORD or "")
-                server.send_message(msg)
+                refused = server.send_message(msg)
         else:
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
                 if SMTP_USE_TLS:
                     server.starttls(context=ssl.create_default_context())
                 if SMTP_USER:
                     server.login(SMTP_USER, SMTP_PASSWORD or "")
-                server.send_message(msg)
+                refused = server.send_message(msg)
+        if refused:
+            try:
+                logging.getLogger("mail").warning("SMTP_recipient_refused to=%s", _mask_email(to or ""))
+            except Exception:
+                pass
+            return False
         try:
             logging.getLogger("mail").info("SMTP_send_ok to=%s", _mask_email(to or ""))
         except Exception:
