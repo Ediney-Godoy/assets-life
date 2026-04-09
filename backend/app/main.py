@@ -35,6 +35,8 @@ from .models import (
     GrupoTransacao as GrupoTransacaoModel,
     GrupoUsuario as GrupoUsuarioModel,
     AuditoriaLog as AuditoriaLogModel,
+    Notificacao as NotificacaoModel,
+    NotificacaoDestinatario as NotificacaoDestinatarioModel,
 )
 from .models import TokenRedefinicao as TokenRedefinicaoModel
 from .models import Cronograma as CronogramaModel, CronogramaTarefa as CronogramaTarefaModel, CronogramaTarefaEvidencia as CronogramaTarefaEvidenciaModel
@@ -519,6 +521,7 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
     send_email = bool(payload.enviar_email if payload.enviar_email is not None else payload.send_email)
 
     company_ids = _normalize_int_list(payload.company_ids or payload.empresas_ids or payload.empresa_ids)
+    period_ids = _normalize_int_list(payload.period_ids or payload.periodos_ids or payload.periodo_ids)
     user_ids = _normalize_int_list(payload.user_ids or payload.usuarios_ids or payload.usuario_ids)
     cc_user_ids = _normalize_int_list(payload.cc_user_ids or payload.cc_usuarios_ids or payload.cc_usuario_ids)
     cc_emails_raw = payload.cc_emails or payload.ccEmails or []
@@ -560,12 +563,60 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
     recipients_ids.update(cc_user_ids)
     recipients_ids.discard(int(getattr(current_user, "id", 0) or 0))
 
+    try:
+        is_admin = bool(is_admin_user(current_user))
+    except Exception:
+        is_admin = False
+    if recipients_ids and not is_admin:
+        rows = (
+            db.query(UsuarioModel.id, UsuarioModel.empresa_id)
+            .filter(UsuarioModel.id.in_(sorted(recipients_ids)))
+            .all()
+        )
+        allowed_set = set(allowed_company_ids or [])
+        filtered = set()
+        for uid, emp_id in rows:
+            if emp_id is None or emp_id in allowed_set:
+                filtered.add(int(uid))
+        recipients_ids = filtered
+
     if not recipients_ids and not cc_emails and not to_emails:
         raise HTTPException(status_code=400, detail=f"Nenhum destinatário selecionado (error_id={error_id})")
 
     notif_id = str(uuid.uuid4())
     email_sent = 0
     email_failed = 0
+
+    try:
+        notif = NotificacaoModel(
+            id=notif_id,
+            titulo=title,
+            mensagem=message,
+            remetente_id=current_user.id,
+            enviar_email=bool(send_email),
+            empresa_ids=json.dumps(company_ids, ensure_ascii=False),
+            periodo_ids=json.dumps(period_ids, ensure_ascii=False),
+        )
+        db.add(notif)
+        for uid in sorted(recipients_ids):
+            db.add(
+                NotificacaoDestinatarioModel(
+                    notificacao_id=notif_id,
+                    usuario_id=int(uid),
+                    status="pendente",
+                )
+            )
+        db.commit()
+    except IntegrityError:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
 
     if send_email:
         if not SMTP_HOST:
@@ -748,12 +799,61 @@ def list_notifications(
     current_user: UsuarioModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _ = (status, q)
     if limit <= 0 or limit > 500:
         limit = 200
     if offset < 0:
         offset = 0
-    return []
+    s = (status or "").strip().lower()
+    if s in {"pending", "pendente"}:
+        s = "pendente"
+    elif s in {"read", "lida", "lido"}:
+        s = "lida"
+    elif s in {"archived", "arquivada", "arquivado"}:
+        s = "arquivada"
+    elif s in {"", "all", "todas", "todos"}:
+        s = ""
+
+    query = (
+        db.query(NotificacaoDestinatarioModel, NotificacaoModel, UsuarioModel)
+        .join(NotificacaoModel, NotificacaoModel.id == NotificacaoDestinatarioModel.notificacao_id)
+        .outerjoin(UsuarioModel, UsuarioModel.id == NotificacaoModel.remetente_id)
+        .filter(NotificacaoDestinatarioModel.usuario_id == current_user.id)
+    )
+    if s:
+        query = query.filter(sa.func.lower(NotificacaoDestinatarioModel.status) == s)
+    if q:
+        qq = f"%{q.strip()}%"
+        query = query.filter(
+            (NotificacaoModel.titulo.ilike(qq)) | (NotificacaoModel.mensagem.ilike(qq))
+        )
+    rows = (
+        query.order_by(NotificacaoModel.criado_em.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    out = []
+    for dest, notif, sender in rows:
+        created_at = None
+        try:
+            created_at = notif.criado_em.isoformat() if getattr(notif, "criado_em", None) else None
+        except Exception:
+            created_at = None
+        out.append(
+            {
+                "id": str(notif.id),
+                "titulo": getattr(notif, "titulo", None),
+                "mensagem": getattr(notif, "mensagem", None),
+                "status": getattr(dest, "status", None) or "pendente",
+                "created_at": created_at,
+                "remetente": getattr(sender, "nome_completo", None) if sender else None,
+                "remetente_id": getattr(notif, "remetente_id", None),
+                "enviar_email": bool(getattr(notif, "enviar_email", False)),
+                "from_me": False,
+            }
+        )
+    return out
 
 
 @app.get("/notificacoes", response_model=List[NotificationItem])
@@ -781,15 +881,60 @@ def list_notifications_sent(
         limit = 200
     if offset < 0:
         offset = 0
-    query = db.query(AuditoriaLogModel).filter(
+    query = (
+        db.query(NotificacaoModel)
+        .filter(NotificacaoModel.remetente_id == current_user.id)
+    )
+    if q:
+        qq = f"%{q.strip()}%"
+        query = query.filter((NotificacaoModel.titulo.ilike(qq)) | (NotificacaoModel.mensagem.ilike(qq)))
+    rows = (
+        query.order_by(NotificacaoModel.criado_em.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    out = []
+    for notif in rows:
+        created_at = None
+        try:
+            created_at = notif.criado_em.isoformat() if getattr(notif, "criado_em", None) else None
+        except Exception:
+            created_at = None
+        dest_count = None
+        try:
+            dest_count = (
+                db.query(sa.func.count(NotificacaoDestinatarioModel.id))
+                .filter(NotificacaoDestinatarioModel.notificacao_id == notif.id)
+                .scalar()
+            )
+        except Exception:
+            dest_count = None
+        out.append(
+            {
+                "id": str(notif.id),
+                "titulo": getattr(notif, "titulo", None),
+                "mensagem": getattr(notif, "mensagem", None),
+                "status": "enviada",
+                "created_at": created_at,
+                "remetente": getattr(current_user, "nome_completo", None),
+                "remetente_id": getattr(current_user, "id", None),
+                "enviar_email": bool(getattr(notif, "enviar_email", False)),
+                "destinatarios": int(dest_count) if dest_count is not None else None,
+                "from_me": True,
+            }
+        )
+    if out:
+        return out
+    query2 = db.query(AuditoriaLogModel).filter(
         AuditoriaLogModel.acao == "NOTIFICACAO_ENVIO",
         AuditoriaLogModel.entidade == "notificacao",
         AuditoriaLogModel.usuario_id == current_user.id,
     )
     if q:
-        query = query.filter(AuditoriaLogModel.detalhes.ilike(f"%{q}%"))
-    rows = query.order_by(AuditoriaLogModel.data_evento.desc()).offset(offset).limit(limit).all()
-    return [_notification_from_audit_row(r, current_user) for r in rows]
+        query2 = query2.filter(AuditoriaLogModel.detalhes.ilike(f"%{q}%"))
+    rows2 = query2.order_by(AuditoriaLogModel.data_evento.desc()).offset(offset).limit(limit).all()
+    return [_notification_from_audit_row(r, current_user) for r in rows2]
 
 
 @app.get("/notificacoes/enviadas", response_model=List[NotificationItem])
@@ -809,10 +954,60 @@ def get_notification_item(
     current_user: UsuarioModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    dest = (
+        db.query(NotificacaoDestinatarioModel)
+        .filter(
+            NotificacaoDestinatarioModel.notificacao_id == notif_id,
+            NotificacaoDestinatarioModel.usuario_id == current_user.id,
+        )
+        .first()
+    )
+    notif = db.query(NotificacaoModel).filter(NotificacaoModel.id == notif_id).first()
+    if dest and notif:
+        sender = None
+        try:
+            if notif.remetente_id is not None:
+                sender = db.query(UsuarioModel).filter(UsuarioModel.id == notif.remetente_id).first()
+        except Exception:
+            sender = None
+        created_at = None
+        try:
+            created_at = notif.criado_em.isoformat() if getattr(notif, "criado_em", None) else None
+        except Exception:
+            created_at = None
+        return {
+            "id": str(notif.id),
+            "titulo": getattr(notif, "titulo", None),
+            "mensagem": getattr(notif, "mensagem", None),
+            "status": getattr(dest, "status", None) or "pendente",
+            "created_at": created_at,
+            "remetente": getattr(sender, "nome_completo", None) if sender else None,
+            "remetente_id": getattr(notif, "remetente_id", None),
+            "enviar_email": bool(getattr(notif, "enviar_email", False)),
+            "from_me": False,
+        }
+    if notif and getattr(notif, "remetente_id", None) == current_user.id:
+        _require_notifications_send(db, current_user)
+        created_at = None
+        try:
+            created_at = notif.criado_em.isoformat() if getattr(notif, "criado_em", None) else None
+        except Exception:
+            created_at = None
+        return {
+            "id": str(notif.id),
+            "titulo": getattr(notif, "titulo", None),
+            "mensagem": getattr(notif, "mensagem", None),
+            "status": "enviada",
+            "created_at": created_at,
+            "remetente": getattr(current_user, "nome_completo", None),
+            "remetente_id": getattr(current_user, "id", None),
+            "enviar_email": bool(getattr(notif, "enviar_email", False)),
+            "from_me": True,
+        }
     row = _find_notification_log(db, notif_id, sender_user_id=current_user.id)
-    if not row:
-        raise HTTPException(status_code=404, detail="Notificação não encontrada")
-    return _notification_from_audit_row(row, current_user)
+    if row:
+        return _notification_from_audit_row(row, current_user)
+    raise HTTPException(status_code=404, detail="Notificação não encontrada")
 
 
 @app.get("/notificacoes/{notif_id}", response_model=NotificationItem)
@@ -830,6 +1025,29 @@ def mark_notification_read(
     current_user: UsuarioModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    dest = (
+        db.query(NotificacaoDestinatarioModel)
+        .filter(
+            NotificacaoDestinatarioModel.notificacao_id == notif_id,
+            NotificacaoDestinatarioModel.usuario_id == current_user.id,
+        )
+        .first()
+    )
+    if dest:
+        try:
+            if str(getattr(dest, "status", "")).lower() != "lida":
+                dest.status = "lida"
+                dest.lida_em = datetime.utcnow()
+                db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        try:
+            return get_notification_item(notif_id, current_user=current_user, db=db)
+        except Exception:
+            return {"ok": True}
     try:
         audit(
             db,
@@ -841,12 +1059,6 @@ def mark_notification_read(
         )
     except Exception:
         pass
-    row = _find_notification_log(db, notif_id, sender_user_id=current_user.id)
-    if row:
-        item = _notification_from_audit_row(row, current_user)
-        item["status"] = "lida"
-        item["read"] = True
-        return item
     return {"ok": True}
 
 
@@ -865,6 +1077,29 @@ def archive_notification_item(
     current_user: UsuarioModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    dest = (
+        db.query(NotificacaoDestinatarioModel)
+        .filter(
+            NotificacaoDestinatarioModel.notificacao_id == notif_id,
+            NotificacaoDestinatarioModel.usuario_id == current_user.id,
+        )
+        .first()
+    )
+    if dest:
+        try:
+            if str(getattr(dest, "status", "")).lower() != "arquivada":
+                dest.status = "arquivada"
+                dest.arquivada_em = datetime.utcnow()
+                db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        try:
+            return get_notification_item(notif_id, current_user=current_user, db=db)
+        except Exception:
+            return {"ok": True}
     try:
         audit(
             db,
@@ -876,12 +1111,6 @@ def archive_notification_item(
         )
     except Exception:
         pass
-    row = _find_notification_log(db, notif_id, sender_user_id=current_user.id)
-    if row:
-        item = _notification_from_audit_row(row, current_user)
-        item["status"] = "arquivada"
-        item["archived"] = True
-        return item
     return {"ok": True}
 
 

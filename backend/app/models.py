@@ -457,3 +457,37 @@ class TokenRedefinicao(Base):
     usado = Column(Boolean, nullable=False, default=False)
 
     usuario = relationship("Usuario", backref="tokens_redefinicao")
+
+
+class Notificacao(Base):
+    __tablename__ = "notificacoes"
+
+    id = Column(String(36), primary_key=True, index=True)
+    titulo = Column(String(255), nullable=False)
+    mensagem = Column(Text, nullable=False)
+    remetente_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
+    enviar_email = Column(Boolean, nullable=False, default=False)
+    empresa_ids = Column(Text, nullable=True)
+    periodo_ids = Column(Text, nullable=True)
+    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+
+    remetente = relationship("Usuario", backref="notificacoes_enviadas")
+
+
+class NotificacaoDestinatario(Base):
+    __tablename__ = "notificacoes_destinatarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    notificacao_id = Column(String(36), ForeignKey("notificacoes.id"), nullable=False, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="pendente", index=True)
+    lida_em = Column(DateTime, nullable=True)
+    arquivada_em = Column(DateTime, nullable=True)
+    criado_em = Column(DateTime, server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("notificacao_id", "usuario_id", name="uq_notificacao_usuario"),
+    )
+
+    notificacao = relationship("Notificacao", backref="destinatarios")
+    usuario = relationship("Usuario", backref="notificacoes_recebidas")
