@@ -440,9 +440,13 @@ class NotificationSendRequest(BaseModel):
     enviar_email: Optional[bool] = None
     remetente_id: Optional[int] = None
     empresas_ids: Optional[List[int]] = None
+    empresa_ids: Optional[List[int]] = None
     periodos_ids: Optional[List[int]] = None
+    periodo_ids: Optional[List[int]] = None
     usuarios_ids: Optional[List[int]] = None
+    usuario_ids: Optional[List[int]] = None
     cc_usuarios_ids: Optional[List[int]] = None
+    cc_usuario_ids: Optional[List[int]] = None
     cc_emails: Optional[List[EmailStr]] = None
     to_emails: Optional[List[EmailStr]] = None
     title: Optional[str] = None
@@ -513,9 +517,9 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
     notify_all = bool(payload.notificar_todos if payload.notificar_todos is not None else payload.notify_all)
     send_email = bool(payload.enviar_email if payload.enviar_email is not None else payload.send_email)
 
-    company_ids = _normalize_int_list(payload.company_ids or payload.empresas_ids)
-    user_ids = _normalize_int_list(payload.user_ids or payload.usuarios_ids)
-    cc_user_ids = _normalize_int_list(payload.cc_user_ids or payload.cc_usuarios_ids)
+    company_ids = _normalize_int_list(payload.company_ids or payload.empresas_ids or payload.empresa_ids)
+    user_ids = _normalize_int_list(payload.user_ids or payload.usuarios_ids or payload.usuario_ids)
+    cc_user_ids = _normalize_int_list(payload.cc_user_ids or payload.cc_usuarios_ids or payload.cc_usuario_ids)
     cc_emails_raw = payload.cc_emails or payload.ccEmails or []
     to_emails_raw = payload.to_emails or payload.toEmails or []
     cc_emails = [str(e).strip().lower() for e in (cc_emails_raw or []) if str(e).strip()]
