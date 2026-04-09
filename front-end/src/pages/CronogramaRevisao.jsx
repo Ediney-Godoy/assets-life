@@ -166,29 +166,33 @@ export default function CronogramaRevisao() {
 
   React.useEffect(() => { loadCronogramas(); }, [loadCronogramas]);
 
-  const orderKey = React.useMemo(() => (cronogramaId ? `assetlife_cronograma_order_${cronogramaId}` : ''), [cronogramaId]);
-
-  const applyLocalOrder = React.useCallback((list) => {
-    try {
-      const raw = orderKey ? localStorage.getItem(orderKey) : null;
-      const ids = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(ids) && ids.length > 0) {
-        const pos = new Map(ids.map((id, idx) => [Number(id), idx]));
-        const withPos = list.map((it) => ({ it, p: pos.has(Number(it.id)) ? pos.get(Number(it.id)) : Infinity }));
-        withPos.sort((a, b) => (a.p - b.p) || (Number(a.it?.id || 0) - Number(b.it?.id || 0)));
-        return withPos.map((x) => x.it);
-      }
-    } catch {}
-    return list;
-  }, [orderKey]);
-
   const sortTasks = React.useCallback((list) => {
     const arr = Array.isArray(list) ? list.slice() : [];
-    arr.sort((a, b) => ((Number(a?.ordem || 0) - Number(b?.ordem || 0)) || (Number(a?.id || 0) - Number(b?.id || 0))));
     const hasDbOrder = arr.some((t) => Number(t?.ordem || 0) > 0);
-    if (!hasDbOrder) return applyLocalOrder(arr);
+    if (hasDbOrder) {
+      arr.sort((a, b) => ((Number(a?.ordem || 0) - Number(b?.ordem || 0)) || (Number(a?.id || 0) - Number(b?.id || 0))));
+      return arr;
+    }
+    const toKey = (t) => {
+      const di = t?.data_inicio ? new Date(t.data_inicio) : null;
+      const diKey = di && !Number.isNaN(di.getTime()) ? di.getTime() : Number.MAX_SAFE_INTEGER;
+      const tipo = String(t?.tipo || '').trim().toLowerCase();
+      const tipoPri = (tipo === 'título' || tipo === 'titulo') ? 0 : 1;
+      const nome = String(t?.nome || '').trim().toLowerCase();
+      const id = Number(t?.id || 0);
+      return [diKey, tipoPri, nome, id];
+    };
+    arr.sort((a, b) => {
+      const ka = toKey(a);
+      const kb = toKey(b);
+      for (let i = 0; i < ka.length; i++) {
+        if (ka[i] < kb[i]) return -1;
+        if (ka[i] > kb[i]) return 1;
+      }
+      return 0;
+    });
     return arr;
-  }, [applyLocalOrder]);
+  }, []);
 
   const loadTarefas = React.useCallback(() => {
     if (!cronogramaId) { setTarefas([]); setResumo(null); return; }
@@ -512,11 +516,7 @@ export default function CronogramaRevisao() {
     } catch (err) {
       const msg = String(err?.message || '');
       if (/ordena(c|ç)ão de tarefas indisponível/i.test(msg)) {
-        try {
-          if (orderKey) localStorage.setItem(orderKey, JSON.stringify(next.map((t) => t.id)));
-        } catch {}
-        toast.success('Ordem salva localmente (pendente rodar migration).');
-        return;
+        toast.error('Ordenação não disponível no servidor. Recarregue e tente novamente.');
       }
       toast.error(msg || t('error_saving'));
       await loadTarefas();
