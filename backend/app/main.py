@@ -1247,6 +1247,7 @@ def on_startup():
         try:
             with engine.connect() as conn:
                 conn.execute(sa.text("ALTER TABLE cronogramas_tarefas ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'Tarefa'"))
+                conn.execute(sa.text("ALTER TABLE cronogramas_tarefas ADD COLUMN IF NOT EXISTS ordem INTEGER DEFAULT 0"))
                 conn.execute(sa.text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS data_adocao_ifrs DATE"))
                 conn.execute(sa.text(
                     """
@@ -1273,6 +1274,7 @@ def on_startup():
     try:
         with engine.connect() as conn:
             conn.execute(sa.text("ALTER TABLE cronogramas_tarefas ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'Tarefa'"))
+            conn.execute(sa.text("ALTER TABLE cronogramas_tarefas ADD COLUMN IF NOT EXISTS ordem INTEGER DEFAULT 0"))
             conn.execute(sa.text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS data_adocao_ifrs DATE"))
             conn.execute(sa.text(
                 """
