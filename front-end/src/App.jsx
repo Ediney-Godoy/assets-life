@@ -61,6 +61,7 @@ import CronogramasMenu from './pages/CronogramasMenu';
 import NotificationsPage from './pages/Notifications';
 import NotificationDetailPage from './pages/NotificationDetail';
 import NotificationSendPage from './pages/NotificationSend';
+import NotificationLegacyRedirect from './pages/NotificationLegacyRedirect';
 import AboutPage from './pages/About';
 import HelpPage from './pages/Help';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -245,7 +246,7 @@ export default function App() {
       <Route path="/permissions/logs" element={<RequireAuth><RequireCompany><RequirePermission route="/permissions/logs"><LogsCenter /></RequirePermission></RequireCompany></RequireAuth>} />
       <Route path="/notifications" element={<RequireAuth><RequireCompany><NotificationsPage /></RequireCompany></RequireAuth>} />
       <Route path="/notifications/new" element={<RequireAuth><RequireCompany><RequirePermission route="/notifications/new"><NotificationSendPage /></RequirePermission></RequireCompany></RequireAuth>} />
-      <Route path="/notifications/:id" element={<RequireAuth><RequireCompany><NotificationDetailPage /></RequireCompany></RequireAuth>} />
+      <Route path="/notifications/:id" element={<RequireAuth><RequireCompany><NotificationLegacyRedirect /></RequireCompany></RequireAuth>} />
       <Route path="/users" element={<RequireAuth><RequireCompany><UsersPage /></RequireCompany></RequireAuth>} />
       <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
       <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
