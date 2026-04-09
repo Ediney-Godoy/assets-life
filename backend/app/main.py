@@ -306,6 +306,7 @@ def validate_password_strength(p: str):
 from email.message import EmailMessage
 import smtplib
 import ssl
+from html import escape as html_escape
 
 def _mask_email(value: str) -> str:
     try:
@@ -319,7 +320,7 @@ def _mask_email(value: str) -> str:
     except Exception:
         return "***"
 
-def _send_email(to: str, subject: str, body: str):
+def _send_email(to: str, subject: str, body: str, html_body: Optional[str] = None):
     if not SMTP_HOST:
         logging.getLogger("mail").warning("SMTP_HOST_not_set")
         return False
@@ -328,6 +329,11 @@ def _send_email(to: str, subject: str, body: str):
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
+    if html_body:
+        try:
+            msg.add_alternative(str(html_body), subtype="html")
+        except Exception:
+            pass
     try:
         refused = None
         if SMTP_USE_SSL:
@@ -462,6 +468,7 @@ class NotificationSendRequest(BaseModel):
     cc_user_ids: Optional[List[int]] = None
     ccEmails: Optional[List[EmailStr]] = None
     toEmails: Optional[List[EmailStr]] = None
+    message_text: Optional[str] = None
 
 
 def _require_notifications_send(db: Session, current_user: UsuarioModel):
@@ -517,6 +524,7 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
     error_id = str(uuid.uuid4())
     title = (payload.titulo or payload.title or "").strip() or "Notificação"
     message = (payload.mensagem or payload.message or "").strip()
+    message_text = (payload.message_text or "").strip()
     notify_all = bool(payload.notificar_todos if payload.notificar_todos is not None else payload.notify_all)
     send_email = bool(payload.enviar_email if payload.enviar_email is not None else payload.send_email)
 
@@ -544,10 +552,51 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
         pass
 
     allowed_company_ids = set(get_allowed_company_ids(db, current_user))
+
+    if not period_ids:
+        raise HTTPException(status_code=400, detail="Envio bloqueado: selecione um período aberto")
+
+    period_rows = (
+        db.query(RevisaoPeriodoModel.id, RevisaoPeriodoModel.status, RevisaoPeriodoModel.data_fechamento, RevisaoPeriodoModel.empresa_id)
+        .filter(RevisaoPeriodoModel.id.in_(period_ids))
+        .all()
+    )
+    if not period_rows:
+        raise HTTPException(status_code=400, detail="Envio bloqueado: período inválido")
+
+    closed_period_ids: list[int] = []
+    open_company_ids: set[int] = set()
+    for pid, st, data_fech, emp_id in period_rows:
+        s = str(st or "").strip().lower()
+        fechado = s in {"fechado", "encerrado"} or data_fech is not None
+        if fechado:
+            closed_period_ids.append(int(pid))
+        else:
+            if emp_id is not None:
+                open_company_ids.add(int(emp_id))
+    if closed_period_ids:
+        raise HTTPException(status_code=400, detail="Envio bloqueado: remova períodos fechados")
+    if not open_company_ids:
+        raise HTTPException(status_code=400, detail="Envio bloqueado: selecione um período aberto")
+
+    if not company_ids:
+        company_ids = sorted(open_company_ids)
+    else:
+        company_ids = sorted(set(company_ids).union(open_company_ids))
+
     if company_ids:
         for cid in company_ids:
             if cid not in allowed_company_ids:
                 raise HTTPException(status_code=403, detail="Acesso negado às empresas selecionadas")
+
+    users_count = (
+        db.query(sa.func.count(UsuarioModel.id))
+        .filter(UsuarioModel.empresa_id.in_(company_ids))
+        .filter(sa.func.lower(sa.func.coalesce(UsuarioModel.status, 'Ativo')) != 'inativo')
+        .scalar()
+    )
+    if int(users_count or 0) <= 0:
+        raise HTTPException(status_code=400, detail="Envio bloqueado: não há usuários cadastrados no projeto")
 
     recipients_ids: set[int] = set()
     if notify_all:
@@ -636,13 +685,23 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
         if not recipient_emails:
             raise HTTPException(status_code=400, detail=f"Nenhum destinatário com e-mail válido (error_id={error_id})")
 
+        plain = message_text or message
         body = (
-            f"{title}\n\n{message}\n\n"
+            f"{title}\n\n{plain}\n\n"
             f"Enviado por: {getattr(current_user, 'nome_completo', '')}\n"
             f"ID: {notif_id}\n"
         )
+        html = None
+        if message:
+            html = (
+                "<div style=\"font-family:Inter,Arial,sans-serif;font-size:14px;color:#111827\">"
+                f"<h2 style=\"margin:0 0 12px 0;font-size:18px\">{html_escape(title)}</h2>"
+                f"<div style=\"margin:0 0 16px 0\">{message}</div>"
+                f"<div style=\"margin-top:16px;color:#6b7280;font-size:12px\">Enviado por: {html_escape(getattr(current_user, 'nome_completo', '') or '')}<br/>ID: {html_escape(notif_id)}</div>"
+                "</div>"
+            )
         for addr in sorted(recipient_emails):
-            ok = _send_email(to=addr, subject=f"[Assets Life] {title}", body=body)
+            ok = _send_email(to=addr, subject=f"[Assets Life] {title}", body=body, html_body=html)
             if ok:
                 email_sent += 1
             else:

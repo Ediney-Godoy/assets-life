@@ -1,4 +1,5 @@
 import React from 'react';
+import { stripHtmlToText } from '../../utils/htmlText';
 
 function formatDate(value) {
   try {
@@ -33,7 +34,7 @@ export default function NotificationList({ items, selectedId, onSelect, emptyLab
           const id = String(n.id);
           const isSelected = String(selectedId) === id;
           const title = n.titulo || n.title || n.assunto || 'Notificação';
-          const preview = (n.mensagem || n.message || '').trim();
+          const preview = stripHtmlToText(n.mensagem || n.message || '');
           const sender = n.remetente || n.sender || n.remetente_nome || '';
           const createdAt = n.created_at || n.createdAt || n.data_criacao || n.data || null;
           const st = n.status || '';

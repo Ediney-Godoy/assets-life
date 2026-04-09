@@ -2,6 +2,7 @@ import React from 'react';
 import Button from '../ui/Button';
 import { Archive, CheckCircle, RefreshCw } from 'lucide-react';
 import { getNotification, markNotificationRead, archiveNotification } from '../../apiClient';
+import { sanitizeBasicRichHtml } from '../../utils/htmlText';
 
 function formatDate(value) {
   try {
@@ -51,6 +52,12 @@ export default function NotificationReadingPane({
   const createdAt = item?.created_at || item?.createdAt || item?.data_criacao || item?.data || null;
   const sender = item?.remetente || item?.sender || item?.remetente_nome || '';
   const message = item?.mensagem || item?.message || '';
+  const safeHtml = React.useMemo(() => {
+    const s = String(message || '');
+    if (!s) return '';
+    if (!/[<>]/.test(s)) return '';
+    return sanitizeBasicRichHtml(s);
+  }, [message]);
 
   if (!selectedId) {
     return (
@@ -121,10 +128,16 @@ export default function NotificationReadingPane({
             <div className="h-4 w-5/6 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
           </div>
         ) : (
-          <div className="whitespace-pre-wrap text-sm text-slate-900 dark:text-slate-100">{message}</div>
+          safeHtml ? (
+            <div
+              className="prose prose-slate dark:prose-invert max-w-none text-sm"
+              dangerouslySetInnerHTML={{ __html: safeHtml }}
+            />
+          ) : (
+            <div className="whitespace-pre-wrap text-sm text-slate-900 dark:text-slate-100">{message}</div>
+          )
         )}
       </div>
     </div>
   );
 }
-

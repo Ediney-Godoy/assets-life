@@ -128,7 +128,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(360px,1fr)_minmax(360px,460px)] gap-3 h-[calc(100vh-220px)] min-h-[520px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(360px,1fr)_minmax(360px,1fr)] gap-3 h-[calc(100vh-220px)] min-h-[520px]">
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
           <NotificationsFolders
             activeId={status}
