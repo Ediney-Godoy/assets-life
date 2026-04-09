@@ -72,6 +72,24 @@ export default function NotificationSendPage() {
       }
       const ccIdsUniq = Array.from(new Set(ccIds));
       const ccEmailsUniq = Array.from(new Set(ccEmails));
+      const isValidEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim());
+      const selectedUserEmails = Array.from(new Set(
+        (usuariosSelecionados || [])
+          .map((id) => {
+            const u = (usersFiltered || []).find((x) => Number(x.id) === Number(id));
+            return (u && (u.email_corporativo || u.email)) ? String(u.email_corporativo || u.email).trim().toLowerCase() : '';
+          })
+          .filter((e) => isValidEmail(e))
+      ));
+      const selectedCcUserEmails = Array.from(new Set(
+        (ccIdsUniq || [])
+          .map((id) => {
+            const u = (usersFiltered || []).find((x) => Number(x.id) === Number(id));
+            return (u && (u.email_corporativo || u.email)) ? String(u.email_corporativo || u.email).trim().toLowerCase() : '';
+          })
+          .filter((e) => isValidEmail(e))
+      ));
+      const ccEmailsFinal = Array.from(new Set([...(ccEmailsUniq || []), ...(selectedCcUserEmails || [])]));
       if (!form.notificar_todos && usuariosSelecionados.length === 0 && ccIdsUniq.length === 0 && ccEmailsUniq.length === 0) {
         toast.error(tt('select_users_or_notify_all', 'Selecione ao menos um usuário ou marque "Notificar todos"'));
         return;
@@ -88,7 +106,8 @@ export default function NotificationSendPage() {
         periodo_ids: periodosSelecionados,
         usuario_ids: form.notificar_todos ? [] : usuariosSelecionados,
         cc_usuario_ids: ccIdsUniq,
-        cc_emails: ccEmailsUniq,
+        cc_emails: ccEmailsFinal,
+        to_emails: form.notificar_todos ? [] : selectedUserEmails,
         notificar_todos: !!form.notificar_todos,
         enviar_email: !!form.enviar_email,
         remetente_id: currentUser?.id ? Number(currentUser.id) : undefined,
@@ -99,7 +118,8 @@ export default function NotificationSendPage() {
         period_ids: periodosSelecionados,
         user_ids: form.notificar_todos ? [] : usuariosSelecionados,
         cc_user_ids: ccIdsUniq,
-        ccEmails: ccEmailsUniq,
+        ccEmails: ccEmailsFinal,
+        toEmails: form.notificar_todos ? [] : selectedUserEmails,
         notify_all: !!form.notificar_todos,
         send_email: !!form.enviar_email,
         sender_id: currentUser?.id ? Number(currentUser.id) : undefined,
