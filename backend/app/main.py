@@ -2209,6 +2209,46 @@ def list_cronograma_tarefas(cronograma_id: int, db: Session = Depends(get_db)):
                 except Exception:
                     pass
                 raise
+
+            try:
+                ordens = [int(getattr(t, "ordem", 0) or 0) for t in tasks]
+                total = len(ordens)
+                positives = [o for o in ordens if o > 0]
+                need_reorder = False
+                if total > 0:
+                    if len(positives) != total:
+                        need_reorder = True
+                    elif len(set(positives)) != len(positives):
+                        need_reorder = True
+                if need_reorder:
+                    def sort_key(t):
+                        di = getattr(t, "data_inicio", None)
+                        di_key = di if di is not None else date(9999, 12, 31)
+                        tipo_raw = getattr(t, "tipo", "") or ""
+                        tipo_lower = str(tipo_raw).strip().lower()
+                        tipo_pri = 0 if tipo_lower in {"título", "titulo"} else 1
+                        nome_key = str(getattr(t, "nome", "") or "").strip().lower()
+                        return (di_key, tipo_pri, nome_key, int(getattr(t, "id", 0) or 0))
+
+                    ordered = sorted(tasks, key=sort_key)
+                    for idx, t in enumerate(ordered, start=1):
+                        try:
+                            t.ordem = idx
+                        except Exception:
+                            pass
+                    db.commit()
+                    tasks = (
+                        db.query(CronogramaTarefaModel)
+                        .filter(CronogramaTarefaModel.cronograma_id == cronograma_id)
+                        .order_by(CronogramaTarefaModel.ordem, CronogramaTarefaModel.id)
+                        .all()
+                    )
+            except Exception as e_order:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+                log(f"Failed to normalize task order: {e_order}")
         else:
             cols_select = "id, cronograma_id, tipo, nome, descricao, data_inicio, data_fim, responsavel_id, status, progresso_percentual, dependente_tarefa_id, criado_em"
             tasks_raw = db.execute(
