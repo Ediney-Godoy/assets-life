@@ -339,6 +339,10 @@ def _send_email(to: str, subject: str, body: str):
                 if SMTP_USER:
                     server.login(SMTP_USER, SMTP_PASSWORD or "")
                 server.send_message(msg)
+        try:
+            logging.getLogger("mail").info("SMTP_send_ok to=%s", _mask_email(to or ""))
+        except Exception:
+            pass
         return True
     except Exception:
         logging.getLogger("mail").exception(
@@ -432,6 +436,8 @@ class NotificationSendRequest(BaseModel):
     periodos_ids: Optional[List[int]] = None
     usuarios_ids: Optional[List[int]] = None
     cc_usuarios_ids: Optional[List[int]] = None
+    cc_emails: Optional[List[EmailStr]] = None
+    to_emails: Optional[List[EmailStr]] = None
     title: Optional[str] = None
     message: Optional[str] = None
     notify_all: Optional[bool] = None
@@ -441,10 +447,25 @@ class NotificationSendRequest(BaseModel):
     period_ids: Optional[List[int]] = None
     user_ids: Optional[List[int]] = None
     cc_user_ids: Optional[List[int]] = None
+    ccEmails: Optional[List[EmailStr]] = None
+    toEmails: Optional[List[EmailStr]] = None
 
 
 def _require_notifications_send(db: Session, current_user: UsuarioModel):
-    for route in ("/notifications/new", "/notificacoes/nova", "/permissions"):
+    try:
+        if is_admin_user(current_user):
+            return
+    except Exception:
+        pass
+    for route in (
+        "/notifications/new",
+        "/notifications",
+        "/notifications/send",
+        "/notificacoes/nova",
+        "/notificacoes",
+        "/notificacoes/enviar",
+        "/permissions",
+    ):
         try:
             check_permission(db, current_user, route)
             return
@@ -488,6 +509,10 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
     company_ids = _normalize_int_list(payload.company_ids or payload.empresas_ids)
     user_ids = _normalize_int_list(payload.user_ids or payload.usuarios_ids)
     cc_user_ids = _normalize_int_list(payload.cc_user_ids or payload.cc_usuarios_ids)
+    cc_emails_raw = payload.cc_emails or payload.ccEmails or []
+    to_emails_raw = payload.to_emails or payload.toEmails or []
+    cc_emails = [str(e).strip().lower() for e in (cc_emails_raw or []) if str(e).strip()]
+    to_emails = [str(e).strip().lower() for e in (to_emails_raw or []) if str(e).strip()]
 
     allowed_company_ids = set(get_allowed_company_ids(db, current_user))
     if company_ids:
@@ -509,7 +534,7 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
     recipients_ids.update(cc_user_ids)
     recipients_ids.discard(int(getattr(current_user, "id", 0) or 0))
 
-    if not recipients_ids:
+    if not recipients_ids and not cc_emails and not to_emails:
         raise HTTPException(status_code=400, detail="Nenhum destinatário selecionado")
 
     notif_id = str(uuid.uuid4())
@@ -520,18 +545,27 @@ def _send_notification_impl(payload: NotificationSendRequest, current_user: Usua
         if not SMTP_HOST:
             raise HTTPException(status_code=503, detail="SMTP não configurado no servidor")
 
-        users = db.query(UsuarioModel).filter(UsuarioModel.id.in_(sorted(recipients_ids))).all()
-        for u in users:
-            to_email = (getattr(u, "email", None) or "").strip()
-            if not to_email:
-                email_failed += 1
-                continue
-            body = (
-                f"{title}\n\n{message}\n\n"
-                f"Enviado por: {getattr(current_user, 'nome_completo', '')}\n"
-                f"ID: {notif_id}\n"
-            )
-            ok = _send_email(to=to_email, subject=f"[Assets Life] {title}", body=body)
+        recipient_emails: set[str] = set()
+        if recipients_ids:
+            users = db.query(UsuarioModel).filter(UsuarioModel.id.in_(sorted(recipients_ids))).all()
+            for u in users:
+                addr = (getattr(u, "email", None) or "").strip().lower()
+                if addr:
+                    recipient_emails.add(addr)
+        for e in cc_emails:
+            recipient_emails.add(e)
+        for e in to_emails:
+            recipient_emails.add(e)
+        if not recipient_emails:
+            raise HTTPException(status_code=400, detail="Nenhum destinatário com e-mail válido")
+
+        body = (
+            f"{title}\n\n{message}\n\n"
+            f"Enviado por: {getattr(current_user, 'nome_completo', '')}\n"
+            f"ID: {notif_id}\n"
+        )
+        for addr in sorted(recipient_emails):
+            ok = _send_email(to=addr, subject=f"[Assets Life] {title}", body=body)
             if ok:
                 email_sent += 1
             else:

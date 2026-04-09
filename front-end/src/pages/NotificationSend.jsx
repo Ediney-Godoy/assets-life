@@ -61,8 +61,18 @@ export default function NotificationSendPage() {
         return Array.from(ids);
       })();
       const usuariosSelecionados = (Array.isArray(form.usuario_ids) ? form.usuario_ids : []).map((x) => Number(x));
-      const ccSelecionados = (Array.isArray(form.cc_usuario_ids) ? form.cc_usuario_ids : []).map((x) => Number(x));
-      if (!form.notificar_todos && usuariosSelecionados.length === 0) {
+      const ccRaw = Array.isArray(form.cc_usuario_ids) ? form.cc_usuario_ids : [];
+      const ccIds = [];
+      const ccEmails = [];
+      for (const v of ccRaw) {
+        const s = String(v || '').trim();
+        if (!s) continue;
+        if (/^\d+$/.test(s)) ccIds.push(Number(s));
+        else if (s.includes('@')) ccEmails.push(s.toLowerCase());
+      }
+      const ccIdsUniq = Array.from(new Set(ccIds));
+      const ccEmailsUniq = Array.from(new Set(ccEmails));
+      if (!form.notificar_todos && usuariosSelecionados.length === 0 && ccIdsUniq.length === 0 && ccEmailsUniq.length === 0) {
         toast.error(tt('select_users_or_notify_all', 'Selecione ao menos um usuário ou marque "Notificar todos"'));
         return;
       }
@@ -77,7 +87,8 @@ export default function NotificationSendPage() {
         empresa_ids: empresasSelecionadas,
         periodo_ids: periodosSelecionados,
         usuario_ids: form.notificar_todos ? [] : usuariosSelecionados,
-        cc_usuario_ids: ccSelecionados,
+        cc_usuario_ids: ccIdsUniq,
+        cc_emails: ccEmailsUniq,
         notificar_todos: !!form.notificar_todos,
         enviar_email: !!form.enviar_email,
         remetente_id: currentUser?.id ? Number(currentUser.id) : undefined,
@@ -87,7 +98,8 @@ export default function NotificationSendPage() {
         company_ids: empresasSelecionadas,
         period_ids: periodosSelecionados,
         user_ids: form.notificar_todos ? [] : usuariosSelecionados,
-        cc_user_ids: ccSelecionados,
+        cc_user_ids: ccIdsUniq,
+        ccEmails: ccEmailsUniq,
         notify_all: !!form.notificar_todos,
         send_email: !!form.enviar_email,
         sender_id: currentUser?.id ? Number(currentUser.id) : undefined,
@@ -166,7 +178,13 @@ export default function NotificationSendPage() {
               <Button variant="primary" size="sm" type="button" title={tt('add', 'Adicionar')} aria-label={tt('add', 'Adicionar')} className="p-0 h-9 w-9 justify-center" onClick={() => {
                 const q = ccQuery.trim().toLowerCase();
                 const match = usersFiltered.find((u) => String(u.nome_completo || '').toLowerCase().includes(q) || String(u.email_corporativo || u.email || '').toLowerCase().includes(q));
-                if (match) setForm((f) => ({ ...f, cc_usuario_ids: Array.from(new Set([...(f.cc_usuario_ids || []), String(match.id)])) }));
+                if (match) {
+                  setForm((f) => ({ ...f, cc_usuario_ids: Array.from(new Set([...(f.cc_usuario_ids || []), String(match.id)])) }));
+                  return;
+                }
+                if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(q)) {
+                  setForm((f) => ({ ...f, cc_usuario_ids: Array.from(new Set([...(f.cc_usuario_ids || []), q])) }));
+                }
               }} icon={<Plus size={16} />} />
             </div>
             <div className="mt-3 h-[220px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800 p-2">
