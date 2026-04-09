@@ -1148,6 +1148,17 @@ export async function getNotifications(params = {}) {
 }
 
 export async function getNotification(id) {
+  const sid = String(id ?? '');
+  if (sid.startsWith('local-')) {
+    try {
+      const raw = localStorage.getItem('assetlife_notifications');
+      const arr = raw ? JSON.parse(raw) : [];
+      const hit = arr.find((n) => String(n.id) === sid);
+      return hit || null;
+    } catch {
+      return null;
+    }
+  }
   try {
     const resEn = await request(`/notifications/${id}`);
     if (resEn) return resEn;
@@ -1245,6 +1256,23 @@ export async function createNotification(payload) {
 }
 
 export async function markNotificationRead(id) {
+  const sid = String(id ?? '');
+  if (sid.startsWith('local-')) {
+    try {
+      const raw = localStorage.getItem('assetlife_notifications');
+      const arr = raw ? JSON.parse(raw) : [];
+      const idx = arr.findIndex((n) => String(n.id) === sid);
+      if (idx >= 0) {
+        const now = new Date().toISOString();
+        arr[idx] = { ...arr[idx], status: 'lida', read: true, updated_at: now };
+        localStorage.setItem('assetlife_notifications', JSON.stringify(arr));
+        return arr[idx];
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
   try {
     const r = await request(`/notifications/${id}/read`, { method: 'POST' });
     if (r) return r;
@@ -1270,6 +1298,23 @@ export async function markNotificationRead(id) {
 }
 
 export async function archiveNotification(id) {
+  const sid = String(id ?? '');
+  if (sid.startsWith('local-')) {
+    try {
+      const raw = localStorage.getItem('assetlife_notifications');
+      const arr = raw ? JSON.parse(raw) : [];
+      const idx = arr.findIndex((n) => String(n.id) === sid);
+      if (idx >= 0) {
+        const now = new Date().toISOString();
+        arr[idx] = { ...arr[idx], status: 'arquivada', archived: true, updated_at: now };
+        localStorage.setItem('assetlife_notifications', JSON.stringify(arr));
+        return arr[idx];
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
   try {
     const r = await request(`/notifications/${id}/archive`, { method: 'POST' });
     if (r) return r;
