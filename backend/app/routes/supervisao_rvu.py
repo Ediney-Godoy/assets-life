@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.orm import Session
 import sqlalchemy as sa
+import logging
 from datetime import date, datetime
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -564,9 +565,12 @@ def aprovar(payload: AprovarCreate, current_user: UsuarioModel = Depends(get_cur
     except HTTPException:
         raise
     except Exception as e:
-        print(f"ERRO /supervisao/rvu/aprovar: {str(e)}")
+        try:
+            logging.getLogger("uvicorn.error").exception("Erro /supervisao/rvu/aprovar")
+        except Exception:
+            pass
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erro interno")
 
 
 @router.post('/aprovar-massa')
@@ -656,14 +660,22 @@ def aprovar_massa(payload: AprovarMassaCreate, current_user: UsuarioModel = Depe
 
             success_count += 1
         except Exception as e:
-            errors.append(f"Item {it.numero_imobilizado}: {str(e)}")
+            try:
+                logging.getLogger("uvicorn.error").exception("Erro aprovar_massa item_id=%s", getattr(it, "id", None))
+            except Exception:
+                pass
+            errors.append(f"Item {it.numero_imobilizado}: Erro ao aprovar")
             continue
     
     try:
         db.commit()
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao salvar aprovações em massa: {str(e)}")
+        try:
+            logging.getLogger("uvicorn.error").exception("Erro ao salvar aprovações em massa")
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Erro ao salvar aprovações em massa")
 
     return {
         'ok': True,

@@ -17,6 +17,7 @@ from datetime import date, datetime
 import io
 import os
 import traceback
+import logging
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -505,9 +506,11 @@ def excel(empresa_id: int | None = None, ug_id: int | None = None, classe_id: in
     except HTTPException:
         raise
     except Exception as e:
-        traceback.print_exc()
-        print(f"Erro ao gerar Excel: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro interno ao gerar Excel: {str(e)}")
+        try:
+            logging.getLogger("uvicorn.error").exception("Erro ao gerar Excel (relatorios_rvu)")
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Erro interno ao gerar Excel")
 
 @router.get('/cronograma/excel')
 def cronograma_excel(
@@ -621,9 +624,11 @@ def cronograma_excel(
     except HTTPException:
         raise
     except Exception as e:
-        traceback.print_exc()
-        print(f"Erro ao gerar Excel Cronograma: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro interno ao gerar Excel Cronograma: {str(e)}")
+        try:
+            logging.getLogger("uvicorn.error").exception("Erro ao gerar Excel Cronograma (relatorios_rvu)")
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Erro interno ao gerar Excel Cronograma")
 
 @router.get('/pdf')
 def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int | None = None, revisor_id: int | None = None,
@@ -760,9 +765,11 @@ def pdf(empresa_id: int | None = None, ug_id: int | None = None, classe_id: int 
     except HTTPException:
         raise
     except Exception as e:
-        traceback.print_exc()
-        print(f"Erro ao gerar PDF: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
+        try:
+            logging.getLogger("uvicorn.error").exception("Erro ao gerar PDF (relatorios_rvu)")
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Erro interno ao gerar PDF")
 
 @router.get('/log')
 def list_log(current_user: UsuarioModel = Depends(get_current_user), db: Session = Depends(get_db)):

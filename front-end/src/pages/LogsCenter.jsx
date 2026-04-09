@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { listAuditLogs, historicoSupervisaoRVU, listRelatoriosLog } from '../apiClient';
+import { listAuditLogs, historicoSupervisaoRVU, listRelatoriosLog, exportAuditLogsCsv } from '../apiClient';
 
 export default function LogsCenter() {
   const { t } = useTranslation();
@@ -9,6 +9,7 @@ export default function LogsCenter() {
 
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [auditExporting, setAuditExporting] = useState(false);
   const [auditError, setAuditError] = useState('');
   const [auditFilters, setAuditFilters] = useState({
     acao: '',
@@ -48,6 +49,32 @@ export default function LogsCenter() {
       setAuditLogs([]);
     } finally {
       setAuditLoading(false);
+    }
+  };
+
+  const exportAuditCsv = async () => {
+    setAuditExporting(true);
+    setAuditError('');
+    try {
+      const params = {};
+      if (auditFilters.acao) params.acao = auditFilters.acao;
+      if (auditFilters.entidade) params.entidade = auditFilters.entidade;
+      if (auditFilters.q) params.q = auditFilters.q;
+      const csvText = await exportAuditLogsCsv(params);
+      const blob = new Blob([csvText || ''], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      a.href = url;
+      a.download = `auditoria_logs_${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setAuditError(err?.message || 'Erro ao exportar CSV');
+    } finally {
+      setAuditExporting(false);
     }
   };
 
@@ -151,6 +178,14 @@ export default function LogsCenter() {
                   setAuditFilters((f) => ({ ...f, q: e.target.value }))
                 }
               />
+              <button
+                type="button"
+                onClick={exportAuditCsv}
+                disabled={auditExporting || auditLoading}
+                className="px-3 py-2 rounded-md bg-slate-900 text-white text-sm hover:bg-slate-800 disabled:opacity-60"
+              >
+                {auditExporting ? 'Exportando…' : 'Exportar CSV'}
+              </button>
               <button
                 type="button"
                 onClick={refreshAudit}

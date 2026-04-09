@@ -614,6 +614,13 @@ export async function listAuditLogs(params = {}) {
   return request(`/auditoria/logs${q ? `?${q}` : ''}`, { timeout: 120000 });
 }
 
+export async function exportAuditLogsCsv(params = {}) {
+  const q = new URLSearchParams(
+    Object.entries(params).filter(([_, v]) => v != null && v !== '')
+  ).toString();
+  return request(`/auditoria/logs/export${q ? `?${q}` : ''}`, { headers: { Accept: 'text/csv' }, timeout: 120000 });
+}
+
 export async function simularDepreciacao(payload) {
   return request('/simulador/depreciacao', { method: 'POST', body: JSON.stringify(payload), timeout: 120000 });
 }
@@ -1173,6 +1180,7 @@ export async function createNotification(payload) {
       throw new Error('Permissão insuficiente para enviar notificações');
     }
   } catch {}
+  const wantsEmail = !!(payload?.enviar_email || payload?.send_email);
   const body = JSON.stringify(payload);
   const candidates = [
     '/notifications',
@@ -1183,9 +1191,30 @@ export async function createNotification(payload) {
   for (const path of candidates) {
     try {
       const res = await request(path, { method: 'POST', body });
-      if (res) return res;
+      if (res) {
+        try {
+          const raw = localStorage.getItem('assetlife_notifications');
+          const arr = raw ? JSON.parse(raw) : [];
+          arr.unshift(res);
+          localStorage.setItem('assetlife_notifications', JSON.stringify(arr));
+        } catch {}
+        return res;
+      }
     } catch (err) {
+      const msg = String(err?.message || '');
+      if (
+        /HTTP\s+404/i.test(msg) ||
+        /HTTP\s+405/i.test(msg) ||
+        /HTTP\s+410/i.test(msg) ||
+        /not\s+found/i.test(msg)
+      ) {
+        continue;
+      }
+      throw err;
     }
+  }
+  if (wantsEmail) {
+    throw new Error('Envio de e-mail indisponível no servidor (rota de notificações não encontrada)');
   }
   let user = null;
   try { user = JSON.parse(localStorage.getItem('assetlife_user') || 'null'); } catch {}

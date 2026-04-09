@@ -1,16 +1,30 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import List, Optional
-from ..database import SessionLocal
+import csv
+import io
+from datetime import datetime
+
 from ..models import AuditoriaLog as AuditoriaLogModel, Usuario as UsuarioModel
-from ..dependencies import get_db, get_current_user
+from ..dependencies import get_db, get_current_user, check_permission
 
 router = APIRouter(
     prefix="/auditoria",
     tags=["Auditoria"],
     responses={404: {"description": "Not found"}},
 )
+
+def _require_logs_access(db: Session, current_user: UsuarioModel):
+    allowed_routes = ["/permissions/logs", "/permissions", "/permissions/groups", "/auditoria/logs"]
+    for route in allowed_routes:
+        try:
+            check_permission(db, current_user, route)
+            return
+        except HTTPException:
+            continue
+    raise HTTPException(status_code=403, detail="Acesso negado")
 
 @router.get("/logs")
 def list_audit_logs(
@@ -26,6 +40,7 @@ def list_audit_logs(
     """
     Listar logs de auditoria do sistema.
     """
+    _require_logs_access(db, current_user)
     query = db.query(
         AuditoriaLogModel.id,
         AuditoriaLogModel.usuario_id,
@@ -74,3 +89,71 @@ def list_audit_logs(
         })
 
     return result
+
+@router.get("/logs/export")
+def export_audit_logs_csv(
+    acao: Optional[str] = None,
+    entidade: Optional[str] = None,
+    usuario_id: Optional[int] = None,
+    q: Optional[str] = None,
+    limit: int = 5000,
+    current_user: UsuarioModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_logs_access(db, current_user)
+    if limit <= 0 or limit > 20000:
+        limit = 5000
+
+    query = db.query(
+        AuditoriaLogModel.id,
+        AuditoriaLogModel.usuario_id,
+        AuditoriaLogModel.acao,
+        AuditoriaLogModel.entidade,
+        AuditoriaLogModel.entidade_id,
+        AuditoriaLogModel.detalhes,
+        AuditoriaLogModel.data_evento,
+        UsuarioModel.nome_completo.label("usuario_nome"),
+    ).outerjoin(UsuarioModel, AuditoriaLogModel.usuario_id == UsuarioModel.id)
+
+    if acao:
+        query = query.filter(AuditoriaLogModel.acao.ilike(f"%{acao}%"))
+    if entidade:
+        query = query.filter(AuditoriaLogModel.entidade.ilike(f"%{entidade}%"))
+    if usuario_id:
+        query = query.filter(AuditoriaLogModel.usuario_id == usuario_id)
+    if q:
+        search = f"%{q}%"
+        query = query.filter(
+            (AuditoriaLogModel.detalhes.ilike(search))
+            | (AuditoriaLogModel.acao.ilike(search))
+            | (AuditoriaLogModel.entidade.ilike(search))
+        )
+
+    rows = query.order_by(desc(AuditoriaLogModel.data_evento)).limit(limit).all()
+
+    out = io.StringIO()
+    w = csv.writer(out, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator="\n")
+    w.writerow(["id", "data_evento", "usuario_id", "usuario_nome", "acao", "entidade", "entidade_id", "detalhes"])
+    for r in rows:
+        dt = None
+        try:
+            dt = r.data_evento.isoformat() if r.data_evento else ""
+        except Exception:
+            dt = ""
+        w.writerow(
+            [
+                r.id,
+                dt,
+                r.usuario_id if r.usuario_id is not None else "",
+                r.usuario_nome or "Sistema/Desconhecido",
+                r.acao,
+                r.entidade,
+                r.entidade_id if r.entidade_id is not None else "",
+                r.detalhes if isinstance(r.detalhes, str) else (str(r.detalhes) if r.detalhes is not None else ""),
+            ]
+        )
+
+    content = out.getvalue()
+    filename = f"auditoria_logs_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(content=content, media_type="text/csv; charset=utf-8", headers=headers)

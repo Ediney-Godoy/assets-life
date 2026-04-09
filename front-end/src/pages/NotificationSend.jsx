@@ -92,8 +92,23 @@ export default function NotificationSendPage() {
         send_email: !!form.enviar_email,
         sender_id: currentUser?.id ? Number(currentUser.id) : undefined,
       };
-      await createNotification(payload);
-      toast.success(tt('sent', 'Enviado'));
+      const res = await createNotification(payload);
+      const sent = Number(res?.email_sent ?? res?.emailSent ?? 0);
+      const failed = Number(res?.email_failed ?? res?.emailFailed ?? 0);
+      if (payload.enviar_email || payload.send_email) {
+        if (sent > 0 && failed === 0) {
+          toast.success(tt('sent', 'Enviado'));
+        } else if (sent > 0 && failed > 0) {
+          toast.success(`${tt('sent', 'Enviado')} (${sent} ok, ${failed} falha)`);
+        } else if (sent === 0 && failed > 0) {
+          toast.error(`Falha ao enviar e-mails (${failed} falha)`);
+          return;
+        } else {
+          toast.success(tt('sent', 'Enviado'));
+        }
+      } else {
+        toast.success(tt('sent', 'Enviado'));
+      }
       navigate('/notifications');
     } catch (err) {
       toast.error(String(err?.message || err));
