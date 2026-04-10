@@ -35,15 +35,22 @@ export default function NotificationReadingPane({
       try {
         const full = await getNotification(id);
         if (active) setItem(full || selectedSummary || null);
+        const fromMe = (full && full.from_me) || (selectedSummary && selectedSummary.from_me) || false;
+        if (!fromMe) {
+          try {
+            const updated = await markNotificationRead(id);
+            if (active) {
+              if (updated && (updated.mensagem || updated.message || updated.titulo || updated.title)) {
+                setItem(updated);
+              } else {
+                setItem((prev) => (prev ? { ...prev, status: 'lida', read: true } : prev));
+              }
+            }
+          } catch {}
+        }
       } finally {
         if (active) setLoading(false);
       }
-      try {
-        const updated = await markNotificationRead(id);
-        if (active) {
-          setItem((prev) => updated || (prev ? { ...prev, status: 'lida', read: true } : prev));
-        }
-      } catch {}
     })();
     return () => { active = false; };
   }, [selectedId, selectedSummary]);
@@ -87,22 +94,28 @@ export default function NotificationReadingPane({
             icon={<RefreshCw size={18} />}
             onClick={() => onRefresh && onRefresh()}
           />
-          <Button
-            variant="secondary"
-            size="sm"
-            title="Marcar como lida"
-            aria-label="Marcar como lida"
-            className="p-0 h-10 w-10 justify-center"
-            icon={<CheckCircle size={18} />}
-            onClick={async () => {
-              const id = String(selectedId);
-              try {
-                const updated = await markNotificationRead(id);
-                setItem((prev) => updated || (prev ? { ...prev, status: 'lida', read: true } : prev));
-                if (onRefresh) onRefresh();
-              } catch {}
-            }}
-          />
+          {!(item && item.from_me) && (
+            <Button
+              variant="secondary"
+              size="sm"
+              title="Marcar como lida"
+              aria-label="Marcar como lida"
+              className="p-0 h-10 w-10 justify-center"
+              icon={<CheckCircle size={18} />}
+              onClick={async () => {
+                const id = String(selectedId);
+                try {
+                  const updated = await markNotificationRead(id);
+                  if (updated && (updated.mensagem || updated.message || updated.titulo || updated.title)) {
+                    setItem(updated);
+                  } else {
+                    setItem((prev) => (prev ? { ...prev, status: 'lida', read: true } : prev));
+                  }
+                  if (onRefresh) onRefresh();
+                } catch {}
+              }}
+            />
+          )}
           <Button
             variant="danger"
             size="sm"
