@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { stripHtmlToText } from '../../utils/htmlText';
 
 function formatDate(value) {
@@ -12,18 +13,20 @@ function formatDate(value) {
 
 function statusLabel(status) {
   const s = String(status || '').toLowerCase();
-  if (s === 'pendente') return 'Pendente';
-  if (s === 'lida') return 'Lida';
-  if (s === 'arquivada') return 'Arquivada';
-  if (s === 'enviada' || s === 'enviadas') return 'Enviada';
-  return s ? s : '-';
+  if (s === 'pendente') return 'notifications_status_pending';
+  if (s === 'lida') return 'notifications_status_read';
+  if (s === 'arquivada') return 'notifications_status_archived';
+  if (s === 'enviada' || s === 'enviadas') return 'notifications_status_sent';
+  return '';
 }
 
 export default function NotificationList({ items, selectedId, onSelect, emptyLabel }) {
+  const { t } = useTranslation();
+  const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const list = Array.isArray(items) ? items : [];
   if (list.length === 0) {
     return (
-      <div className="p-4 text-sm text-slate-600 dark:text-slate-300">{emptyLabel || 'Sem notificações'}</div>
+      <div className="p-4 text-sm text-slate-600 dark:text-slate-300">{emptyLabel || tt('no_notifications', 'Sem notificações')}</div>
     );
   }
 
@@ -37,7 +40,10 @@ export default function NotificationList({ items, selectedId, onSelect, emptyLab
           const preview = stripHtmlToText(n.mensagem || n.message || '');
           const sender = n.remetente || n.sender || n.remetente_nome || '';
           const createdAt = n.created_at || n.createdAt || n.data_criacao || n.data || null;
-          const st = n.status || '';
+          const stKey = statusLabel(n.status || '');
+          const stLabel = stKey
+            ? tt(stKey, String(n.status || ''))
+            : (String(n.status || '').trim() ? String(n.status) : tt('notifications_status_unknown', '-'));
 
           return (
             <button
@@ -62,7 +68,7 @@ export default function NotificationList({ items, selectedId, onSelect, emptyLab
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <div className="text-xs text-slate-600 dark:text-slate-300">{formatDate(createdAt)}</div>
-                  <div className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200">{statusLabel(st)}</div>
+                  <div className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200">{stLabel}</div>
                 </div>
               </div>
               {preview ? (

@@ -3,6 +3,7 @@ import Button from '../ui/Button';
 import { Archive, CheckCircle, RefreshCw } from 'lucide-react';
 import { getNotification, markNotificationRead, archiveNotification } from '../../apiClient';
 import { sanitizeBasicRichHtml } from '../../utils/htmlText';
+import { useTranslation } from 'react-i18next';
 
 function formatDate(value) {
   try {
@@ -18,6 +19,8 @@ export default function NotificationReadingPane({
   selectedSummary,
   onRefresh,
 }) {
+  const { t } = useTranslation();
+  const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const [item, setItem] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
 
@@ -55,7 +58,7 @@ export default function NotificationReadingPane({
     return () => { active = false; };
   }, [selectedId, selectedSummary]);
 
-  const title = item?.titulo || item?.title || item?.assunto || 'Notificação';
+  const title = item?.titulo || item?.title || item?.assunto || tt('notifications_default_title', 'Notificação');
   const createdAt = item?.created_at || item?.createdAt || item?.data_criacao || item?.data || null;
   const sender = item?.remetente || item?.sender || item?.remetente_nome || '';
   const message = item?.mensagem || item?.message || '';
@@ -69,7 +72,7 @@ export default function NotificationReadingPane({
   if (!selectedId) {
     return (
       <div className="h-full flex items-center justify-center p-6 text-sm text-slate-600 dark:text-slate-300">
-        Selecione uma notificação para ler
+        {tt('notifications_select_to_read', 'Selecione uma notificação para ler')}
       </div>
     );
   }
@@ -80,16 +83,16 @@ export default function NotificationReadingPane({
         <div className="min-w-0">
           <div className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate">{title}</div>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
-            <div>Data: {formatDate(createdAt)}</div>
-            <div>Remetente: {sender || '—'}</div>
+            <div>{tt('notifications_field_date', 'Data')}: {formatDate(createdAt)}</div>
+            <div>{tt('notifications_field_sender', 'Remetente')}: {sender || '—'}</div>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="secondary"
             size="sm"
-            title="Recarregar"
-            aria-label="Recarregar"
+            title={tt('notifications_action_refresh', 'Recarregar')}
+            aria-label={tt('notifications_action_refresh', 'Recarregar')}
             className="p-0 h-10 w-10 justify-center"
             icon={<RefreshCw size={18} />}
             onClick={() => onRefresh && onRefresh()}
@@ -98,8 +101,8 @@ export default function NotificationReadingPane({
             <Button
               variant="secondary"
               size="sm"
-              title="Marcar como lida"
-              aria-label="Marcar como lida"
+              title={tt('notifications_action_mark_read', 'Marcar como lida')}
+              aria-label={tt('notifications_action_mark_read', 'Marcar como lida')}
               className="p-0 h-10 w-10 justify-center"
               icon={<CheckCircle size={18} />}
               onClick={async () => {
@@ -119,8 +122,8 @@ export default function NotificationReadingPane({
           <Button
             variant="danger"
             size="sm"
-            title="Arquivar"
-            aria-label="Arquivar"
+            title={tt('notifications_action_archive', 'Arquivar')}
+            aria-label={tt('notifications_action_archive', 'Arquivar')}
             className="p-0 h-10 w-10 justify-center"
             icon={<Archive size={18} />}
             onClick={async () => {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Inbox, Send, CheckCircle2, Archive, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const DEFAULT_FOLDERS = [
   { id: 'pendente', label: 'Caixa de entrada', icon: Inbox },
@@ -15,17 +16,30 @@ export default function NotificationsFolders({
   folders,
   disabledIds,
 }) {
+  const { t } = useTranslation();
+  const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const list = Array.isArray(folders) && folders.length > 0 ? folders : DEFAULT_FOLDERS;
   const disabled = new Set(Array.isArray(disabledIds) ? disabledIds : []);
+  const defaultLabels = React.useMemo(() => ({
+    pendente: tt('notifications_folder_inbox', 'Caixa de entrada'),
+    recebidas: tt('notifications_folder_all', 'Todas'),
+    lida: tt('notifications_folder_read', 'Lidas'),
+    arquivada: tt('notifications_folder_archived', 'Arquivadas'),
+    enviadas: tt('notifications_folder_sent', 'Enviadas'),
+  }), [t]);
+  const items = React.useMemo(() => {
+    if (Array.isArray(folders) && folders.length > 0) return folders;
+    return DEFAULT_FOLDERS.map((f) => ({ ...f, label: defaultLabels[String(f.id)] || f.label }));
+  }, [folders, defaultLabels]);
 
   return (
     <div className="h-full flex flex-col">
       <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800">
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Pastas</div>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tt('notifications_folders', 'Pastas')}</div>
       </div>
       <div className="flex-1 overflow-y-auto p-2">
         <div className="flex flex-col gap-1">
-          {list.map((f) => {
+          {items.map((f) => {
             const isActive = String(activeId) === String(f.id);
             const Icon = f.icon || Inbox;
             const isDisabled = disabled.has(String(f.id));
@@ -67,4 +81,3 @@ export default function NotificationsFolders({
     </div>
   );
 }
-
