@@ -245,6 +245,8 @@
   "email": "Correo electrónico",
   "division": "División",
   "state_registration": "Registro Estatal",
+  "ifrs_adoption_date": "Fecha de adopción IFRS",
+  "ifrs_adoption_date_help": "Fecha en que la empresa adoptó IFRS (IAS 16 / CPC 27).",
   "status": "Estado",
   "status_active": "Activo",
   "status_inactive": "Inactivo",

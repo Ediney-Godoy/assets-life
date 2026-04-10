@@ -12,6 +12,7 @@ import { Tabs, TabPanel } from '../components/ui/Tabs';
 
 export default function CompaniesPage() {
   const { t } = useTranslation();
+  const tt = (k, fb) => { const v = t(k); return v === k ? fb : v; };
   const [companies, setCompanies] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
@@ -172,7 +173,14 @@ export default function CompaniesPage() {
               </Select>
               <Input label={t('division')} name="division" value={form.division} onChange={onChange} />
               <Input label={t('state_registration')} name="state_registration" value={form.state_registration} onChange={onChange} />
-              <Input label={t('ifrs_adoption_date') || 'Data de adoção IFRS'} name="data_adocao_ifrs" type="date" value={form.data_adocao_ifrs} onChange={onChange} />
+              <Input
+                label={tt('ifrs_adoption_date', 'Data de adoção IFRS')}
+                helperText={tt('ifrs_adoption_date_help', 'Data em que a empresa adotou IFRS (IAS 16 / CPC 27).')}
+                name="data_adocao_ifrs"
+                type="date"
+                value={form.data_adocao_ifrs}
+                onChange={onChange}
+              />
             </div>
           </TabPanel>
 
