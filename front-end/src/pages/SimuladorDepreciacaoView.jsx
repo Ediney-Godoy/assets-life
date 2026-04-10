@@ -72,6 +72,16 @@ export default function SimuladorDepreciacaoView() {
     return list;
   }, [periodos, filters.empresa_id]);
 
+  const classeDescricaoPorCodigo = useMemo(() => {
+    const m = new Map();
+    for (const c of (classes || [])) {
+      const code = String(c?.codigo || c?.code || '').trim();
+      const desc = String(c?.descricao || c?.description || c?.nome || '').trim();
+      if (code) m.set(code, desc);
+    }
+    return m;
+  }, [classes]);
+
   const periodoSelecionado = useMemo(() => {
     const id = String(filters.periodo_id || '').trim();
     if (!id) return null;
@@ -610,6 +620,9 @@ export default function SimuladorDepreciacaoView() {
                   )}
                   {(sintetico || []).map((row) => {
                     const isTotal = row.classe === 'TOTAL';
+                    const codigo = String(row?.classe || '').trim();
+                    const desc = String(row?.classe_descricao || '').trim() || (codigo ? (classeDescricaoPorCodigo.get(codigo) || '') : '');
+                    const classeLabel = isTotal ? t('simulator_synthetic_total_label') : (desc ? `${codigo} - ${desc}` : codigo);
                     return (
                       <tr key={row.classe || row.classe_descricao || 'linha'}>
                         <td
@@ -617,7 +630,7 @@ export default function SimuladorDepreciacaoView() {
                             isTotal ? 'font-semibold' : ''
                           }`}
                         >
-                          {isTotal ? t('simulator_synthetic_total_label') : row.classe}
+                          {classeLabel}
                         </td>
                         <td className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 whitespace-nowrap text-[11px]">
                           {row.quantidade_ativos}
